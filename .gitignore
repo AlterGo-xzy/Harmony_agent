@@ -9,4 +9,8 @@
 /artifacts
 /.appanalyzer
 /.local
-
+*.p12
+*.cer
+*.p7b
+/signing/*
+!/signing/README.md

@@ -1,0 +1,40 @@
+#!/bin/sh
+# Reject commits that contain a machine-local signing configuration.
+
+fail=0
+offenders=""
+
+while read -r local_ref local_sha remote_ref remote_sha; do
+  case "$local_sha" in
+    0000000000000000000000000000000000000000) continue ;;
+  esac
+
+  if [ "$remote_sha" = "0000000000000000000000000000000000000000" ]; then
+    range="$local_sha"
+  else
+    range="$remote_sha..$local_sha"
+  fi
+
+  for sha in $(git rev-list "$range" 2>/dev/null); do
+    if git cat-file -p "$sha:build-profile.json5" 2>/dev/null | grep -q "storeFile"; then
+      subject="$(git log -1 --format=%s "$sha" 2>/dev/null)"
+      offenders="$offenders
+  $sha $subject"
+      fail=1
+    fi
+  done
+done
+
+if [ "$fail" = "1" ]; then
+  cat >&2 <<EOF
+
+[pre-push] Push rejected: build-profile.json5 contains a machine-local signing configuration:
+$offenders
+
+Signing configuration belongs only in the gitignored .local cache and must not be committed.
+Restore the unsigned template, amend the affected commit, and retry the push.
+EOF
+  exit 1
+fi
+
+exit 0

@@ -32,19 +32,33 @@ $script:ExitCode = 0
 $script:FixtureProcess = $null
 $script:Hdc = $null
 $script:SdkRoot = $null
+$script:StudioRoot = $null
 $script:Hvigor = $null
+$script:DevEcoCli = $null
 $script:FixtureInfo = $null
 $script:InstalledBundle = $false
 $script:DeviceTargets = @()
 $script:HdcProbeReason = $null
 $script:BundleName = 'com.harmony.agent'
 $script:ProtocolVersions = @('2026-07-28', '2025-11-25')
+$script:SigningAttempted = $false
+$script:SigningGenerated = $false
+$script:SigningCacheUsed = $false
+$script:SigningPrepared = $false
+$script:BuildProfileRestored = $true
+$script:BuildProfileBackupPath = $null
+$script:BuildProfileTemplateHash = $null
+$script:SigningLockPath = $null
+$script:SigningLockStream = $null
+$script:HooksPathConfigured = $false
+$script:HooksPathActive = $false
 
 function Protect-Text {
     param([AllowNull()][string]$Value)
     if ($null -eq $Value) { return $null }
     $redacted = $Value -replace '(?i)(authorization\s*[:=]\s*)([^\r\n]+)', '$1[REDACTED]'
     $redacted = $redacted -replace '(?i)(bearer\s+)[A-Za-z0-9._~+/=-]+', '$1[REDACTED]'
+    $redacted = $redacted -replace '(?i)(["'']?(?:storeFile|certpath|profile|keyAlias|keyPassword|keystorePassword)["'']?\s*[:=]\s*)("[^"]*"|''[^'']*''|[^\s,}]+)', '$1[REDACTED]'
     return $redacted
 }
 
@@ -158,8 +172,177 @@ function Find-SdkRoot {
     return $null
 }
 
+function Get-SafeGitArguments {
+    $safeRoot = $projectRoot.Replace('\', '/')
+    return @('-c', "safe.directory=$safeRoot", '-C', $projectRoot)
+}
+
+function Enable-RepositoryHooks {
+    $git = Get-Command git -ErrorAction SilentlyContinue
+    if ($null -eq $git -or -not (Test-Path -LiteralPath (Join-Path $projectRoot '.git'))) { return }
+    $baseArguments = Get-SafeGitArguments
+    $current = (& $git.Source @baseArguments config --local --get core.hooksPath 2>$null | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -and $LASTEXITCODE -ne 1) {
+        throw 'Unable to inspect the repository-local Git hooks path.'
+    }
+    if ($current.Length -eq 0) {
+        & $git.Source @baseArguments config --local core.hooksPath scripts/hooks
+        if ($LASTEXITCODE -ne 0) { throw 'Unable to enable the repository pre-push hook.' }
+        $script:HooksPathConfigured = $true
+        $script:HooksPathActive = $true
+    } elseif ($current -eq 'scripts/hooks') {
+        $script:HooksPathActive = $true
+    } elseif ($current -ne 'scripts/hooks') {
+        Write-Warning "Existing repository hooks path '$current' was preserved; scripts/hooks/pre-push is not active."
+    }
+}
+
+function Find-DevEcoCli {
+    if (-not [string]::IsNullOrWhiteSpace($env:DEVECOCLI_BIN)) {
+        $configured = Get-Command $env:DEVECOCLI_BIN -ErrorAction SilentlyContinue
+        if ($null -ne $configured) { return $configured.Source }
+        if (Test-Path -LiteralPath $env:DEVECOCLI_BIN -PathType Leaf) {
+            return [System.IO.Path]::GetFullPath($env:DEVECOCLI_BIN)
+        }
+    }
+    foreach ($name in @('devecocli', 'devecocli.cmd', 'devecocli.exe')) {
+        $command = Get-Command $name -ErrorAction SilentlyContinue
+        if ($null -ne $command) { return $command.Source }
+    }
+    return $null
+}
+
+function Close-SigningLock {
+    if ($null -ne $script:SigningLockStream) {
+        $script:SigningLockStream.Dispose()
+        $script:SigningLockStream = $null
+    }
+    if (-not [string]::IsNullOrWhiteSpace($script:SigningLockPath) -and
+        (Test-Path -LiteralPath $script:SigningLockPath -PathType Leaf)) {
+        Remove-Item -LiteralPath $script:SigningLockPath -Force -ErrorAction SilentlyContinue
+    }
+    $script:SigningLockPath = $null
+}
+
+function Restore-BuildProfile {
+    $buildProfile = Join-Path $projectRoot 'build-profile.json5'
+    try {
+        if (-not [string]::IsNullOrWhiteSpace($script:BuildProfileBackupPath) -and
+            (Test-Path -LiteralPath $script:BuildProfileBackupPath -PathType Leaf)) {
+            Copy-Item -LiteralPath $script:BuildProfileBackupPath -Destination $buildProfile -Force
+            if (-not [string]::IsNullOrWhiteSpace($script:BuildProfileTemplateHash)) {
+                $restoredHash = (Get-FileHash -LiteralPath $buildProfile -Algorithm SHA256).Hash
+                if ($restoredHash -ne $script:BuildProfileTemplateHash) {
+                    throw "build-profile.json5 restoration verification failed; backup retained at $($script:BuildProfileBackupPath)."
+                }
+            }
+            Remove-Item -LiteralPath $script:BuildProfileBackupPath -Force
+            $script:BuildProfileBackupPath = $null
+        }
+        $script:SigningPrepared = $false
+        $script:BuildProfileRestored = $true
+    } finally {
+        Close-SigningLock
+    }
+}
+
+function Invoke-PrivateDevEcoCli {
+    param([string[]]$Arguments)
+    $output = @(& $script:DevEcoCli @Arguments 2>&1)
+    $exitCode = $LASTEXITCODE
+    $text = ($output | ForEach-Object { [string]$_ }) -join [Environment]::NewLine
+    if ($exitCode -ne 0) {
+        if ($text -match '(?i)(not logged in|auth login|sign in)') {
+            throw 'DevEco authentication is required. Run devecocli auth login manually, then retry.'
+        }
+        throw "devecocli failed with exit code $exitCode while preparing device signing. Raw signing output was not logged."
+    }
+    return $text
+}
+
+function Prepare-DeviceSigning {
+    $buildProfile = Join-Path $projectRoot 'build-profile.json5'
+    $localDirectory = Join-Path $projectRoot '.local'
+    $signedProfile = Join-Path $localDirectory 'build-profile.signed.json5'
+    $templateHashFile = Join-Path $localDirectory 'build-profile.template.sha256'
+    [System.IO.Directory]::CreateDirectory($localDirectory) | Out-Null
+
+    $script:SigningLockPath = Join-Path $localDirectory 'signing.lock'
+    try {
+        $script:SigningLockStream = [System.IO.File]::Open(
+            $script:SigningLockPath,
+            [System.IO.FileMode]::OpenOrCreate,
+            [System.IO.FileAccess]::ReadWrite,
+            [System.IO.FileShare]::None)
+    } catch {
+        throw 'Another MCP signing operation is already using this repository.'
+    }
+
+    try {
+        $templateText = Get-Content -LiteralPath $buildProfile -Raw
+        if ($templateText -match '(?i)storeFile' -or $templateText -notmatch '"signingConfigs"\s*:\s*\[\s*\]') {
+            throw 'build-profile.json5 is not the expected unsigned template; refusing to overwrite it.'
+        }
+        $script:BuildProfileTemplateHash = (Get-FileHash -LiteralPath $buildProfile -Algorithm SHA256).Hash
+        $script:BuildProfileBackupPath = Join-Path $localDirectory "build-profile.template.$PID.$runId.bak"
+        Copy-Item -LiteralPath $buildProfile -Destination $script:BuildProfileBackupPath
+        $script:BuildProfileRestored = $false
+
+        $cachedHash = if (Test-Path -LiteralPath $templateHashFile -PathType Leaf) {
+            (Get-Content -LiteralPath $templateHashFile -Raw).Trim()
+        } else { '' }
+        $cacheValid = (Test-Path -LiteralPath $signedProfile -PathType Leaf) -and
+            $cachedHash -eq $script:BuildProfileTemplateHash -and
+            (Select-String -LiteralPath $signedProfile -Pattern 'storeFile' -Quiet)
+
+        $script:SigningAttempted = $true
+        if ($cacheValid) {
+            Copy-Item -LiteralPath $signedProfile -Destination $buildProfile -Force
+            $script:SigningCacheUsed = $true
+        } else {
+            $script:DevEcoCli = Find-DevEcoCli
+            if ([string]::IsNullOrWhiteSpace($script:DevEcoCli)) {
+                throw 'devecocli is required to generate an installable device-test HAP.'
+            }
+            $authText = Invoke-PrivateDevEcoCli -Arguments @('auth', 'status')
+            if ($authText -notmatch 'Current user') {
+                throw 'DevEco authentication is required. Run devecocli auth login manually, then retry.'
+            }
+            Invoke-PrivateDevEcoCli -Arguments @('signature', 'generate', '--product', 'default') | Out-Null
+            if (-not (Select-String -LiteralPath $buildProfile -Pattern 'storeFile' -Quiet)) {
+                throw 'DevEco reported signing success but did not produce a signed build-profile.json5.'
+            }
+            Copy-Item -LiteralPath $buildProfile -Destination $signedProfile -Force
+            [System.IO.File]::WriteAllText(
+                $templateHashFile,
+                $script:BuildProfileTemplateHash + [Environment]::NewLine,
+                [System.Text.UTF8Encoding]::new($false))
+            $script:SigningGenerated = $true
+        }
+
+        if (-not (Select-String -LiteralPath $buildProfile -Pattern 'storeFile' -Quiet)) {
+            throw 'The prepared build profile does not contain an installable signing configuration.'
+        }
+        $script:SigningPrepared = $true
+    } catch {
+        try { Restore-BuildProfile } catch { Write-Warning (Protect-Text $_.Exception.Message) }
+        throw
+    }
+}
+
 function Write-Reports {
     $finishedAt = Get-Date
+    $persistentChanges = [System.Collections.Generic.List[string]]::new()
+    if ($script:HooksPathActive) {
+        $persistentChanges.Add('Repository-local Git core.hooksPath=scripts/hooks')
+    }
+    $signingCachePresent = Test-Path -LiteralPath (Join-Path $projectRoot '.local\build-profile.signed.json5') -PathType Leaf
+    if ($signingCachePresent) {
+        $persistentChanges.Add('Gitignored .local signing cache')
+    }
+    if ($script:SigningGenerated) {
+        $persistentChanges.Add('DevEco-managed user signing material outside the repository')
+    }
     $deliverables = @()
     if (Test-Path -LiteralPath $deliverablesDirectory -PathType Container) {
         $deliverables = @(Get-ChildItem -LiteralPath $deliverablesDirectory -File | ForEach-Object {
@@ -185,12 +368,17 @@ function Write-Reports {
         stages = $script:Stages
         deliverables = $deliverables
         environmentImpact = [pscustomobject]@{
-            persistentChanges = @()
+            persistentChanges = @($persistentChanges)
             processEnvironment = @('DEVECO_SDK_HOME', 'MCP_FIXTURE_URL', 'MCP_PROTOCOL')
             fixtureBindHost = if ($null -eq $script:FixtureInfo) { $null } else { $script:FixtureInfo.host }
             fixtureProcessStopped = $null -eq $script:FixtureProcess -or $script:FixtureProcess.HasExited
             deviceTargetsDetected = $script:DeviceTargets.Count
             dependenciesInstalled = [bool]$InstallDependencies
+            repositoryHookConfigured = $script:HooksPathActive
+            signingAttempted = $script:SigningAttempted
+            signingGenerated = $script:SigningGenerated
+            signingCacheUsed = $script:SigningCacheUsed
+            buildProfileRestored = $script:BuildProfileRestored
         }
     }
     $json = $summary | ConvertTo-Json -Depth 10
@@ -262,14 +450,15 @@ try {
 
             $script:SdkRoot = Find-SdkRoot
             if ($null -eq $script:SdkRoot) { throw 'HarmonyOS SDK API 26 was not found.' }
-            $studioRoot = Split-Path -Parent $script:SdkRoot
-            $script:Hvigor = Join-Path $studioRoot 'tools\hvigor\bin\hvigorw.bat'
+            $script:StudioRoot = Split-Path -Parent $script:SdkRoot
+            $script:Hvigor = Join-Path $script:StudioRoot 'tools\hvigor\bin\hvigorw.bat'
             if (-not (Test-Path -LiteralPath $script:Hvigor -PathType Leaf)) {
                 throw "Hvigor launcher was not found: $($script:Hvigor)"
             }
             if (-not (Test-Path -LiteralPath (Join-Path $projectRoot 'build-profile.json5'))) {
                 throw 'Project build-profile.json5 is missing.'
             }
+            Enable-RepositoryHooks
 
             if (-not [string]::IsNullOrWhiteSpace($HdcPath)) {
                 $resolvedHdc = [System.IO.Path]::GetFullPath($HdcPath)
@@ -290,11 +479,11 @@ try {
                 if (-not $InstallDependencies) {
                     throw 'Project dependencies are missing. Re-run with -InstallDependencies to authorize OHPM download.'
                 }
-                $ohpm = Join-Path $studioRoot 'tools\ohpm\bin\ohpm.bat'
+                $ohpm = Join-Path $script:StudioRoot 'tools\ohpm\bin\ohpm.bat'
                 if (-not (Test-Path -LiteralPath $ohpm -PathType Leaf)) { throw 'OHPM was not found.' }
                 Invoke-LoggedProcess -FilePath $ohpm -Arguments @('install', '--all') -LogName 'ohpm-install.log' | Out-Null
             } elseif ($InstallDependencies) {
-                $ohpm = Join-Path $studioRoot 'tools\ohpm\bin\ohpm.bat'
+                $ohpm = Join-Path $script:StudioRoot 'tools\ohpm\bin\ohpm.bat'
                 if (-not (Test-Path -LiteralPath $ohpm -PathType Leaf)) { throw 'OHPM was not found.' }
                 Invoke-LoggedProcess -FilePath $ohpm -Arguments @('install', '--all') -LogName 'ohpm-install.log' | Out-Null
             }
@@ -398,19 +587,34 @@ try {
             if ($LASTEXITCODE -gt 1) { throw 'rg failed during HAR source audit.' }
         }
 
+        $deviceSigningNeeded = $Device -ne 'Skip' -and $null -ne $script:Hdc -and
+            $null -eq $script:HdcProbeReason -and $script:DeviceTargets.Count -gt 0 -and
+            -not [string]::IsNullOrWhiteSpace($AdvertiseHost)
+        if ($deviceSigningNeeded) {
+            Invoke-Stage -Name 'Prepare device signing' -ConfigurationFailure -Action {
+                Prepare-DeviceSigning
+            }
+        }
+
         Invoke-Stage -Name 'Debug test host builds' -Action {
-            Invoke-Hvigor -Arguments @('--mode', 'module', '-p', 'module=test_host@default', '-p', 'product=default',
-                '-p', 'buildMode=debug', 'assembleHap', '--no-daemon') -LogName 'debug-test-host-build.log'
-            Invoke-Hvigor -Arguments @('--mode', 'module', '-p', 'module=test_host@ohosTest', '-p', 'product=default',
-                '-p', 'buildMode=debug', 'assembleHap', '--no-daemon') -LogName 'debug-ohos-test-build.log'
-            $mainHap = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'test_host\build') -Recurse -File `
-                -Filter '*default*.hap' | Where-Object FullName -notmatch 'ohosTest' | Select-Object -First 1
-            $testHap = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'test_host\build') -Recurse -File `
-                -Filter '*.hap' | Where-Object FullName -match '[\\/]outputs[\\/]ohosTest[\\/]' | Select-Object -First 1
-            if ($null -eq $mainHap) { throw 'Debug test host HAP output was not produced.' }
-            if ($null -eq $testHap) { throw 'ohosTest HAP output was not produced.' }
-            Copy-Item -LiteralPath $mainHap.FullName -Destination (Join-Path $deliverablesDirectory $mainHap.Name)
-            Copy-Item -LiteralPath $testHap.FullName -Destination (Join-Path $deliverablesDirectory $testHap.Name)
+            try {
+                Invoke-Hvigor -Arguments @('--mode', 'module', '-p', 'module=test_host@default', '-p', 'product=default',
+                    '-p', 'buildMode=debug', 'assembleHap', '--no-daemon') -LogName 'debug-test-host-build.log'
+                Invoke-Hvigor -Arguments @('--mode', 'module', '-p', 'module=test_host@ohosTest', '-p', 'product=default',
+                    '-p', 'buildMode=debug', 'assembleHap', '--no-daemon') -LogName 'debug-ohos-test-build.log'
+                $mainHap = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'test_host\build') -Recurse -File `
+                    -Filter '*default*.hap' | Where-Object FullName -notmatch 'ohosTest' | Select-Object -First 1
+                $testHap = Get-ChildItem -LiteralPath (Join-Path $projectRoot 'test_host\build') -Recurse -File `
+                    -Filter '*.hap' | Where-Object FullName -match '[\\/]outputs[\\/]ohosTest[\\/]' | Select-Object -First 1
+                if ($null -eq $mainHap) { throw 'Debug test host HAP output was not produced.' }
+                if ($null -eq $testHap) { throw 'ohosTest HAP output was not produced.' }
+                Copy-Item -LiteralPath $mainHap.FullName -Destination (Join-Path $deliverablesDirectory $mainHap.Name)
+                Copy-Item -LiteralPath $testHap.FullName -Destination (Join-Path $deliverablesDirectory $testHap.Name)
+            } finally {
+                if ($script:SigningPrepared -or -not $script:BuildProfileRestored) {
+                    Restore-BuildProfile
+                }
+            }
         }
 
         if ($Device -eq 'Skip') {
@@ -475,6 +679,16 @@ try {
 } finally {
     Uninstall-TestApp
     Stop-Fixture
+    if (-not $script:BuildProfileRestored) {
+        try {
+            Restore-BuildProfile
+        } catch {
+            if ($script:ExitCode -eq 0) { $script:ExitCode = 1 }
+            Add-Stage -Name 'Restore signing template' -Status FAILED -DurationMs 0 `
+                -Reason $_.Exception.Message
+            Write-Warning (Protect-Text $_.Exception.Message)
+        }
+    }
     Write-Reports
     Pop-Location
 }

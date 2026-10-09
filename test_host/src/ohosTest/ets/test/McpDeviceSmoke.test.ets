@@ -29,8 +29,12 @@ class TestHostMonitor implements abilityDelegatorRegistry.AbilityMonitor {
 
 function fixtureUrl(): string {
   const parameters: Record<string, string> = abilityDelegatorRegistry.getArguments().parameters;
-  const value: string | undefined = parameters['fixtureUrl'];
-  return value === undefined ? '' : value;
+  const directValue: string | undefined = parameters['fixtureUrl'];
+  if (directValue !== undefined) {
+    return directValue;
+  }
+  const shellValue: string | undefined = parameters['-s fixtureUrl'];
+  return shellValue === undefined ? '' : shellValue;
 }
 
 export default function deviceSmokeTest(): void {
