@@ -1,0 +1,89 @@
+{
+  "schemaVersion": "1.0",
+  "id": "personal-dashboard",
+  "name": "Personal Dashboard",
+  "category": "Personal Dashboard / Collection Tracker",
+  "description": "personal collections, stats, favorites, reminders, and status snapshots",
+  "audience": [
+    "personal trackers",
+    "users organizing collections or goals"
+  ],
+  "styleTags": [
+    "modular",
+    "personal",
+    "dashboard-like",
+    "clean",
+    "scannable"
+  ],
+  "appArchetypes": [
+    "personal command center",
+    "collection tracker",
+    "goal dashboard",
+    "reminder board"
+  ],
+  "requiredScreens": [
+    "dashboard",
+    "collections",
+    "stats",
+    "profile",
+    "item editor"
+  ],
+  "requiredStates": [
+    "empty",
+    "selected collection",
+    "favorite",
+    "completed",
+    "editing",
+    "saved",
+    "toast",
+    "selected"
+  ],
+  "primaryControls": [
+    "metric cards",
+    "collection rows",
+    "favorite toggles",
+    "add item",
+    "save/cancel/delete",
+    "bottom tabs"
+  ],
+  "qualityGates": [
+    "app-only screenshot is exactly 1080x2340 at density 480 Phone",
+    "first screen communicates the product purpose without external explanation",
+    "bottom navigation is anchored near the bottom with only a small home-indicator gap",
+    "content is not hidden by navigation and no large empty footer remains",
+    "icons, labels, search/add controls, and circular actions are centered in fixed containers",
+    "every visible primary control has visible feedback and appears in the scenario test plan",
+    "text is readable, unclipped, non-overlapping, and not dependent on network assets",
+    "implementation stays single-file dynamic ArkTS friendly and under 3000 LOC unless user asks otherwise"
+  ],
+  "target": {
+    "width": 1080,
+    "height": 2340,
+    "density": 480,
+    "deviceType": "Phone"
+  },
+  "files": [
+    "DESIGN.md",
+    "USAGE.md",
+    "tokens.ets",
+    "components.ets"
+  ],
+  "preview": {
+    "required": false,
+    "recommendedPath": "preview.png",
+    "capture": "canvas#screen backing bitmap"
+  },
+  "examples": [],
+  "source": {
+    "inspiredBy": "Open Design portable design-system package shape",
+    "url": "https://github.com/nexu-io/open-design/tree/main/design-systems",
+    "notes": "Structure inspiration only; generated ArkTS UI must be original and ArkTS-native."
+  },
+  "constraints": [
+    "single-file dynamic ArkTS friendly",
+    "no backend and no network assets by default",
+    "no mandatory video/media APIs",
+    "avoid Text.fontColor unless the current previewer has explicitly verified it",
+    "app-only 1080x2340 evidence"
+  ]
+}

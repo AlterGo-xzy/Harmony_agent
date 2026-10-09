@@ -1,0 +1,16 @@
+{
+  "name": "test_host",
+  "version": "0.1.0",
+  "description": "Headless device test host for harmony_agent Agent HAR modules",
+  "main": "",
+  "author": "harmony_agent",
+  "license": "Apache-2.0",
+  "dependencies": {
+    "@harmony_agent/mcp-client": "file:../mcp_client",
+    "@harmony_agent/agent-contracts": "file:../agent_contracts",
+    "@harmony_agent/agent-core": "file:../agent_core",
+    "@harmony_agent/agent-storage": "file:../agent_storage",
+    "@harmony_agent/native-tools": "file:../native_tools"
+  }
+}
+

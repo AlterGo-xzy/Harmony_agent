@@ -1,0 +1,87 @@
+# harmony_agent Agent Runtime（ArkTS）
+
+这是无 UI 的 harmony_agent Agent Runtime 与其 HarmonyOS/OpenHarmony ArkTS 基础模块，不是示例应用，也不包含产品前端。
+
+harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T07 已通过本地实现门，M05-A 有历史设备 7/7 证据；T08/M05-B 有历史 unsigned 设备 3/3 证据，签名验收仍待完成。统一更名后的设备验收需独立复验，当前进度以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
+
+当前工程交付包括：
+
+- `agent_contracts/`：harmony_agent Agent Runtime 的版本化纯 ArkTS 契约 HAR；不依赖网络、存储、UI 或具体 Provider。
+- `agent_core/`：确定性 Workflow Kernel HAR；提供语义图校验、状态机、调度、恢复边界和 operation journal。
+- `agent_runtime/`：无 UI 的 Agent Runtime HAR；当前提供唯一 `AgentRuntimeFacade` 业务控制接口、明确标记的 headless fake/consumer、M03 内部编排层、M04 Registry/确定性 Router、composition ports，以及内部 Policy Gateway。Registry/Router 是装配与决策 API，不能创建任务、推进状态或签发授权；当前仍没有接入真实 Provider、Tool 或生产持久化装配。
+- `agent_storage/`：无 UI 的执行恢复与长期记忆存储 HAR；提供 Repository ports、恢复协议参考 Store、snapshot CAS durable session、可重建记忆索引与宿主注入式 API 26 RDB backend。已有历史主机与设备证据；统一更名后的 RDB 表和 fixture 仍需设备复验，真实业务 adapter 集成继续遵循独立门禁。
+- `mcp_client/`：可复用的 `@harmony_agent/mcp-client` HAR。
+- `test_host/`：仅承载设备集成测试的无页面、未导出 Ability；不进入 harmony_agent 产品代码。
+- `tools/test-mcp.ps1`：唯一人工验收入口，配套 Node.js Fixture Server。
+
+## Agent 接入
+
+HAR 的公共入口是 `mcp_client/Index.ets`。宿主负责 Server Profile、认证秘密和每次工具调用的授权策略；HAR 不持久化这些数据。
+
+```typescript
+import {
+  McpCapabilityKind,
+  McpClientManager,
+  McpInvocationPolicy,
+  McpProtocolMode
+} from '@harmony_agent/mcp-client';
+
+const manager = new McpClientManager({
+  debugBuild: false,
+  authProvider: harmonyAgentAuthProvider,
+  invocationPolicy: harmonyAgentInvocationPolicy as McpInvocationPolicy
+});
+
+manager.registerServer({
+  id: 'knowledge',
+  displayName: 'Knowledge MCP',
+  endpoint: 'https://mcp.example.com/mcp',
+  protocolMode: McpProtocolMode.AUTO
+});
+
+await manager.connect('knowledge');
+const tools = await manager.listTools();
+const result = await manager.callTool({
+  serverId: 'knowledge',
+  kind: McpCapabilityKind.TOOL,
+  name: 'search'
+}, { query: 'OpenHarmony' });
+```
+
+`McpCapabilityRef` 使用 `{ serverId, kind, name }` 定位能力，因此不同 Server 可以安全地暴露同名工具。未注册策略、策略拒绝或策略异常时，`tools/call` 默认拒绝。
+
+## 支持范围
+
+- Streamable HTTP，JSON 与 SSE 响应。
+- 现代协议 `2026-07-28`，以及旧式 `2025-11-25`。
+- `auto` 只在明确的不支持信号上回退；认证、5xx、网络和超时错误不回退。
+- 多 Server、Tools、Resources、Resource Templates、Prompts、分页和目录缓存。
+- 文本、图片、音频、资源链接、嵌入资源、结构化内容及未知扩展块。
+- 网络、认证、协商、JSON-RPC、策略拒绝、超时、取消和响应过大错误。
+
+不支持 stdio、OAuth UI、持久化令牌、Tasks、Sampling、Elicitation、Roots、Logging 或持续资源订阅。HarmonyOS 本地 Kits 继续由 harmony_agent 的本地工具适配层调用。
+
+## 验收
+
+在项目根目录运行：
+
+```powershell
+.\tools\test-mcp.ps1
+```
+
+可选参数：
+
+```text
+-Device Auto|Required|Skip       默认 Auto
+-Protocol Modern|Legacy|Both    默认 Both
+-HdcPath <path>
+-AdvertiseHost <host>
+-InstallDependencies
+-KeepTestApp
+```
+
+脚本不会自动启动模拟器、修改防火墙或更改永久环境配置。只有显式传入 `-InstallDependencies` 才允许 OHPM 联网安装。没有设备时，`Auto` 完成主机侧验收并将设备阶段标记为 `SKIPPED`；`Required` 则失败。
+
+报告和交付物写入被版本控制忽略的 `artifacts/test-results/<runId>/`。退出码 `0` 表示所有必需阶段通过，`1` 表示测试失败，`2` 表示必需工具或配置缺失。
+
+协议实现选择与兼容探针见 [docs/PROTOCOL_IMPLEMENTATION.md](docs/PROTOCOL_IMPLEMENTATION.md)，逐项验证边界见 [docs/TEST_MATRIX.md](docs/TEST_MATRIX.md)，本机影响及清理边界见 [docs/ENVIRONMENT_IMPACT.md](docs/ENVIRONMENT_IMPACT.md)。

@@ -1,0 +1,99 @@
+{
+  "schemaVersion": "1.0",
+  "id": "personal-planner",
+  "name": "Personal Planner",
+  "category": "Personal Planner / Calendar",
+  "description": "daily planning, schedule, focus blocks, and task review",
+  "audience": [
+    "personal productivity users",
+    "busy professionals",
+    "students planning days"
+  ],
+  "styleTags": [
+    "calm",
+    "premium productivity",
+    "warm paper",
+    "structured",
+    "low-noise"
+  ],
+  "appArchetypes": [
+    "daily planner",
+    "calendar schedule",
+    "weekly review",
+    "focus tracker"
+  ],
+  "requiredScreens": [
+    "title",
+    "home",
+    "calendar",
+    "overview",
+    "profile",
+    "editor"
+  ],
+  "requiredStates": [
+    "title",
+    "empty",
+    "selected",
+    "editing",
+    "saved",
+    "deleted",
+    "done",
+    "focus-running",
+    "toast"
+  ],
+  "primaryControls": [
+    "start planning",
+    "bottom tabs",
+    "day chips",
+    "task rows",
+    "start/pause",
+    "done toggle",
+    "search",
+    "create",
+    "editor save/cancel/delete"
+  ],
+  "qualityGates": [
+    "app-only screenshot is exactly 1080x2340 at density 480 Phone",
+    "first screen communicates the product purpose without external explanation",
+    "bottom navigation is anchored near the bottom with only a small home-indicator gap",
+    "content is not hidden by navigation and no large empty footer remains",
+    "icons, labels, search/add controls, and circular actions are centered in fixed containers",
+    "every visible primary control has visible feedback and appears in the scenario test plan",
+    "text is readable, unclipped, non-overlapping, and not dependent on network assets",
+    "implementation stays single-file dynamic ArkTS friendly and under 3000 LOC unless user asks otherwise",
+    "planner inputs define control-to-state-to-downstream propagation before implementation",
+    "availability, preferences, goals, units, and settings each have individual scenario evidence",
+    "editable inputs prove current-screen feedback and downstream changes in generated plan, overview, calendar, data, settings, or progress surfaces",
+    "charts and summaries are state-derived or explicitly labeled fixed sample estimates"
+  ],
+  "target": {
+    "width": 1080,
+    "height": 2340,
+    "density": 480,
+    "deviceType": "Phone"
+  },
+  "files": [
+    "DESIGN.md",
+    "USAGE.md",
+    "tokens.ets",
+    "components.ets"
+  ],
+  "preview": {
+    "required": false,
+    "recommendedPath": "preview.png",
+    "capture": "canvas#screen backing bitmap"
+  },
+  "examples": [],
+  "source": {
+    "inspiredBy": "Open Design portable design-system package shape",
+    "url": "https://github.com/nexu-io/open-design/tree/main/design-systems",
+    "notes": "Structure inspiration only; generated ArkTS UI must be original and ArkTS-native."
+  },
+  "constraints": [
+    "single-file dynamic ArkTS friendly",
+    "no backend and no network assets by default",
+    "no mandatory video/media APIs",
+    "avoid Text.fontColor unless the current previewer has explicitly verified it",
+    "app-only 1080x2340 evidence"
+  ]
+}

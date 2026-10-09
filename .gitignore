@@ -1,0 +1,12 @@
+/node_modules
+/oh_modules
+**/oh_modules
+/local.properties
+/.idea
+/.hvigor
+**/build
+**/.test
+/artifacts
+/.appanalyzer
+/.local
+

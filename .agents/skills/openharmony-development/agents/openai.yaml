@@ -1,0 +1,9 @@
+interface:
+  display_name: "OpenHarmony Development"
+  short_description: "Build and debug ArkTS, ArkUI, and OHOS apps"
+  icon_small: "./assets/icon.svg"
+  icon_large: "./assets/icon.svg"
+  brand_color: "#4D4D4D"
+  default_prompt: "Use $openharmony-development to implement and verify this OpenHarmony development task."
+policy:
+  allow_implicit_invocation: true
