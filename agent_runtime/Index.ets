@@ -1,4 +1,4 @@
-export const AGENT_RUNTIME_VERSION: string = '0.11.0';
+export const AGENT_RUNTIME_VERSION: string = '0.12.0';
 export {
   ShutdownMode,
   AgentRuntimeErrorCode,

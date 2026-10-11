@@ -209,6 +209,7 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
   readonly preparedAuthorities: RuntimeDurableAuthorityPayload[] = [];
   readonly rejectedContexts: DispatchPersistenceContext[] = [];
   allowBeforeDispatch: boolean = true;
+  allowRecoveryNormalization: boolean = true;
   throwBeforeDispatch: boolean = false;
   mutateContextBeforeDispatch: boolean = false;
   mutateAuthorityBeforeDispatch: boolean = false;
@@ -216,6 +217,7 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
   overrideCheckpoint?: RuntimeTaskRecoveryCheckpoint;
   recoveryTaskIds: string[] = [];
   recoveryAuthorities: RuntimeRecoveryAuthority[] = [];
+  recoveryNormalizations: number = 0;
 
   constructor(journal: FixtureJournal) {
     this.journal = journal;
@@ -256,6 +258,21 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
       }
     }
     return undefined;
+  }
+
+  async normalizeRecoveredOperation(checkpoint: RuntimeTaskRecoveryCheckpoint,
+    expectedPreviousVersion: number, nowMs: number): Promise<RuntimePersistenceResult> {
+    if (!this.allowRecoveryNormalization) {
+      return persistenceResult(false, RuntimePersistenceCode.REJECTED);
+    }
+    const authority: RuntimeDurableAuthorityPayload = new RuntimeDurableAuthorityPayload();
+    authority.taskId = checkpoint.snapshot.taskId;
+    authority.checkpointSnapshotVersion = checkpoint.snapshot.snapshotVersion;
+    authority.policyVersion = 'policy-v1';
+    const stored: RuntimePersistenceResult = this.storeCheckpoint(
+      checkpoint, expectedPreviousVersion, authority);
+    if (stored.accepted) this.recoveryNormalizations++;
+    return stored;
   }
 
   async listRecoveryTaskIds(): Promise<string[]> {
@@ -862,7 +879,7 @@ export default function productionAgentRuntimeTest(): void {
       expect(source.factory.adapter.requests.length).assertEqual(0);
     });
 
-    it('failsClosedWhenStartupFindsAnActiveOperation', 0, async () => {
+    it('normalizesActiveOperationBeforeExposingRecoveredFacade', 0, async () => {
       const source: ProductionFixture = new ProductionFixture(ProductionPlanKind.TOOL);
       const handle: TaskHandle = await source.runtime.submitTask(submission('production-recovery-active'));
       const observer: FixtureObserver = new FixtureObserver();
@@ -877,6 +894,32 @@ export default function productionAgentRuntimeTest(): void {
       decision.decidedAtMs = 1000;
       await source.runtime.provideAuthorization(decision);
       enableRecovery(source, handle.taskId);
+      const restored: AgentRuntimeFacade = await recoveredRuntime(source);
+      const snapshot: AgentTaskSnapshot = await restored.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.WAITING_RECONCILIATION);
+      expect(source.persistence.recoveryNormalizations).assertEqual(1);
+      const normalized: RuntimeTaskRecoveryCheckpoint | undefined =
+        await source.persistence.loadCheckpoint(handle.taskId);
+      expect(normalized?.activeInvocation === undefined).assertTrue();
+      expect(normalized?.pendingDispatchId).assertEqual('');
+    });
+
+    it('failsClosedWhenActiveOperationNormalizationIsRejected', 0, async () => {
+      const source: ProductionFixture = new ProductionFixture(ProductionPlanKind.TOOL);
+      const handle: TaskHandle = await source.runtime.submitTask(submission('production-recovery-active-rejected'));
+      const observer: FixtureObserver = new FixtureObserver();
+      await subscribe(source.runtime, handle.taskId, observer);
+      const decision: AuthorizationDecision = new AuthorizationDecision();
+      decision.commandId = 'recovery-active-rejected-decision';
+      decision.policyRequestId = observer.policies[0].requestId;
+      decision.userId = 'user-1';
+      decision.taskId = handle.taskId;
+      decision.decision = AuthorizationDecisionType.APPROVED;
+      decision.decidedAt = '1970-01-01T00:00:01.000Z';
+      decision.decidedAtMs = 1000;
+      await source.runtime.provideAuthorization(decision);
+      enableRecovery(source, handle.taskId);
+      source.persistence.allowRecoveryNormalization = false;
       let rejected: boolean = false;
       try {
         await recoveredRuntime(source);

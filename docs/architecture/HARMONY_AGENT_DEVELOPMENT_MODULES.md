@@ -419,6 +419,8 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 
 当前实施状态（T24，本地主机与未签名构建门已通过）：`@harmony_agent/agent-runtime` 0.11.0/composition 2.3 已完成 Promise-based Facade、同实例 FIFO、checkpoint 1.1 严格校验、锁定式协调器重建、recovery authority hydration、checkpoint/authority 同状态写入，以及无在途 operation 的启动恢复与 event replay；`@harmony_agent/agent-core` 0.2.0 提供按 taskId 防御性导出的完整 scope/reservation 图；`@harmony_agent/agent-storage` 0.6.0/schema 1.2 已提供 opaque checkpoint、任务枚举、单 CAS transaction、Runtime bridge 和 durable authority 回读组装。core 21/21、runtime 59/59、storage 45/45 与对应 Release HAR 已通过。active operation 的 durable 状态归一化、lease 接管、RDB composition 和跨进程设备验收仍未完成；当前存储设备套件只完成 unsigned HAP 编译。
 
+当前实施状态（T25，本地主机与 HAR 门已通过）：`@harmony_agent/agent-runtime` 0.12.0/composition 2.4 与 `@harmony_agent/agent-storage` 0.7.0 新增 active operation 的专用恢复事务。恢复 factory 在暴露唯一 Facade 前读取旧 checkpoint/authority，协调器生成 `WAITING_RECONCILIATION` checkpoint；bridge 通过一次 backend CAS 接管 fencing、把 operation 与预算保守规范化为 `UNKNOWN_OUTCOME`、释放 recovery lease 并保存下一版本 checkpoint。CAS 冲突或绑定错误继续 fail-closed，Adapter 不会被重放。runtime 60/60、storage 47/47 与两个 Release HAR 已通过；RDB composition 和设备跨进程验收仍未完成。
+
 ### M10：TestKit、故障注入与 harmony_agent Bench
 
 目标：让每个开发模块都能在没有完整产品的情况下独立验收。
@@ -836,6 +838,17 @@ DTO 映射、durable 时序和未完成边界见 `docs/AGENT_RUNTIME_STORAGE_INT
 - Release HAR：runtime 95,351 bytes、SHA-256 `26280E3A177A3D1696D8643AFBC70F0BB84752CCA62C852B9D4F6BE6F7FC6CA7`；storage 65,790 bytes、SHA-256 `DE75C00594069B8A8E84DA54F8EF66C148EF33275C29C37C59DA71456D236E1C`；
 - 完整依赖图 unsigned 主 HAP 8,708 bytes、SHA-256 `B7D94CBB6BF6F348FC3F52266B7C341DE650F77857AF2E586DEC67A8A41F59F0`；ohosTest HAP 2,898,032 bytes、SHA-256 `F4A0F69CFB9D5276D2FDD885820DD8C3B1D1AD3A2F5045B9C9FF8BCE5CEE76DC`；日志明确 `No signingConfig found`；
 - 证据位于 `artifacts/t24-startup-recovery/20261009-1342/`。本轮未签名、安装、卸载或运行设备。
+
+### T25：M09-B/M05-A active operation 原子恢复归一化 — 本地主机与 HAR 门已通过
+
+`agent_runtime` 0.12.0/composition 2.4 为 production persistence port 新增 `normalizeRecoveredOperation`。恢复 factory 先读取原 active checkpoint 的 durable authority，再由内部协调器将运行中步骤保守转入 `WAITING_RECONCILIATION` 并清除 active invocation；只有专用 normalization Promise 成功，才继续 authority hydration 并返回唯一 `AgentRuntimeFacade`。`agent_storage` 0.7.0 新增 `DurableExecutionRecoveryStore.openForRuntimeRecovery`，延迟默认 reopen 的独立 `IN_FLIGHT` 归一化，使 bridge 能在一个 transaction/一次 backend CAS 中完成旧 lease 校验与释放、新 fencing token 接管、operation 和预算转 `UNKNOWN_OUTCOME`、recovery lease 释放及下一版本 checkpoint 保存。并发 CAS 冲突、错 operation/fence/checkpoint 均 fail-closed，恢复不会调用 Adapter。
+
+2026-10-11 当前证据：
+
+- `agent_runtime@default test`：60/60，通过；新增 active normalization 成功与持久化拒绝 fail-closed 用例；
+- `agent_storage@default test`：47/47，通过；新增 durable reopen 的 fencing 接管/UNKNOWN/checkpoint 单 CAS 用例与 CAS 冲突用例；
+- Release HAR：runtime 95,970 bytes、SHA-256 `3DDC14377C53932D17860FD69699369E946811FF96DD039C8ACD43A1ACB5C5D0`；storage 68,852 bytes、SHA-256 `6546CA1ECF324EEE63ECD91318148F2B6CB38FF9453CA271A221612B1E001046`；
+- 本轮未构建 HAP、未签名、安装、卸载或运行设备；RDB composition 与设备进程退出/重启验收仍属下一阶段。
 
 ## 11. 暂不创建的内容
 

@@ -476,10 +476,10 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
         'enumerated recovery checkpoint is invalid');
     }
-    if (checkpoint.activeInvocation !== undefined || checkpoint.pendingDispatchId.length > 0) {
-      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
-        'active operation recovery requires durable operation normalization');
-    }
+    const activeRecovery: boolean = checkpoint.activeInvocation !== undefined ||
+      checkpoint.pendingDispatchId.length > 0;
+    let authority: RuntimeRecoveryAuthority | undefined;
+    if (activeRecovery) authority = await this.readRecoveryAuthority(taskId, recovery);
     this.markPersisted(taskId, checkpoint.snapshot.snapshotVersion);
     const restored: CoordinatorCommandResult = this.coordinator.restoreCheckpoint(checkpoint);
     if (!restored.accepted) {
@@ -487,6 +487,20 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
         'coordinator recovery rejected: ' + restored.code);
     }
     if (restored.code === 'RESTORED_TERMINAL') return;
+    if (activeRecovery) {
+      await this.persistRecoveryNormalization(taskId, checkpoint.snapshot.snapshotVersion);
+    }
+    if (authority === undefined) authority = await this.readRecoveryAuthority(taskId, recovery);
+    const hydrated: CoordinatorCommandResult = this.coordinator.hydrateRecoveryAuthority(taskId, authority);
+    if (!hydrated.accepted) {
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'recovery authority rejected: ' + hydrated.code);
+    }
+    await this.flushLifecycle();
+  }
+
+  private async readRecoveryAuthority(taskId: string,
+    recovery: ProductionRuntimeRecoverySourcePort): Promise<RuntimeRecoveryAuthority> {
     let authority: RuntimeRecoveryAuthority | undefined;
     try {
       authority = await recovery.loadRecoveryAuthority(taskId);
@@ -498,12 +512,33 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
         'recovery authority is missing');
     }
-    const hydrated: CoordinatorCommandResult = this.coordinator.hydrateRecoveryAuthority(taskId, authority);
-    if (!hydrated.accepted) {
+    return authority;
+  }
+
+  private async persistRecoveryNormalization(taskId: string, expectedPreviousVersion: number): Promise<void> {
+    const write: PendingCheckpointWrite | undefined = this.pendingCheckpoints.shift();
+    if (write === undefined || write.checkpoint.snapshot.taskId !== taskId ||
+      write.checkpoint.snapshot.snapshotVersion !== expectedPreviousVersion + 1 ||
+      write.checkpoint.activeInvocation !== undefined || write.checkpoint.pendingDispatchId.length > 0) {
+      this.persistenceFaulted = true;
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
-        'recovery authority rejected: ' + hydrated.code);
+        'active recovery normalization checkpoint is invalid');
     }
-    await this.flushLifecycle();
+    let saved: RuntimePersistenceResult;
+    try {
+      saved = await this.persistence.normalizeRecoveredOperation(
+        copyCheckpoint(write.checkpoint), expectedPreviousVersion, this.clock.nowMs());
+    } catch (error) {
+      this.persistenceFaulted = true;
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'active recovery normalization failed');
+    }
+    if (!saved.accepted) {
+      this.persistenceFaulted = true;
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'active recovery normalization rejected: ' + saved.code);
+    }
+    this.markPersisted(taskId, write.checkpoint.snapshot.snapshotVersion);
   }
 
   async submitTask(submission: TaskSubmission): Promise<TaskHandle> {

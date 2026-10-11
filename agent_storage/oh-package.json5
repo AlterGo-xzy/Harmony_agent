@@ -1,6 +1,6 @@
 {
   "name": "@harmony_agent/agent-storage",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "description": "Execution recovery and long-term memory repository ports with deterministic reference stores for harmony_agent",
   "main": "Index.ets",
   "author": "harmony_agent",

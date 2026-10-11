@@ -1,8 +1,8 @@
 # harmony_agent Runtime（ArkTS）— 项目状态
 
-更新时间：2026-10-09（Asia/Shanghai）
+更新时间：2026-10-11（Asia/Shanghai）
 
-## Agent Runtime T01–T24（T11/M08 首个只读 Native Tool 已完成签名设备验收）
+## Agent Runtime T01–T25（T11/M08 首个只读 Native Tool 已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -72,6 +72,8 @@ T23（M09-B/M05-A Runtime-to-storage 宿主桥接）本地主机与未签名构�
 
 T24（M09-B/M05-A 启动恢复装配）本地主机与未签名构建门已完成：`@harmony_agent/agent-runtime` 升级为 0.11.0、production composition 2.3，新增只读 `ProductionRuntimeRecoverySourcePort` 与异步 `createRecoveredProductionAgentRuntime`。factory 在返回唯一 `AgentRuntimeFacade` 前确定性枚举任务、严格校验 checkpoint/task 绑定、登记 durable snapshot version、恢复 Coordinator、读取并 hydrate authority、顺序持久化 hydration 事件；订阅随后可回放 checkpoint 中全部事件并重新交付 pending Policy/Clarification。`@harmony_agent/agent-storage` 升级为 0.6.0，bridge 从 durable task、Policy、完整 budget scopes/reservations 与 operation 记录组装 `RuntimeRecoveryAuthority`，返回前再次运行完整 validator。真实 durable backend reopen → 新 Facade → event/policy replay → 继续授权 → dispatch 的跨实例主机链路已通过。含 active invocation 或 pending dispatch 的任务当前在 Facade 暴露前 fail-closed；`IN_FLIGHT`/`UNKNOWN_OUTCOME` operation、lease 接管与 checkpoint 原子归一化仍属下一阶段，未宣称活动调用恢复。主机实测 runtime 59/59、storage 45/45，失败和错误均为 0；Release HAR 分别为 runtime 95,351 bytes、SHA-256 `26280E3A177A3D1696D8643AFBC70F0BB84752CCA62C852B9D4F6BE6F7FC6CA7`，storage 65,790 bytes、SHA-256 `DE75C00594069B8A8E84DA54F8EF66C148EF33275C29C37C59DA71456D236E1C`。完整依赖图 unsigned 主 HAP 为 8,708 bytes、SHA-256 `B7D94CBB6BF6F348FC3F52266B7C341DE650F77857AF2E586DEC67A8A41F59F0`，ohosTest HAP 为 2,898,032 bytes、SHA-256 `F4A0F69CFB9D5276D2FDD885820DD8C3B1D1AD3A2F5045B9C9FF8BCE5CEE76DC`；构建日志明确 `No signingConfig found`。证据位于 `artifacts/t24-startup-recovery/20261009-1342/`。本轮未签名、安装、卸载或运行设备；RDB composition、active operation 跨进程恢复和设备验收仍未完成。
 
+T25（M09-B/M05-A active operation 原子恢复归一化）本地主机与 HAR 门已完成：`@harmony_agent/agent-runtime` 升级为 0.12.0、production composition 2.4，production persistence port 新增 `normalizeRecoveredOperation`；恢复 factory 在 Facade 暴露前读取原 active checkpoint 的 durable authority，内部协调器把运行中步骤保守转入 `WAITING_RECONCILIATION` 并清除 active invocation，专用 durable normalization 成功后才 hydrate authority。`@harmony_agent/agent-storage` 升级为 0.7.0，新增 `openForRuntimeRecovery` 以延迟旧式独立 reopen normalization；bridge 用一个 transaction/一次 backend CAS 校验并释放旧 lease、接管新 fencing token、把 `IN_FLIGHT` operation 与预算转为 `UNKNOWN_OUTCOME`、释放 recovery lease并保存下一版本 checkpoint。CAS 冲突、错 fence、错 operation 或错 checkpoint 均 fail-closed，恢复不会重放 Adapter。主机实测 runtime 60/60、storage 47/47，失败和错误均为 0；Release HAR 分别为 runtime 95,970 bytes、SHA-256 `3DDC14377C53932D17860FD69699369E946811FF96DD039C8ACD43A1ACB5C5D0`，storage 68,852 bytes、SHA-256 `6546CA1ECF324EEE63ECD91318148F2B6CB38FF9453CA271A221612B1E001046`。本轮未构建 HAP、未签名、安装、卸载或运行设备；RDB composition 和设备进程退出/重启验收仍未完成。证据位于 `artifacts/t25-active-operation-recovery/20261011/`。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -86,7 +88,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T24 已完成各自记录的任务门；T24 已把任务枚举、durable authority 回读/hydration、event replay 和无在途 operation 的跨实例启动恢复接入生产 factory。T23 已把生产 Runtime persistence port 接到 durable Storage transaction，并覆盖 dispatch 写前 checkpoint/authority、lease/fencing、outcome 与 reconciliation 写入；T22 提供完整 authority 写入数据源，T21 冻结同一生产 Facade 实例的调用顺序 FIFO，T20 冻结 Promise-based Facade 与 durable dispatch gate。active operation 的 durable 状态归一化、lease 接管、RDB composition 和设备验收仍是后续工作。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server 和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T25 已完成各自记录的任务门；T25 已把 active operation 的 durable 状态、预算、lease/fencing 与 Runtime checkpoint 通过单 CAS 规范化到对账状态，恢复过程不重放 Adapter。T24 已把任务枚举、durable authority 回读/hydration、event replay 和无在途 operation 的跨实例启动恢复接入生产 factory；T23 已把生产 Runtime persistence port 接到 durable Storage transaction，并覆盖 dispatch 写前 checkpoint/authority、lease/fencing、outcome 与 reconciliation 写入。下一阶段是具体 RDB composition 和设备进程退出/重启验收。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server 和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
@@ -96,7 +98,7 @@ T01–T24 已完成各自记录的任务门；T24 已把任务枚举、durable a
 - MCP Agent Adapter contract test 13/13 通过，覆盖 allowlist、稳定 MCP 身份、Profile/version/schema 失效、Router registry snapshot 更新、Grant 拒绝、verifier/digest port 异常 fail-closed、参数摘要防篡改、一次性 policy ticket、工具调用不重试、错误分类和 M03 dispatch port 接线。
 - Provider Connector contract test 15/15 通过，覆盖版本/region/价格快照、流式 trace、token/cost 结算、凭据边界、取消/timeout 资源释放、Embedding 副本隔离、远程参数/grant fail-closed，以及写操作 `UNKNOWN_OUTCOME`/不重试。
 - Native Battery Tool contract test 12/12 通过，覆盖 capability、grant、identity/schema/参数摘要、后台限制、取消、平台错误、稳定结果归一化与 M03 dispatch 接线；签名 API 26 `BatteryStatusDevice` 设备用例 1/1 通过，随后卸载并验证 bundle 不存在。
-- Agent Core 21/21、Agent Runtime 59/59、Agent Storage 45/45 通过；Runtime 的 M09-B 生产 Facade 在既有 Promise durable gate、同实例 FIFO、checkpoint/authority、授权、回调、命令、澄清、控制、对账、订阅和 shutdown 之外，新增等待授权启动恢复/event replay 与 active operation fail-closed。Storage bridge 新增 durable authority 回读和 backend reopen → recovered Facade → 继续授权链路；Release HAR 构建通过。
+- Agent Core 21/21、Agent Runtime 60/60、Agent Storage 47/47 通过；Runtime 的 M09-B 生产 Facade 在既有 Promise durable gate、同实例 FIFO、checkpoint/authority、授权、回调、命令、澄清、控制、对账、订阅和 shutdown 之外，已覆盖等待授权启动恢复/event replay 与 active operation 原子 normalization。Storage bridge 覆盖 durable authority 回读、backend reopen、fencing 接管、UNKNOWN_OUTCOME 对账转换和 CAS 冲突 fail-closed；Release HAR 构建通过。
 - Node Fixture 契约测试 10/10 通过，覆盖现代/旧式协议、Tools、Resources、Templates、Prompts、SSE、大响应、断开连接、并发隔离、异常状态和认证脱敏。
 - Release HAR 构建与 Node/stdio 运行时依赖审计通过。
 - 无页面 Debug Test Host 主 HAP 与 ohosTest HAP 构建通过。

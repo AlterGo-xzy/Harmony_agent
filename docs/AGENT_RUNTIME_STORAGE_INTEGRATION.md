@@ -1,6 +1,6 @@
 # Agent Runtime 与执行恢复存储集成边界
 
-本文说明 `@harmony_agent/agent-runtime` 0.11.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.6.0 的 M05-A 执行恢复存储对齐。T24 已接入只读恢复源与异步恢复 factory，本文同时记录其主机验证范围和 active operation 的剩余恢复门。
+本文说明 `@harmony_agent/agent-runtime` 0.12.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.7.0 的 M05-A 执行恢复存储对齐。T25 已接入 active operation 的原子恢复归一化，本文同时记录其主机验证范围和后续 RDB/设备恢复门。
 
 ## 1. 控制入口与生命周期
 
@@ -24,7 +24,9 @@
 
 这套 DTO、validator 与内部 hydration 已通过本地主机测试。写入侧的 `RuntimeDurableAuthorityPayload` 没有 storage revision；revision 只能由宿主完成 CAS 后分配。等待授权状态提供 version 1 request，dispatch 准备状态提供 version 3 decision/grant、预算预留与 `PREPARED` operation。Runtime 不掌握持久化端分配的 fencing token、dispatch count 或最终费用，所以普通 checkpoint 写入不能重建或回退 operation；outcome/reconciliation 方法拥有后续状态。M05-A schema 1.2 已持久化完整 budget scope 总账、operation 绑定以及 Runtime 产生的版本化 opaque checkpoint，并可枚举任务、按 taskId 返回全部 scope 和 reservation。`RuntimeExecutionRecoveryBridge` 把 checkpoint、Policy、预算、operation 和 lease/fencing 变更放入隔离副本，以一次 backend CAS 发布；CAS 失败时全都不可见。
 
-T24 的 `ProductionRuntimeRecoverySourcePort` 是只读启动边界：bridge 确定性枚举 taskId，从 durable task、Policy、budget 和 operation 记录组装 `RuntimeRecoveryAuthority`，并在返回前运行完整 validator。`createRecoveredProductionAgentRuntime` 在任何 Facade 引用交给宿主前，按 taskId 读取并校验 checkpoint、登记 durable snapshot version、恢复 Coordinator、hydrate authority、顺序保存 hydration 事件；随后订阅可从 checkpoint 内事件序列回放，并重新交付 pending Policy/Clarification。主机测试已通过 durable backend reopen → 新 Facade → event/policy replay → 继续授权 → dispatch 的跨实例链路。当前 factory 遇到 active invocation 或 pending dispatch 会 fail-closed；后续必须先用 durable transaction 处理 `IN_FLIGHT`/`UNKNOWN_OUTCOME`、lease 接管和 checkpoint 状态归一化，才可开放这类任务。
+`ProductionRuntimeRecoverySourcePort` 仍是只读启动边界：bridge 确定性枚举 taskId，从 durable task、Policy、budget 和 operation 记录组装 `RuntimeRecoveryAuthority`，并在返回前运行完整 validator。`createRecoveredProductionAgentRuntime` 在任何 Facade 引用交给宿主前，按 taskId 读取并校验 checkpoint、登记 durable snapshot version、恢复 Coordinator、hydrate authority、顺序保存 hydration 事件；随后订阅可从 checkpoint 内事件序列回放，并重新交付 pending Policy/Clarification。
+
+T25 遇到 active invocation/pending dispatch 时先读取与原 checkpoint 绑定的 authority，再让协调器生成 `WAITING_RECONCILIATION` checkpoint。`ProductionRuntimePersistencePort.normalizeRecoveredOperation` 随后成为专用 durable 门：Storage bridge 从当前 durable checkpoint 重新验证 active invocation/operation 绑定，接管新的 fencing token，把 `IN_FLIGHT` operation 与预算保守转为 `UNKNOWN_OUTCOME`，释放 recovery lease，并保存规范化 checkpoint；全部变更只通过一次 backend CAS 发布。CAS 冲突、错误 lease、错 operation 或错 checkpoint 均在 Facade 暴露前 fail-closed，Adapter 调用数保持不变。宿主与 bridge 组合时必须使用 `DurableExecutionRecoveryStore.openForRuntimeRecovery`，避免默认 `open()` 先独立执行旧式 restart normalization；默认入口继续保留 T07 的兼容行为。
 
 ## 4. 写前准备元数据
 
@@ -85,10 +87,10 @@ Tool step 通过 Policy Gateway 后，Runtime 为 `StepDispatchRequest` 生成 `
 
 `AgentRuntimeFacade`、`ProductionRuntimePersistencePort` 和 completion sink 均返回 `Promise`。生产组合层暂存同步协调器产生的 checkpoint，逐个等待普通 checkpoint 保存；对 dispatch 则把最终 checkpoint、expected previous version 与最小 `DispatchPersistenceContext` 一起交给异步 `beforeDispatch`。只有该 Promise 接受后才调用 Adapter。主机测试通过人为挂起 Promise 证明等待期间 Adapter 调用数保持 0，释放后才发生 dispatch；持久化拒绝或异常会让 Facade fail-closed。Observer 事件也只在对应 checkpoint durable 后发送。
 
-0.11.0/production composition 2.3 保留同一 Facade 实例的 FIFO 和 checkpoint authority 参数：`saveCheckpoint` 与 `beforeDispatch` 都收到同状态深拷贝。前者只允许保存 checkpoint、budget 图及 version 1 pending policy request，不能准备或回退 operation；后者才允许把 version 3 Policy、reservation、scope 与新 operation 作为单 CAS 写前准备。任务提交、读取、控制、授权、澄清、对账、订阅、shutdown 和异步 Adapter completion 继续按调用顺序执行。
+0.12.0/production composition 2.4 保留同一 Facade 实例的 FIFO 和 checkpoint authority 参数：`saveCheckpoint` 与 `beforeDispatch` 都收到同状态深拷贝。前者只允许保存 checkpoint、budget 图及 version 1 pending policy request，不能准备或回退 operation；后者才允许把 version 3 Policy、reservation、scope 与新 operation 作为单 CAS 写前准备。`normalizeRecoveredOperation` 只接受协调器产生的下一版本、无 active invocation 且处于 `WAITING_RECONCILIATION` 的 checkpoint。任务提交、读取、控制、授权、澄清、对账、订阅、shutdown 和异步 Adapter completion 继续按调用顺序执行。
 
-`agent_storage` 0.6.0 的 `RuntimeExecutionRecoveryBridge` 已完成上述写入和只读恢复映射：普通 checkpoint 可保存 version 1 pending policy 与初始预算图；Tool dispatch 以一次 CAS 写入 checkpoint、version 3 Policy/Grant、完整 scope/reservation、operation 和 lease/fencing，再允许 Adapter 调用。Adapter 拒绝会原子转为已确认未执行的 `PREPARED` 并释放 lease；明确 outcome 需要 `RuntimeOutcomeAccountingPort` 提供实际预算；未知 outcome 保持对账状态；确认型 reconciliation 需要 `RuntimeReconciliationSettlementPort` 提供具体 outcome 与预算。缺少宿主证据时桥接拒绝写入，不从报告文本推断结果或费用。
+`agent_storage` 0.7.0 的 `RuntimeExecutionRecoveryBridge` 已完成上述写入、只读恢复和 active normalization 映射：普通 checkpoint 可保存 version 1 pending policy 与初始预算图；Tool dispatch 以一次 CAS 写入 checkpoint、version 3 Policy/Grant、完整 scope/reservation、operation 和 lease/fencing，再允许 Adapter 调用。Adapter 拒绝会原子转为已确认未执行的 `PREPARED` 并释放 lease；明确 outcome 需要 `RuntimeOutcomeAccountingPort` 提供实际预算；未知 outcome 保持对账状态；确认型 reconciliation 需要 `RuntimeReconciliationSettlementPort` 提供具体 outcome 与预算。缺少宿主证据时桥接拒绝写入，不从报告文本推断结果或费用。
 
-主机集成测试通过真实 `createProductionAgentRuntime`、唯一 `AgentRuntimeFacade`、fake durable backend 与桥接验证成功结算、CAS 拒绝时 Adapter 调用数为 0、未知结果保持占用以及证据支持的 reconciliation。恢复启动仍需接入 `listTaskIds`、checkpoint 解析校验、durable authority 回读组装、协调器 hydration、event replay 和跨进程生命周期；RDB 数据库打开/加密及具体 Adapter 的设备闭环也未完成。
+主机集成测试通过真实 `createProductionAgentRuntime`/`createRecoveredProductionAgentRuntime`、唯一 `AgentRuntimeFacade`、fake durable backend 与桥接验证成功结算、active operation 重开、fencing 接管、CAS 拒绝时 Adapter 调用数为 0、未知结果保持占用以及证据支持的 reconciliation。尚未完成的是 RDB composition、设备进程退出/重启链路、数据库加密接线及具体 Adapter 的设备闭环。
 
 T23 已完成主机测试、HAR 和完整依赖图 unsigned HAP 构建；没有签名、安装、卸载或设备运行。

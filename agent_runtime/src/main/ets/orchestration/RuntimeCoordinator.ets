@@ -369,6 +369,7 @@ export class RuntimeCoordinator {
         record.paused = false;
         record.pendingPolicyRequest = undefined;
         record.pendingInvocation = undefined;
+        record.activeInvocation = undefined;
         this.transition(record, AgentTaskStatus.WAITING_RECONCILIATION,
           AgentRuntimeEventType.RECONCILIATION_REQUIRED,
           '{"reason":"restartRequiresReconciliation","stepId":' + quoted(record.pendingStepId) +

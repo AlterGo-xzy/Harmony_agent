@@ -19,8 +19,8 @@ import {
   RuntimeRecoveryAuthority
 } from '../orchestration/RecoveryAuthorityTypes';
 
-/** 2.3 adds fail-closed startup discovery and recovery authority hydration. */
-export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.3';
+/** 2.4 adds atomic active-operation recovery normalization. */
+export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.4';
 
 export enum RuntimePersistenceCode {
   SAVED = 'SAVED',
@@ -59,6 +59,8 @@ export interface ProductionRuntimePersistencePort {
   saveCheckpoint(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
     authority: RuntimeDurableAuthorityPayload, nowMs: number): Promise<RuntimePersistenceResult>;
   loadCheckpoint(taskId: string): Promise<RuntimeTaskRecoveryCheckpoint | undefined>;
+  normalizeRecoveredOperation(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
+    nowMs: number): Promise<RuntimePersistenceResult>;
   beforeDispatch(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
     context: DispatchPersistenceContext | undefined, authority: RuntimeDurableAuthorityPayload,
     nowMs: number): Promise<RuntimePersistenceResult>;

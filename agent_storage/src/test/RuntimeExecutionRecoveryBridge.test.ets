@@ -370,7 +370,7 @@ async function openBridgeFixture(): Promise<BridgeFixture> {
 }
 
 async function reopenRecoveredBridgeFixture(source: BridgeFixture): Promise<RecoveredBridgeFixture> {
-  const opened = await DurableExecutionRecoveryStore.open(source.backend, new BridgeIntegrity());
+  const opened = await DurableExecutionRecoveryStore.openForRuntimeRecovery(source.backend, new BridgeIntegrity());
   if (!opened.accepted || opened.store === undefined) throw new Error('recovery fixture reopen failed');
   const bridgeConfig: RuntimeExecutionRecoveryBridgeConfig = new RuntimeExecutionRecoveryBridgeConfig();
   bridgeConfig.ownerId = 'runtime-owner-2';
@@ -486,6 +486,44 @@ export default function runtimeExecutionRecoveryBridgeTest(): void {
       expect(recovered.factory.adapter.requests.length).assertEqual(1);
       expect(recovered.store.getTask(handle.taskId)?.snapshot.snapshotVersion)
         .assertEqual((await recovered.runtime.getTaskSnapshot(handle.taskId)).snapshotVersion);
+    });
+
+    it('atomicallyNormalizesActiveOperationAndTakesOverRecoveryFence', 0, async () => {
+      const source: BridgeFixture = await openBridgeFixture();
+      const taskId: string = await authorize(source, 'bridge-active-recovery');
+      const dispatched: StepDispatchRequest = source.factory.adapter.requests[0];
+      const operationId: string = dispatched.persistenceContext?.operationId as string;
+      const oldFence: number = source.store.getOperation(operationId)?.fencingToken as number;
+      expect(source.store.getLease(taskId) !== undefined).assertTrue();
+
+      const recovered: RecoveredBridgeFixture = await reopenRecoveredBridgeFixture(source);
+      const snapshot = await recovered.runtime.getTaskSnapshot(taskId);
+      const checkpoint = await recovered.bridge.loadCheckpoint(taskId);
+      const operation: StoredOperation | undefined = recovered.store.getOperation(operationId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.WAITING_RECONCILIATION);
+      expect(recovered.factory.adapter.requests.length).assertEqual(0);
+      expect(checkpoint?.activeInvocation === undefined).assertTrue();
+      expect(checkpoint?.pendingDispatchId).assertEqual('');
+      expect(operation?.state).assertEqual(OperationJournalState.UNKNOWN_OUTCOME);
+      expect((operation?.fencingToken as number) > oldFence).assertTrue();
+      expect(recovered.store.getLease(taskId) === undefined).assertTrue();
+      expect(recovered.store.getBudgetReservation(
+        dispatched.persistenceContext?.budgetReservationId as string)?.snapshot.state)
+        .assertEqual(BudgetReservationState.UNKNOWN);
+    });
+
+    it('failsClosedWhenActiveRecoveryNormalizationCasConflicts', 0, async () => {
+      const source: BridgeFixture = await openBridgeFixture();
+      await authorize(source, 'bridge-active-recovery-conflict');
+      source.backend.failNextWrite = true;
+      let rejected: boolean = false;
+      try {
+        await reopenRecoveredBridgeFixture(source);
+      } catch (error) {
+        rejected = true;
+      }
+      expect(rejected).assertTrue();
+      expect(source.factory.adapter.requests.length).assertEqual(1);
     });
 
     it('failsClosedBeforeAdapterWhenDurableCasRejectsAuthorizationWrite', 0, async () => {
