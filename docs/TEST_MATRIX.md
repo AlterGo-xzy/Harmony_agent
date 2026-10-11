@@ -35,8 +35,8 @@
 |---|---:|---|---|
 | `agent_contracts` | 14/14 | DTO、codec、shape validation | 跨版本生产兼容性 |
 | `agent_core` | 21/21 | DAG、Scheduler、Recovery、Budget；完整预算总账原子 hydration | 真实 Planner/Provider/Tool 与设备运行 |
-| `agent_runtime` | 60/60 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 具体 RDB composition、真实 Planner/Provider/Tool、跨设备进程退出/重启运行 |
-| `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；active operation 转 `UNKNOWN_OUTCOME` 且不重放 Adapter | T07/M05-A 7/7 与 T08/M05-B 3/3 是既有 schema 的签名设备证据；T25 当前 RDB composition 与设备进程退出/重启验收未完成，宿主加密仍未证明 |
+| `agent_runtime` | 60/60 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 真实 Planner/Provider/Tool、签名设备进程退出/重启运行 |
+| `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过类型检查与 unsigned HAP 构建 | T07/M05-A 7/7 与 T08/M05-B 3/3 是既有 schema 的签名设备证据；T26 两阶段跨进程 fixture 尚未运行，宿主加密仍未证明 |
 | `agent_connectors` | 28/28 | M06 MCP adapter 13；M07 Provider connector 15，覆盖 model/embedding/remote API 快照、stream、usage/cost、credential、取消/timeout、grant 与未知写结果 | 未运行真实 Provider/设备网络；不属于本地 connector 门 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
 
@@ -56,7 +56,7 @@ M09-B 新增 8 项用例覆盖：状态 snapshot 的顺序持久化、dispatch �
 
 0.8.0 的 54 项 runtime 套件新增 authority hydration 场景：错 checkpoint snapshot version 与错 operation-policy 绑定都拒绝并保持锁；完整 budget scopes/reservations、等待中的 version 1 policy request 或在途 version 3 decision/grant/operation 全部匹配后才解锁；恢复的带副作用任务只接受对账，期间 Adapter 调用数保持 0。T19 由 storage 39 项中的 M05-A 26 项验证 schema 1.2 opaque checkpoint、任务枚举和 checkpoint/authority 单 CAS。T20 将 runtime 增至 55 项：Facade、persistence port 与 completion sink 均 Promise 化，dispatch 的最终 checkpoint 与 authority 共用异步 `beforeDispatch` 提交门；人为挂起该 Promise 时 Adapter 保持 0 调用，释放后才 dispatch。T21 将 runtime 增至 57 项：第二个重叠提交在前一个 durable gate 完成前保持未完成且 Adapter 为 0 调用；前一个命令契约拒绝后，后续有效提交仍能执行。
 
-T22–T24 将 runtime 增至 59 项、storage 增至 45 项，完成生产 persistence bridge、durable authority 回读、任务枚举、启动恢复、event/policy replay，以及无在途 operation 的 backend reopen → recovered Facade → 继续授权链路。T25 将 runtime 增至 60/60、storage 增至 47/47：活动调用在启动时转入 `WAITING_RECONCILIATION`，bridge 在一次 backend CAS 中接管 fencing、把 operation/budget 归一化为 `UNKNOWN_OUTCOME`、释放恢复 lease 并保存下一版本 checkpoint；CAS 冲突和绑定不一致均 fail-closed，Adapter 调用保持为 0。该证据来自主机 Hypium 与 Release HAR；具体 RDB composition、签名 HAP、安装和设备进程退出/重启运行仍未完成。
+T22–T24 将 runtime 增至 59 项、storage 增至 45 项，完成生产 persistence bridge、durable authority 回读、任务枚举、启动恢复、event/policy replay，以及无在途 operation 的 backend reopen → recovered Facade → 继续授权链路。T25 将 runtime 增至 60/60、storage 增至 47/47：活动调用在启动时转入 `WAITING_RECONCILIATION`，bridge 在一次 backend CAS 中接管 fencing、把 operation/budget 归一化为 `UNKNOWN_OUTCOME`、释放恢复 lease 并保存下一版本 checkpoint；CAS 冲突和绑定不一致均 fail-closed，Adapter 调用保持为 0。T26 新增 `createRdbRecoveredAgentRuntime` 与 `RuntimeRdbDeviceRecovery` 的 seed/recover 两阶段 fixture；Storage 47/47、Release HAR 和完整依赖图 unsigned HAP 均通过，但签名、安装、真实进程 force-stop、recover 运行和卸载核对尚未执行。
 
 M05-A 主机用例覆盖 task CAS/copy、opaque Runtime checkpoint 与任务枚举、checkpoint/authority 单 CAS 发布、operation/reservation/完整 budget scope 图原子 prepare、version 3 Policy/Grant 绑定、全部 reservation 与 scope 防御性读取、稳定 ID 冲突、lease/fencing、三类崩溃语义、UNKNOWN 对账、实际预算/receipt 和 scope 聚合结算、trace retention、schema/migration/corruption，以及 durable CAS 失败不发布、两个 session 单胜者和 reopen 前未知状态固化。
 

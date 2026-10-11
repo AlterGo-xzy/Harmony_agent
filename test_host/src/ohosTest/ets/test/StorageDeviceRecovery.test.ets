@@ -255,7 +255,7 @@ async function prepareAndLease(store: DurableExecutionRecoveryStore, operationId
 export default function storageDeviceRecoveryTest(): void {
   describe('StorageDeviceRecovery', () => {
     it('loadsAgentStorageHar', 0, () => {
-      expect(AGENT_STORAGE_VERSION).assertEqual('0.4.0');
+      expect(AGENT_STORAGE_VERSION).assertEqual('0.8.0');
     });
 
     it('persistsPreparedIntentAndBudgetAcrossCloseReopen', 0, async () => {

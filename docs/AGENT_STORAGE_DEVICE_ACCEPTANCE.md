@@ -29,6 +29,15 @@
 
 第 8 项已编译进当前 unsigned ohosTest HAP，但尚未签名、安装或运行；下文 7/7 仍是 T07 旧 schema 的历史设备证据。
 
+T26 另新增 `RuntimeRdbDeviceRecovery` 1 项两阶段用例：
+
+1. `recoveryPhase=seed` 通过 `createRdbRecoveredAgentRuntime` 创建唯一 Facade，授权一个 Tool step，使真实 RDB 持久化 active operation 与 lease，但不回调完成；
+2. 验收脚本在 seed 进程返回后执行 `aa force-stop com.harmony.agent`；
+3. `recoveryPhase=recover` 在新进程中重新打开同一 RDB，要求 Facade 为 `WAITING_RECONCILIATION`、Adapter 调用数为 0、operation/budget 为 `UNKNOWN_OUTCOME`/`UNKNOWN` 且 recovery lease 已释放；
+4. recover 成功后 fixture 删除数据库，脚本卸载 bundle 并保存独立核对日志。
+
+该用例已通过 API 26 类型检查并编译进 unsigned ohosTest HAP，尚未签名、安装或运行。它的 seed/recover 必须在两次独立 `aa test` 之间保留应用数据，不能用单进程 close/reopen 冒充跨进程证据。
+
 每项 RDB 测试使用独立数据库，并在开始前清理旧 fixture、在 `finally` 中关闭 RDB 后删除数据库。
 
 ## 工作区内构建
@@ -39,6 +48,13 @@ $env:DEVECO_SDK_HOME='D:\DevEco\DevEco Studio\sdk'
 & 'D:\DevEco\DevEco Studio\tools\hvigor\bin\hvigorw.bat' --mode module -p module=test_host@default -p product=default assembleHap --no-daemon
 & 'D:\DevEco\DevEco Studio\tools\hvigor\bin\hvigorw.bat' --mode module -p module=test_host@ohosTest -p product=default assembleHap --no-daemon
 ```
+
+T26 本地未签名构建结果：
+
+- `agent_storage.har`：70,080 bytes，SHA-256 `8D59F009568380526DC44A45D7973CA11FD33E8960DF2E9447780EB9BD23AFBC`；
+- 主 HAP：8,708 bytes，SHA-256 `EC3EC976011706AA01CFF11428D4812E91650FF937EA7AAE8F3E72CF06DB3697`；
+- ohosTest HAP：2,954,945 bytes，SHA-256 `0362C49E9DBB6887377F8153091BE033FD6B612A0837EF64EBAF86689EFC34B7`；
+- 两个 HAP 构建日志均明确 `No signingConfig found for product default`。
 
 常规未签名构建产物位置：
 
@@ -67,6 +83,16 @@ hdc install -r <signed-main-hap>
 hdc install -r <signed-ohosTest-hap>
 hdc shell aa test -b com.harmony.agent -m test_host_test -s unittest OpenHarmonyTestRunner -s class StorageDeviceRecovery -s timeout 60000
 ```
+
+T26 的跨进程用例必须使用当前版本签名主/测试 HAP。取得签名、安装与设备操作授权后，使用工作区脚本：
+
+```powershell
+.\tools\test-runtime-rdb-recovery.ps1 `
+  -MainHap <工作区内的 signed main HAP> `
+  -TestHap <工作区内的 signed ohosTest HAP>
+```
+
+脚本要求恰好一个 HDC target，依次执行安装、seed 1/1、核对进程 PID、force-stop、核对 PID 消失、recover 1/1、卸载、按名称查询和全量 bundle 清单核对，并只把日志写入 `artifacts/t26-rdb-runtime-recovery/<timestamp>/`。任一步无法形成明确证据都会失败。执行脚本会真实安装、停止进程和卸载 bundle，因此不能把脚本已存在误报为设备验收完成。
 
 本次目标为 `127.0.0.1:5555`，系统版本 `emulator 7.0.0.106(SP1DEVC00E999R4P11)`，API 版本 26。Hypium 报告：
 

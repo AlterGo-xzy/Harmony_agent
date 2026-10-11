@@ -850,6 +850,21 @@ DTO 映射、durable 时序和未完成边界见 `docs/AGENT_RUNTIME_STORAGE_INT
 - Release HAR：runtime 95,970 bytes、SHA-256 `3DDC14377C53932D17860FD69699369E946811FF96DD039C8ACD43A1ACB5C5D0`；storage 68,852 bytes、SHA-256 `6546CA1ECF324EEE63ECD91318148F2B6CB38FF9453CA271A221612B1E001046`；
 - 本轮未构建 HAP、未签名、安装、卸载或运行设备；RDB composition 与设备进程退出/重启验收仍属下一阶段。
 
+### T26：M09-B/M05-A RDB production composition — 本地门已通过，设备门待运行
+
+`agent_storage` 0.8.0 新增 `createRdbRecoveredAgentRuntime`。外部宿主继续负责打开、加密、备份和关闭 `RdbStore`；工厂内部固定组合 `RdbSnapshotBackend`、`openForRuntimeRecovery`、`RuntimeExecutionRecoveryBridge` 与 `createRecoveredProductionAgentRuntime`，拒绝调用方注入第二组 persistence/recovery ports，并只在全部 durable task 恢复完成后返回唯一 `AgentRuntimeFacade`。
+
+`test_host` 新增 `RuntimeRdbDeviceRecovery` 单用例。`seed` 阶段在真实 RDB 中留下 active operation；工作区脚本随后停止 bundle 进程；`recover` 阶段要求新的 Facade 进入 `WAITING_RECONCILIATION`，Adapter 调用为 0，operation/budget 转为 UNKNOWN，lease 被释放。该设计用两次独立 Hypium 调用保留数据库，避免把同进程 close/reopen 当作进程恢复。
+
+2026-10-11 当前证据：
+
+- `agent_storage@default test`：47/47，通过；
+- Release HAR：70,080 bytes、SHA-256 `8D59F009568380526DC44A45D7973CA11FD33E8960DF2E9447780EB9BD23AFBC`；
+- unsigned 主 HAP：8,708 bytes、SHA-256 `EC3EC976011706AA01CFF11428D4812E91650FF937EA7AAE8F3E72CF06DB3697`；
+- unsigned ohosTest HAP：2,954,945 bytes、SHA-256 `0362C49E9DBB6887377F8153091BE033FD6B612A0837EF64EBAF86689EFC34B7`；
+- 两个 HAP 构建均明确 `No signingConfig found`；未签名、安装、卸载、force-stop 或运行设备；
+- 只有 seed 1/1、真实进程停止、recover 1/1 与卸载核对均取得设备日志后，T26 才能关闭。
+
 ## 11. 暂不创建的内容
 
 - 不为每个 Router 创建独立 HAR；它们是 `agent_runtime` 的策略插件和离线 artifact。
