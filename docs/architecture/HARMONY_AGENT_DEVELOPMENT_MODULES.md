@@ -443,7 +443,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 基础切片，本地主机与 HAR 门已通过）：新增 `@harmony_agent/agent-testkit` 0.1.0。它提供按 target/phase/occurrence 触发的十二类确定性故障决策、十个共用集成 fixture 描述、固定 model/provider/region/价格/schema/date/dataset/router policy 的 benchmark manifest 校验，以及 overall/按 arm 的质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标导出。Strong Single Agent 与 Multi Agent arm 必须共用 permission/context policy。Hypium 11/11 通过；Release HAR 为 15,931 bytes、SHA-256 `D08CB55E1A50C16F66DCA9DBC049CDEAB61046CCE73357760C9C3924A3C58FC4`。该切片不提交或控制任务，不调用真实 Adapter/Provider/Storage，也不代表 S6 Bench Pilot、十二类任务集或 32/128/512 工具规模报告已完成。
+当前实施状态（M10 TestKit 0.2.0 与 S6 fixture baseline，本地主机与 HAR 门已通过）：除十二类确定性故障和十个共用集成 fixture 外，公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case，并校验缺失、重复和 copy isolation。离线目录保存固定 model/provider/region/价格/schema/date/dataset/router policy 的双 arm manifest、输入 digest 和无第三方依赖的确定性报告生成器。Hypium 16/16 通过；Release HAR 为 20,748 bytes、SHA-256 `01F119AF48D76049379EDDDCB662A80E170C8491EADC8C6A8B3A35725E5D6EFA`；fixture 报告 SHA-256 为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。TestKit 不提交或控制任务，`AgentRuntimeFacade` 仍是唯一入口。fixture 使用零成本 Provider 和虚拟零时钟并标记为不可做性能比较；真实 Provider/system Bench 仍是 S6 的剩余验收门。
 
 ### M11：Artifact、Parity 与策略发布链
 

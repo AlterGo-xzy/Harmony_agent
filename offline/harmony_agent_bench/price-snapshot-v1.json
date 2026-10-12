@@ -1,0 +1,8 @@
+{
+  "priceSnapshotId": "fixture-zero-cost-2026-10-12",
+  "frozenAt": "2026-10-12T00:00:00+08:00",
+  "currency": "USD_MICROS",
+  "inputTokenMicros": 0,
+  "outputTokenMicros": 0,
+  "notes": "Deterministic local fixture only; this is not a commercial provider price."
+}

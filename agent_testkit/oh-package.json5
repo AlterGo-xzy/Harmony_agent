@@ -1,6 +1,6 @@
 {
   "name": "@harmony_agent/agent-testkit",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Deterministic fault injection, integration fixtures, and benchmark evaluation for harmony_agent",
   "main": "Index.ets",
   "author": "harmony_agent",
