@@ -43,7 +43,7 @@ Router、Planner 和外部宿主不能借此签发授权；Policy Gateway grant 
 
 该实现不上传数据，也不调用模型或 embedding。`DurableMemoryStore` 在隔离副本上执行变更，仅在完整快照 revision CAS 成功后发布；权威 Memory 与非索引 artifact 进入快照，chunk 和词法索引在 reopen 后重建。`RdbMemorySnapshotBackend` 使用独立的 API 26 RDB 单槽表，并继续由宿主负责数据库打开、加密、备份和关闭。主机测试已覆盖 CAS、并发、重开重建、损坏与显式迁移，RDB 代码也已通过类型检查；设备 close/reopen、真实损坏注入和宿主加密配置仍待验收，因此 M05-B 仍处于实施中。调用方必须提供生产级 `MemoryDigestPort` 和 `MemorySnapshotIntegrityPort`，不得把测试 digest 当作安全摘要。
 
-2026-10-11，0.8.0 合并主机套件 47/47、Release HAR 和完整依赖图 unsigned HAP 构建已通过；`RuntimeRdbDeviceRecovery` 的 seed/recover 两阶段用例已通过 API 26 类型检查并编译进 ohosTest HAP。M05-B 当前命名签名包已在 API 26 运行 3/3；M05-A 的 T07 7/7 属于旧 schema 设备证据。0.8.0 尚未签名、安装或运行设备，不能据此关闭跨进程恢复门。宿主长期记忆加密配置也仍待验收。数据库、manifest 和证据兼容边界见 [`HARMONY_AGENT_NAMING.md`](../docs/HARMONY_AGENT_NAMING.md)。
+2026-10-11，0.8.0 合并主机套件 47/47、Release HAR 和完整依赖图 HAP 构建已通过。`RuntimeRdbDeviceRecoverySeed` 在 API 26 真实 RDB 中建立 active operation 后保持进程存活，主机验证就绪标记与 PID 后执行 force-stop；`RuntimeRdbDeviceRecoveryRecover` 在新进程运行 1/1，通过对账状态、UNKNOWN operation/budget、lease 释放和 Adapter 零重放断言。签名验证、安装、卸载及 bundle 不存在核对均已完成，T26 跨进程恢复门已关闭。M05-B 当前命名签名包也已在 API 26 运行 3/3；宿主长期记忆加密配置仍待验收。数据库、manifest 和证据兼容边界见 [`HARMONY_AGENT_NAMING.md`](../docs/HARMONY_AGENT_NAMING.md)。
 
 公共存储类型和 backend 是 composition ports，不是第二条 Agent 业务控制入口。外部产品调用任务能力时仍只能使用 `AgentRuntimeFacade`。
 

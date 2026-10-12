@@ -93,6 +93,6 @@ Tool step 通过 Policy Gateway 后，Runtime 为 `StepDispatchRequest` 生成 `
 
 `createRdbRecoveredAgentRuntime` 是具体 RDB composition：宿主先按自己的安全策略打开 `RdbStore`，工厂固定用 `RdbSnapshotBackend` 和 `openForRuntimeRecovery` 创建 durable session，再把同一个 bridge 绑定为 Runtime persistence/recovery ports；只有 `createRecoveredProductionAgentRuntime` 完成全部任务恢复后才向宿主返回 `AgentRuntimeFacade`。工厂拒绝调用方预置第二组 persistence/recovery ports，并要求 Runtime 与 bridge 使用相同 policy version。RDB 加密、备份、关闭和 Ability 生命周期继续由外部宿主负责。
 
-主机集成测试通过真实 `createProductionAgentRuntime`/`createRecoveredProductionAgentRuntime`、唯一 `AgentRuntimeFacade`、fake durable backend 与桥接验证成功结算、active operation 重开、fencing 接管、CAS 拒绝时 Adapter 调用数为 0、未知结果保持占用以及证据支持的 reconciliation。T26 的 `RuntimeRdbDeviceRecovery` 使用 `seed`/`recover` 两次独立 Hypium 调用，中间由验收脚本执行 `aa force-stop`，用于真实 RDB 上验证进程边界后的 Facade 恢复、UNKNOWN 转换、预算保持、lease 释放和 Adapter 零重放。该用例已编译但尚未签名、安装或运行；数据库加密接线及具体 Adapter 的设备闭环仍未完成。
+主机集成测试通过真实 `createProductionAgentRuntime`/`createRecoveredProductionAgentRuntime`、唯一 `AgentRuntimeFacade`、fake durable backend 与桥接验证成功结算、active operation 重开、fencing 接管、CAS 拒绝时 Adapter 调用数为 0、未知结果保持占用以及证据支持的 reconciliation。T26 在 API 26 上使用 `RuntimeRdbDeviceRecoverySeed` 建立真实 RDB active operation 并保持进程存活；主机验证就绪标记与 PID 后执行 `aa force-stop`，再由新进程的 `RuntimeRdbDeviceRecoveryRecover` 运行 1/1，验证 Facade 恢复、UNKNOWN 转换、预算保持、lease 释放和 Adapter 零重放。签名、安装、强制进程边界、恢复与卸载核对均已完成；数据库加密接线及具体 Adapter 的设备闭环仍未完成。
 
 T23 已完成主机测试、HAR 和完整依赖图 unsigned HAP 构建；没有签名、安装、卸载或设备运行。

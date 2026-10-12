@@ -62,6 +62,36 @@ function Assert-OnePassingTest {
     }
 }
 
+function Assert-InstallSucceeded {
+    param(
+        [Parameter(Mandatory = $true)][string]$Output,
+        [Parameter(Mandatory = $true)][string]$PackageKind
+    )
+    if ($Output -notmatch '(?i)install bundle successfully') {
+        throw "$PackageKind HAP installation did not report success."
+    }
+}
+
+function Read-SharedText {
+    param([Parameter(Mandatory = $true)][string]$Path)
+    $stream = [System.IO.File]::Open(
+        $Path,
+        [System.IO.FileMode]::Open,
+        [System.IO.FileAccess]::Read,
+        [System.IO.FileShare]::ReadWrite
+    )
+    try {
+        $reader = [System.IO.StreamReader]::new($stream, [System.Text.Encoding]::UTF8, $true, 1024, $true)
+        try {
+            return $reader.ReadToEnd()
+        } finally {
+            $reader.Dispose()
+        }
+    } finally {
+        $stream.Dispose()
+    }
+}
+
 $resolvedMainHap = Resolve-WorkspaceFile -Path $MainHap
 $resolvedTestHap = Resolve-WorkspaceFile -Path $TestHap
 $script:Hdc = (Get-Command $HdcPath -ErrorAction Stop).Source
@@ -71,6 +101,7 @@ $recoverPassed = $false
 $processStopped = $false
 $uninstalled = $false
 $failure = $null
+$seedProcess = $null
 
 try {
     $targets = Invoke-HdcLogged -Arguments @('list', 'targets') -LogName 'device-targets.log'
@@ -81,29 +112,55 @@ try {
         throw "Exactly one HDC target is required; found $($targetLines.Count)."
     }
 
-    Invoke-HdcLogged -Arguments @('install', '-r', $resolvedMainHap) `
-        -LogName 'install-main.log' | Out-Null
+    $mainInstall = Invoke-HdcLogged -Arguments @('install', '-r', $resolvedMainHap) `
+        -LogName 'install-main.log'
+    Assert-InstallSucceeded -Output $mainInstall -PackageKind 'Main'
     $installed = $true
-    Invoke-HdcLogged -Arguments @('install', '-r', $resolvedTestHap) `
-        -LogName 'install-test.log' | Out-Null
+    $testInstall = Invoke-HdcLogged -Arguments @('install', '-r', $resolvedTestHap) `
+        -LogName 'install-test.log'
+    Assert-InstallSucceeded -Output $testInstall -PackageKind 'ohosTest'
 
-    $seed = Invoke-HdcLogged -Arguments @(
+    $seedMarker = 'T26_SEED_READY'
+    $seedArguments = @(
         'shell', 'aa', 'test', '-b', $BundleName, '-m', $ModuleName,
         '-s', 'unittest', 'OpenHarmonyTestRunner',
-        '-s', 'class', 'RuntimeRdbDeviceRecovery',
-        '-s', 'recoveryPhase', 'seed',
-        '-s', 'timeout', '60000'
-    ) -LogName 'seed-phase.log'
-    Assert-OnePassingTest -Output $seed -Phase 'seed'
-    $seedPassed = $true
-
-    $pidBeforeStop = Invoke-HdcLogged -Arguments @('shell', 'pidof', $BundleName) `
-        -LogName 'process-before-force-stop.log' -AllowFailure
-    if ($pidBeforeStop -notmatch '(?m)^\s*\d+(?:\s+\d+)*\s*$') {
-        throw 'The bundle process was not running after the seed phase; force-stop evidence cannot be established.'
+        '-s', 'class', 'RuntimeRdbDeviceRecoverySeed',
+        '-s', 'timeout', '600000'
+    )
+    $seedStdout = Join-Path $logsDirectory 'seed-phase.stdout.log'
+    $seedStderr = Join-Path $logsDirectory 'seed-phase.stderr.log'
+    $seedProcess = Start-Process -FilePath $script:Hdc -ArgumentList $seedArguments `
+        -RedirectStandardOutput $seedStdout -RedirectStandardError $seedStderr `
+        -WindowStyle Hidden -PassThru
+    $readyDeadline = [DateTime]::UtcNow.AddSeconds(60)
+    $pidBeforeStop = ''
+    while ([DateTime]::UtcNow -lt $readyDeadline) {
+        $seedOutput = if (Test-Path -LiteralPath $seedStdout) {
+            Read-SharedText -Path $seedStdout
+        } else {
+            ''
+        }
+        $pidBeforeStop = Invoke-HdcLogged -Arguments @('shell', 'pidof', $BundleName) `
+            -LogName 'process-before-force-stop.log' -AllowFailure
+        if ($seedOutput -match [regex]::Escape($seedMarker) -and
+            $pidBeforeStop -match '(?m)^\s*\d+(?:\s+\d+)*\s*$') {
+            $seedPassed = $true
+            break
+        }
+        $seedProcess.Refresh()
+        if ($seedProcess.HasExited) {
+            throw 'The seed test process exited before publishing its ready marker.'
+        }
+        Start-Sleep -Milliseconds 500
+    }
+    if (-not $seedPassed) {
+        throw 'The seed phase did not publish a ready marker with a live bundle PID within 60 seconds.'
     }
     Invoke-HdcLogged -Arguments @('shell', 'aa', 'force-stop', $BundleName) `
         -LogName 'force-stop.log' | Out-Null
+    if (-not $seedProcess.WaitForExit(10000)) {
+        throw 'The background seed command did not exit after the bundle was force-stopped.'
+    }
     $pidAfterStop = Invoke-HdcLogged -Arguments @('shell', 'pidof', $BundleName) `
         -LogName 'process-after-force-stop.log' -AllowFailure
     if ($pidAfterStop -match '(?m)^\s*\d+(?:\s+\d+)*\s*$') {
@@ -114,8 +171,7 @@ try {
     $recover = Invoke-HdcLogged -Arguments @(
         'shell', 'aa', 'test', '-b', $BundleName, '-m', $ModuleName,
         '-s', 'unittest', 'OpenHarmonyTestRunner',
-        '-s', 'class', 'RuntimeRdbDeviceRecovery',
-        '-s', 'recoveryPhase', 'recover',
+        '-s', 'class', 'RuntimeRdbDeviceRecoveryRecover',
         '-s', 'timeout', '60000'
     ) -LogName 'recover-phase.log'
     Assert-OnePassingTest -Output $recover -Phase 'recover'
@@ -123,6 +179,14 @@ try {
 } catch {
     $failure = $_
 } finally {
+    if ($null -ne $seedProcess) {
+        $seedProcess.Refresh()
+        if (-not $seedProcess.HasExited) {
+            Invoke-HdcLogged -Arguments @('shell', 'aa', 'force-stop', $BundleName) `
+                -LogName 'cleanup-force-stop.log' -AllowFailure | Out-Null
+            $seedProcess.WaitForExit(10000) | Out-Null
+        }
+    }
     if ($installed) {
         Invoke-HdcLogged -Arguments @('uninstall', $BundleName) `
             -LogName 'uninstall.log' -AllowFailure | Out-Null
@@ -144,7 +208,7 @@ $summary = [ordered]@{
     module = $ModuleName
     mainHap = $resolvedMainHap.Substring($projectRootPath.Length + 1).Replace('\', '/')
     testHap = $resolvedTestHap.Substring($projectRootPath.Length + 1).Replace('\', '/')
-    seedPhase = if ($seedPassed) { 'passed' } else { 'failed' }
+    seedPhase = if ($seedPassed) { 'ready marker and live PID verified' } else { 'failed' }
     processBoundary = if ($processStopped) { 'force-stop verified by pidof before and after' } else { 'failed' }
     recoverPhase = if ($recoverPassed) { 'passed' } else { 'failed' }
     uninstalled = $uninstalled

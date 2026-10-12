@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T25 已关闭；T26 本地门已通过、签名设备跨进程门待运行**
+状态：**In progress / T01–T26 已关闭；T26 已完成签名 API 26 跨进程恢复验收**
 日期：2026-10-11
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
@@ -51,7 +51,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - `agent_runtime/` 0.12.0 已用 M09-B production factory 把 M03 内部 Session/Task Analyzer/Planner/RuntimeCoordinator 包装到唯一 Promise-based `AgentRuntimeFacade`；composition 2.4 在 checkpoint/authority 写入、只读恢复源和异步 recovered factory 之外，新增 active operation 的专用 durable normalization 门，在 Facade 暴露前完成保守对账转换。内部 coordinator 与生产实现类均不从公共入口导出。
 - `agent_runtime/` 已实现 M04 的 Model/Role/Tool/Workflow Registry 与确定性 Model、Collaboration、Context、Tool Router；硬资格过滤先于评分，learned Model/Tool policy 可关闭并在低置信度、异常或越界输出时回退。
 - `agent_storage/` 已建立 `@harmony_agent/agent-storage` HAR：当前包含执行恢复 Repository ports、纯 ArkTS 恢复协议 Store、完整快照 integrity/migration 边界、snapshot CAS durable session、Runtime persistence bridge，以及接收宿主已打开 `RdbStore` 的 API 26 RDB backend；主机测试与 Release HAR 构建已通过。
-- `agent_storage/` 0.8.0/schema 1.2 保存版本化 opaque Runtime checkpoint 并提供任务枚举；`RuntimeExecutionRecoveryBridge` 用 backend CAS 保存 checkpoint、Policy、完整预算、operation 和 lease/fencing，并从这些 durable 记录组装严格验证的恢复 authority。T25 新增 `openForRuntimeRecovery` 与单 CAS active normalization；T26 新增只返回唯一 Facade 的 `createRdbRecoveredAgentRuntime` 以及 seed/force-stop/recover 两阶段设备 fixture。主机 47/47、Release HAR 与 unsigned HAP 构建已通过；T26 尚无签名设备运行，T07 的 7/7 是旧 schema 设备证据，不能替代 0.8.0。
+- `agent_storage/` 0.8.0/schema 1.2 保存版本化 opaque Runtime checkpoint 并提供任务枚举；`RuntimeExecutionRecoveryBridge` 用 backend CAS 保存 checkpoint、Policy、完整预算、operation 和 lease/fencing，并从这些 durable 记录组装严格验证的恢复 authority。T25 新增 `openForRuntimeRecovery` 与单 CAS active normalization；T26 新增只返回唯一 Facade 的 `createRdbRecoveredAgentRuntime`。主机 47/47 与 Release HAR 已通过，签名 API 26 设备验收进一步完成 seed 就绪/PID、force-stop、recover 1/1、UNKNOWN 归一化、Adapter 零重放和卸载核对。
 - `agent_storage/` 0.2.0 已新增 M05-B 的类型化 Memory/Artifact/Index/Transfer ports、纯 ArkTS `DeterministicMemoryStore`、完整快照 `DurableMemoryStore` 和宿主注入式 API 26 `RdbMemorySnapshotBackend`；主机证据验证受控导入、分块检索、隐私默认值、脱敏导出、级联失效、CAS/并发、重开重建、损坏与迁移；当前命名签名主 HAP/ohosTest HAP 已在 API 26 通过 `MemoryDeviceRecovery` 3/3，并完成卸载清理。
 - `mcp_client/` 是独立的 `@harmony_agent/mcp-client` HAR，提供多 Server MCP Streamable HTTP 客户端。
 - 公共 MCP 能力以 `{ serverId, kind, name }` 标识，避免跨 Server 同名冲突。
@@ -66,7 +66,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 ### 2.2 本文提出、但尚未实现的内容
 
 - `agent_connectors` 的 M06/M07 本地门与 M09-B 主机 composition 门不代表真实 Provider/设备网络、生产 credential store、具体 Adapter 的生产装配或 S2 真实远端任务闭环；`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
-- 真实 Semantic Planner、learned Router artifact、T26 签名设备跨进程恢复、具体生产 adapter composition、持久化 Registry 的生产接线及 Artifact Registry。
+- 真实 Semantic Planner、learned Router artifact、具体生产 adapter composition、持久化 Registry 的生产接线及 Artifact Registry。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。
 
@@ -575,7 +575,7 @@ Agent 输出 PolicyRequest
 
 写前保存失败时不得调用工具；系统可能已经执行但结果未可靠落盘时必须进入对账，不能当作普通失败重放。恢复过程通过 lease/fencing 或等价机制避免多个执行者同时处理同一 operation。内存 journal 的测试只证明状态语义，不替代持久化、崩溃点和多执行者恢复验证。
 
-当前 M05-A 实现采用三层结构：`ExecutionRecoveryStore` 负责同步、确定性的恢复状态转换；`DurableExecutionRecoveryStore` 在隔离副本上执行转换，并在完整 snapshot 的 revision CAS 成功后才发布结果；`RuntimeExecutionRecoveryBridge` 把 Runtime persistence port 映射到 checkpoint、Policy/Budget、operation 与 lease/fencing 的原子事务，并实现只读 recovery source。`RdbSnapshotBackend` 再把 CAS 映射到宿主注入的 API 26 `RdbStore` 单槽表。bridge 不接收 `Context`，不打开数据库，也不控制 Ability 或任务；实际预算和确认型对账结算由宿主窄端口提供。当前接口会在 Adapter 调用前 durable 标记 `IN_FLIGHT`。0.8.0 的 `createRdbRecoveredAgentRuntime` 固定组合 deferred runtime reopen、RDB backend、bridge 和 recovered Runtime，并只返回 Facade；`RuntimeRdbDeviceRecovery` 已编译 seed/recover 两阶段 fixture。主机 47/47、HAR 和 unsigned HAP 构建已通过，签名设备运行尚未执行。T07 的 7/7 继续证明当时版本的真实 RDB close/reopen、损坏 fail-closed 和 session 竞争，但不自动覆盖 0.8.0 bridge。
+当前 M05-A 实现采用三层结构：`ExecutionRecoveryStore` 负责同步、确定性的恢复状态转换；`DurableExecutionRecoveryStore` 在隔离副本上执行转换，并在完整 snapshot 的 revision CAS 成功后才发布结果；`RuntimeExecutionRecoveryBridge` 把 Runtime persistence port 映射到 checkpoint、Policy/Budget、operation 与 lease/fencing 的原子事务，并实现只读 recovery source。`RdbSnapshotBackend` 再把 CAS 映射到宿主注入的 API 26 `RdbStore` 单槽表。bridge 不接收 `Context`，不打开数据库，也不控制 Ability 或任务；实际预算和确认型对账结算由宿主窄端口提供。当前接口会在 Adapter 调用前 durable 标记 `IN_FLIGHT`。0.8.0 的 `createRdbRecoveredAgentRuntime` 固定组合 deferred runtime reopen、RDB backend、bridge 和 recovered Runtime，并只返回 Facade。T26 已在签名 API 26 包上用存活 seed 进程、明确 force-stop 和新进程 recover 1/1 验证真实 RDB 跨进程归一化，Adapter 调用为 0，卸载清理完成。
 
 当前 M05-B 使用 `DeterministicMemoryStore` 实现 owner 隔离、版本写入、受控导入、确定性分块/词法索引、隐私过滤、脱敏导出和派生数据级联失效。`DurableMemoryStore` 只持久化权威记录与非索引 artifact，以完整快照 revision CAS 发布；chunk 与词法索引在重开后从权威记录重建。`RdbMemorySnapshotBackend` 把 CAS 映射到独立的 API 26 RDB 单槽表，并继续由宿主负责数据库打开、加密、备份和关闭。主机已验证 CAS、并发、损坏与显式迁移；当前命名签名 HAP 的 `MemoryDeviceRecovery` 3/3 已验证真实 RDB close/reopen/索引重建、stale session CAS 单胜者和损坏 fail-closed，最终卸载并独立确认 bundle 不存在，证据位于 `artifacts/t08-signed-device-acceptance/20261002-195000/`。T08 已关闭；宿主加密接线仍属于单独未验证边界。
 

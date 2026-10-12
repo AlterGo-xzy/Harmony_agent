@@ -27,16 +27,16 @@
 7. 持久化摘要损坏时 fail-closed；
 8. opaque Runtime checkpoint 与任务枚举在真实 RDB close/reopen 后保持一致。
 
-第 8 项已编译进当前 unsigned ohosTest HAP，但尚未签名、安装或运行；下文 7/7 仍是 T07 旧 schema 的历史设备证据。
+第 8 项已编译进当前签名 ohosTest HAP 并完成安装，但本轮按类只运行 T26 两阶段用例，没有单独重跑完整 `StorageDeviceRecovery`；下文 7/7 仍是 T07 旧 schema 的历史设备证据。
 
-T26 另新增 `RuntimeRdbDeviceRecovery` 1 项两阶段用例：
+T26 另新增两项按类筛选的两阶段用例：
 
-1. `recoveryPhase=seed` 通过 `createRdbRecoveredAgentRuntime` 创建唯一 Facade，授权一个 Tool step，使真实 RDB 持久化 active operation 与 lease，但不回调完成；
-2. 验收脚本在 seed 进程返回后执行 `aa force-stop com.harmony.agent`；
-3. `recoveryPhase=recover` 在新进程中重新打开同一 RDB，要求 Facade 为 `WAITING_RECONCILIATION`、Adapter 调用数为 0、operation/budget 为 `UNKNOWN_OUTCOME`/`UNKNOWN` 且 recovery lease 已释放；
+1. `RuntimeRdbDeviceRecoverySeed` 通过 `createRdbRecoveredAgentRuntime` 创建唯一 Facade，授权一个 Tool step，使真实 RDB 持久化 active operation 与 lease，但不回调完成；随后输出 `T26_SEED_READY` 并保持测试进程存活；
+2. 验收脚本同时核对就绪标记与 bundle PID 后执行 `aa force-stop com.harmony.agent`，再核对 PID 消失；
+3. `RuntimeRdbDeviceRecoveryRecover` 在新进程中重新打开同一 RDB，要求 Facade 为 `WAITING_RECONCILIATION`、Adapter 调用数为 0、operation/budget 为 `UNKNOWN_OUTCOME`/`UNKNOWN` 且 recovery lease 已释放；
 4. recover 成功后 fixture 删除数据库，脚本卸载 bundle 并保存独立核对日志。
 
-该用例已通过 API 26 类型检查并编译进 unsigned ohosTest HAP，尚未签名、安装或运行。它的 seed/recover 必须在两次独立 `aa test` 之间保留应用数据，不能用单进程 close/reopen 冒充跨进程证据。
+该链路已在 API 26 签名包上完成。seed 被 force-stop，因此预期输出为就绪标记后 `App died`；它不伪装为一个正常完成的 1/1。通过条件是就绪标记、停止前存活 PID、停止后 PID 消失、recover 1/1 及卸载核对全部成立。
 
 每项 RDB 测试使用独立数据库，并在开始前清理旧 fixture、在 `finally` 中关闭 RDB 后删除数据库。
 
@@ -63,16 +63,16 @@ test_host/build/default/outputs/default/test_host-default-unsigned.hap
 test_host/build/default/outputs/ohosTest/test_host-ohosTest-unsigned.hap
 ```
 
-本次验收使用的签名交付物：
+T26 验收使用的签名交付物：
 
 ```text
-artifacts/t07-device-acceptance/20261001-211416/deliverables/test_host-default-signed.hap
-artifacts/t07-device-acceptance/20261001-211416/deliverables/test_host-ohosTest-signed.hap
+artifacts/t26-rdb-runtime-recovery/20261011-234747-signed-build-v4/deliverables/test_host-default-signed.hap
+artifacts/t26-rdb-runtime-recovery/20261011-234747-signed-build-v4/deliverables/test_host-ohosTest-signed.hap
 ```
 
-- 主 HAP：47,057 bytes，SHA-256 `31188D7014260DAD33FD9F500CA4C70C20DB4E79D2BB76583F701C44F77DE66D`
-- ohosTest HAP：2,048,764 bytes，SHA-256 `AE8B5A9933F59F14C5DB894E02E99EA78CEFD34568C02D23AEA2FB5044A62B74`
-- 临时签名配置已删除，项目根 `build-profile.json5` 已恢复；私钥和口令未进入验收目录。
+- 主 HAP：47,064 bytes，SHA-256 `4C9A5082A759DB1BB62768821D1A3443C2BCB3741249B0178C4204990BFDAF7C`
+- ohosTest HAP：3,003,143 bytes，SHA-256 `2F43BB3AA2356FB625A8C361090E28A83B8DD009C5B96D80894B1A16BE37ADC1`
+- 项目已有签名材料未被复制；临时 product 关联结束后，根 `build-profile.json5` 已按原始字节与 SHA-256 恢复。私钥和口令未进入验收目录。
 
 ## 设备运行
 
@@ -92,15 +92,28 @@ T26 的跨进程用例必须使用当前版本签名主/测试 HAP。取得签�
   -TestHap <工作区内的 signed ohosTest HAP>
 ```
 
-脚本要求恰好一个 HDC target，依次执行安装、seed 1/1、核对进程 PID、force-stop、核对 PID 消失、recover 1/1、卸载、按名称查询和全量 bundle 清单核对，并只把日志写入 `artifacts/t26-rdb-runtime-recovery/<timestamp>/`。任一步无法形成明确证据都会失败。执行脚本会真实安装、停止进程和卸载 bundle，因此不能把脚本已存在误报为设备验收完成。
+脚本要求恰好一个 HDC target，依次执行安装、后台 seed、核对就绪标记与进程 PID、force-stop、核对 PID 消失、recover 1/1、卸载、按名称查询和全量 bundle 清单核对，并只把日志写入 `artifacts/t26-rdb-runtime-recovery/<timestamp>/`。安装还必须明确报告成功，不能只依赖 HDC 退出码。任一步无法形成明确证据都会失败。
 
-本次目标为 `127.0.0.1:5555`，系统版本 `emulator 7.0.0.106(SP1DEVC00E999R4P11)`，API 版本 26。Hypium 报告：
+## T26 当前验收结果
+
+- 设备：`emulator 7.0.0.106(SP1DEVC00E999R4P11)`，API 26，目标 `127.0.0.1:5555`；
+- 签名主 HAP：47,064 bytes，SHA-256 `4C9A5082A759DB1BB62768821D1A3443C2BCB3741249B0178C4204990BFDAF7C`；
+- 签名 ohosTest HAP：3,003,143 bytes，SHA-256 `2F43BB3AA2356FB625A8C361090E28A83B8DD009C5B96D80894B1A16BE37ADC1`；
+- 两个 HAP 均通过 SDK `hap-sign-tool verify-app`；安装均明确成功；
+- seed 输出 `T26_SEED_READY`，停止前 PID 为 12616；`aa force-stop` 成功，停止后 PID 为空；
+- recover：`Tests run: 1, Failure: 0, Error: 0, Pass: 1, Ignore: 0`；
+- 卸载成功，按名称查询失败且全量 bundle 清单精确匹配数为 0；
+- 根 `build-profile.json5` 在签名构建后按原始 SHA-256 恢复；签名值和口令没有写入验收日志。
+
+成功设备证据位于 `artifacts/t26-rdb-runtime-recovery/20261011-234816/`，最终签名构建与验证证据位于 `artifacts/t26-rdb-runtime-recovery/20261011-234747-signed-build-v4/`。T26 已关闭。
+
+以下是 T07 历史目标与完整旧套件报告：目标 `127.0.0.1:5555`，系统版本 `emulator 7.0.0.106(SP1DEVC00E999R4P11)`，API 版本 26。Hypium 报告：
 
 ```text
 Tests run: 7, Failure: 0, Error: 0, Pass: 7, Ignore: 0
 ```
 
-安装、测试、设备信息和清理日志均位于成功运行目录的 `logs/` 下；`acceptance-summary.json` 是机器可读摘要。
+T07 安装、测试、设备信息和清理日志位于其历史成功运行目录的 `logs/` 下；T26 使用上文单独列出的成功目录，`acceptance-summary.json` 是机器可读摘要。
 
 验收后清理：
 

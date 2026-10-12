@@ -261,10 +261,8 @@ function decision(taskId: string, request: PolicyRequest): AuthorizationDecision
   return value;
 }
 
-function recoveryPhase(): string {
-  const parameters: Record<string, string> = abilityDelegatorRegistry.getArguments().parameters;
-  const value: string | undefined = parameters['recoveryPhase'];
-  return value === undefined ? '' : value;
+function selectedTestCases(): string {
+  return abilityDelegatorRegistry.getArguments().testCaseNames;
 }
 
 async function appContext(): Promise<common.UIAbilityContext> {
@@ -303,6 +301,14 @@ async function openStore(context: common.Context,
 function closeStore(store: relationalStore.RdbStore): void {
   try {
     store.close();
+  } catch (error) {
+    throw error as Error;
+  }
+}
+
+async function printSeedReady(marker: string): Promise<void> {
+  try {
+    await abilityDelegatorRegistry.getAbilityDelegator().print(marker);
   } catch (error) {
     throw error as Error;
   }
@@ -364,18 +370,28 @@ async function recoverActiveOperation(context: common.Context,
 }
 
 export default function runtimeRdbDeviceRecoveryTest(): void {
-  describe('RuntimeRdbDeviceRecovery', () => {
-    it('normalizesActiveOperationAcrossProcessRestart', 0, async () => {
+  describe('RuntimeRdbDeviceRecoverySeed', () => {
+    it('persistsActiveOperationUntilForceStop', 0, async () => {
       expect(AGENT_STORAGE_VERSION).assertEqual('0.8.0');
-      const phase: string = recoveryPhase();
-      expect(phase === '' || phase === 'seed' || phase === 'recover').assertTrue();
-      if (phase.length === 0) return;
+      if (selectedTestCases().indexOf('RuntimeRdbDeviceRecoverySeed') < 0) return;
       const context: common.Context = await appContext();
       const config: relationalStore.StoreConfig = storeConfig();
-      if (phase === 'seed') {
-        await seedActiveOperation(context, config);
-        return;
-      }
+      await seedActiveOperation(context, config);
+      await printSeedReady('T26_SEED_READY');
+      // Keep the instrumented process alive. The host acceptance script
+      // observes the marker and PID, then force-stops it.
+      await new Promise<void>((resolve: () => void) => {
+        setTimeout(resolve, 600000);
+      });
+    });
+  });
+
+  describe('RuntimeRdbDeviceRecoveryRecover', () => {
+    it('normalizesActiveOperationAfterForceStop', 0, async () => {
+      expect(AGENT_STORAGE_VERSION).assertEqual('0.8.0');
+      if (selectedTestCases().indexOf('RuntimeRdbDeviceRecoveryRecover') < 0) return;
+      const context: common.Context = await appContext();
+      const config: relationalStore.StoreConfig = storeConfig();
       await recoverActiveOperation(context, config);
     });
   });

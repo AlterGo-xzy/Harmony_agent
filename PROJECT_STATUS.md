@@ -1,8 +1,8 @@
 # harmony_agent Runtime（ArkTS）— 项目状态
 
-更新时间：2026-10-11（Asia/Shanghai）
+更新时间：2026-10-12（Asia/Shanghai）
 
-## Agent Runtime T01–T26（T11/M08 首个只读 Native Tool 已完成签名设备验收）
+## Agent Runtime T01–T26（T26 RDB 跨进程恢复已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -74,7 +74,7 @@ T24（M09-B/M05-A 启动恢复装配）本地主机与未签名构建门已完�
 
 T25（M09-B/M05-A active operation 原子恢复归一化）本地主机与 HAR 门已完成：`@harmony_agent/agent-runtime` 升级为 0.12.0、production composition 2.4，production persistence port 新增 `normalizeRecoveredOperation`；恢复 factory 在 Facade 暴露前读取原 active checkpoint 的 durable authority，内部协调器把运行中步骤保守转入 `WAITING_RECONCILIATION` 并清除 active invocation，专用 durable normalization 成功后才 hydrate authority。`@harmony_agent/agent-storage` 升级为 0.7.0，新增 `openForRuntimeRecovery` 以延迟旧式独立 reopen normalization；bridge 用一个 transaction/一次 backend CAS 校验并释放旧 lease、接管新 fencing token、把 `IN_FLIGHT` operation 与预算转为 `UNKNOWN_OUTCOME`、释放 recovery lease并保存下一版本 checkpoint。CAS 冲突、错 fence、错 operation 或错 checkpoint 均 fail-closed，恢复不会重放 Adapter。主机实测 runtime 60/60、storage 47/47，失败和错误均为 0；Release HAR 分别为 runtime 95,970 bytes、SHA-256 `3DDC14377C53932D17860FD69699369E946811FF96DD039C8ACD43A1ACB5C5D0`，storage 68,852 bytes、SHA-256 `6546CA1ECF324EEE63ECD91318148F2B6CB38FF9453CA271A221612B1E001046`。本轮未构建 HAP、未签名、安装、卸载或运行设备；RDB composition 和设备进程退出/重启验收仍未完成。证据位于 `artifacts/t25-active-operation-recovery/20261011/`。
 
-T26（M09-B/M05-A RDB production composition 与跨进程设备 fixture）本地代码、主机回归和 unsigned 构建门已完成：`@harmony_agent/agent-storage` 升级为 0.8.0，新增 `createRdbRecoveredAgentRuntime`，由宿主注入已打开的 `RdbStore`、完整性端口、bridge 配置与 Runtime 非持久化端口；工厂固定使用 `RdbSnapshotBackend`/`openForRuntimeRecovery`，拒绝第二组 persistence/recovery ports，只在 durable tasks 全部恢复后返回唯一 `AgentRuntimeFacade`。`test_host` 新增 `RuntimeRdbDeviceRecovery` 单用例的 `seed`/`recover` 两阶段 fixture，并提供 `tools/test-runtime-rdb-recovery.ps1` 在两次 Hypium 调用之间执行进程 force-stop。Storage 主机回归 47/47；Release HAR 70,080 bytes、SHA-256 `8D59F009568380526DC44A45D7973CA11FD33E8960DF2E9447780EB9BD23AFBC`。完整依赖图 unsigned 主 HAP 8,708 bytes、SHA-256 `EC3EC976011706AA01CFF11428D4812E91650FF937EA7AAE8F3E72CF06DB3697`；ohosTest HAP 2,954,945 bytes、SHA-256 `0362C49E9DBB6887377F8153091BE033FD6B612A0837EF64EBAF86689EFC34B7`；两次构建均明确 `No signingConfig found`。本轮未签名、安装、卸载、force-stop 或运行设备；只有取得 seed 1/1、真实进程停止、recover 1/1 与卸载核对证据后才能关闭 T26。证据位于 `artifacts/t26-rdb-runtime-recovery/20261011-local/`。
+T26（M09-B/M05-A RDB production composition 与跨进程设备恢复）已关闭：`@harmony_agent/agent-storage` 0.8.0 新增 `createRdbRecoveredAgentRuntime`，由宿主注入已打开的 `RdbStore`、完整性端口、bridge 配置与 Runtime 非持久化端口；工厂固定使用 `RdbSnapshotBackend`/`openForRuntimeRecovery`，拒绝第二组 persistence/recovery ports，只在 durable tasks 全部恢复后返回唯一 `AgentRuntimeFacade`。Storage 主机回归 47/47，Release HAR 70,080 bytes、SHA-256 `8D59F009568380526DC44A45D7973CA11FD33E8960DF2E9447780EB9BD23AFBC`。签名主 HAP 47,064 bytes、SHA-256 `4C9A5082A759DB1BB62768821D1A3443C2BCB3741249B0178C4204990BFDAF7C`；签名 ohosTest HAP 3,003,143 bytes、SHA-256 `2F43BB3AA2356FB625A8C361090E28A83B8DD009C5B96D80894B1A16BE37ADC1`，均通过独立 `hap-sign-tool verify-app`。API 26 模拟器上，seed 测试完成 active operation 持久化后输出 `T26_SEED_READY` 并保持 PID 12616；`aa force-stop` 成功且 PID 消失；新进程 recover 运行 1/1，通过 `WAITING_RECONCILIATION`、Adapter 零重放、operation/budget 为 UNKNOWN 和 lease 释放断言。最终卸载成功，按名称查询与全量 bundle 清单均确认 `com.harmony.agent` 不存在。根签名配置每次构建后按原始 SHA-256 恢复，凭据未写入日志。设备证据位于 `artifacts/t26-rdb-runtime-recovery/20261011-234816/`，签名构建证据位于 `artifacts/t26-rdb-runtime-recovery/20261011-234747-signed-build-v4/`。
 
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
@@ -90,7 +90,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T25 已关闭各自记录的任务门；T26 已完成 RDB production composition、两阶段设备 fixture、主机回归与 unsigned 构建，但设备门保持打开。T25 已把 active operation 的 durable 状态、预算、lease/fencing 与 Runtime checkpoint 通过单 CAS 规范化到对账状态，恢复过程不重放 Adapter；T24 已接入任务枚举、durable authority 回读/hydration、event replay 和无在途 operation 的跨实例启动恢复；T23 已把生产 Runtime persistence port 接到 durable Storage transaction。下一步是在明确授权后使用签名 HAP 执行 seed → 进程 force-stop → recover → 卸载核对。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server 和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T26 已关闭各自记录的任务门。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server 和验收脚本；没有 ArkUI 产品页面或示例应用。后续任务尚未开始，必须继续按架构任务划分选择下一项。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
