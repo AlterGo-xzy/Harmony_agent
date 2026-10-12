@@ -100,7 +100,7 @@ flowchart TD
 | M08 | Native Kit Tools | `native_tools` | M00、目标 SDK 证据 | M00 | M02、M03；写能力另需 M05-A |
 | M09-A | 公共 SDK 契约与 headless fake | `agent_contracts` + `agent_runtime` API shell + 测试源集 | M00 | M00、M01 | M01 |
 | M09-B | 生产 Headless Agent SDK | `agent_runtime` | M00、M09-A | M02、M03 | M03、M05-A、实际启用的 adapter |
-| M10 | TestKit、故障注入与 harmony_agent Bench | 测试源集 + `offline/harmony_agent_bench` | M00 | M00，逐步接入 | 对应被测模块 |
+| M10 | TestKit、故障注入与 harmony_agent Bench | `agent_testkit` + 测试源集 + `offline/harmony_agent_bench` | M00 | M00，逐步接入 | 对应被测模块 |
 | M11 | Artifact、Parity 与策略发布链 | `offline/parity` + `artifact_tooling` | M00、M10 | M00、M10 | M10 |
 | M12 | MTRouter 接入 | offline + `agent_runtime` policy | M04、M10 | M04、M10、M11 | M04、M10、M11 |
 | M13 | MasRouter 接入 | offline + `agent_runtime` policy | M03、M04、M10 | M03、M04、M10、M11 | M03、M04、M10、M11 |
@@ -442,6 +442,8 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - benchmark 固化 model、provider、region、价格、schema 和日期；
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
+
+当前实施状态（M10 TestKit 基础切片，本地主机与 HAR 门已通过）：新增 `@harmony_agent/agent-testkit` 0.1.0。它提供按 target/phase/occurrence 触发的十二类确定性故障决策、十个共用集成 fixture 描述、固定 model/provider/region/价格/schema/date/dataset/router policy 的 benchmark manifest 校验，以及 overall/按 arm 的质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标导出。Strong Single Agent 与 Multi Agent arm 必须共用 permission/context policy。Hypium 11/11 通过；Release HAR 为 15,931 bytes、SHA-256 `D08CB55E1A50C16F66DCA9DBC049CDEAB61046CCE73357760C9C3924A3C58FC4`。该切片不提交或控制任务，不调用真实 Adapter/Provider/Storage，也不代表 S6 Bench Pilot、十二类任务集或 32/128/512 工具规模报告已完成。
 
 ### M11：Artifact、Parity 与策略发布链
 

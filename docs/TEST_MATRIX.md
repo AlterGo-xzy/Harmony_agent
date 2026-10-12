@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-11。M07 Provider Connector 为主机 fake-transport contract gate；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B 生产 Facade 已完成 T25 本地 composition/test/HAR 门，并补齐 M05-A active operation 的 durable 单 CAS 恢复归一化。
+最后更新：2026-10-12。M07 Provider Connector 为主机 fake-transport contract gate；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 基础切片已完成主机测试与 Release HAR 门。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -39,6 +39,7 @@
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
 | `agent_connectors` | 28/28 | M06 MCP adapter 13；M07 Provider connector 15，覆盖 model/embedding/remote API 快照、stream、usage/cost、credential、取消/timeout、grant 与未知写结果 | 未运行真实 Provider/设备网络；不属于本地 connector 门 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
+| `agent_testkit` | 11/11 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、overall/按 arm 指标与 p50/p95 导出；Release HAR 已通过 | 纯 ArkTS TestKit 不需要设备；真实 Provider、系统 Bench、十二类任务集与 32/128/512 工具规模报告尚未执行 |
 
 M03 用例覆盖提交去重与冻结时间语义、validated workflow dispatch、澄清与授权分离、内部 grant 后才允许工具 dispatch、暂停/恢复、未知副作用对账、取消后延迟对账、迟到 completion 拒绝、单调 sequence/version，以及 partial replan 保护成功和未知结果。该结果来自 `agent_runtime@default test` 的主机侧 Hypium 运行；HAR 构建不等于 HAP、安装或设备验收。
 

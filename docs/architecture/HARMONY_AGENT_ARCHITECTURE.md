@@ -679,6 +679,7 @@ Harmony Agent/
   agent_runtime/         # HAR：会话编排、planner、router/policy coordination
   agent_connectors/      # HAR：MCP、LLM 与 Remote API adapters
   agent_storage/         # HAR：task/operation/budget/trace/registry/memory repositories
+  agent_testkit/         # HAR：确定性故障注入、共用 fixtures 与 benchmark 评估
   mcp_client/            # 已存在 HAR：MCP 协议和传输
   native_tools/          # HAR：HarmonyOS/OpenHarmony Kit adapters
   test_host/             # 无页面 test-only HAP，仅用于 MCP/Agent HAR 设备测试
@@ -706,9 +707,11 @@ external_consumer (out of scope)
       -> agent_contracts
   -> native_tools（通过端口注入）
       -> agent_contracts
+  -> agent_testkit（仅测试与评估调用方）
+      -> agent_contracts
 ```
 
-`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
+`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。`agent_testkit` 只产生故障决策、fixture 描述和评估报告，不能提交或控制任务。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
 
 源码交接与运行证据分别管理。一个可交接版本至少绑定 source commit/tag、模块版本、锁文件、SDK/系统要求、构建命令、HAR digest、测试报告和已知限制；host test、HAR build、test HAP build、安装、模拟器和真机证据不能相互替代。当前本地 HAR 与测试记录在建立首个 source commit 前不标记为“发布可交接”。
 

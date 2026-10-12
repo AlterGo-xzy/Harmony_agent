@@ -120,6 +120,18 @@
           ]
         }
       ]
+    },
+    {
+      "name": "agent_testkit",
+      "srcPath": "./agent_testkit",
+      "targets": [
+        {
+          "name": "default",
+          "applyToProducts": [
+            "default"
+          ]
+        }
+      ]
     }
   ]
 }
