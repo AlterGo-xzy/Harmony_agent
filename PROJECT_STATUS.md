@@ -2,7 +2,7 @@
 
 更新时间：2026-10-12（Asia/Shanghai）
 
-## Agent Runtime T01–T27 与 M10 Bench Pilot（T26 已完成签名设备验收）
+## Agent Runtime T01–T28 与 M10 Bench Pilot（T26 已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -80,6 +80,8 @@ M10 TestKit 基础切片已完成本地主机与 HAR 门：新增 `@harmony_agen
 
 T27（M10/S6 fixture baseline）本地主机与 HAR 门已完成：`@harmony_agent/agent-testkit` 升级为 0.2.0，新增十二种互斥 pilot task、32/128/512 Tool Registry case、严格 dataset/scale validator 与 defensive copy。`offline/harmony_agent_bench` 固定数据集、价格快照、model/provider/region/schema/date/router policy 和公平的 Strong Single/Multi Agent arm，通过无第三方依赖的 Node 生成器输出 24/24 通过的确定性 fixture 报告；连续 write/check SHA-256 均为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。主机 Hypium 16/16 通过；Release HAR 为 20,748 bytes、SHA-256 `01F119AF48D76049379EDDDCB662A80E170C8491EADC8C6A8B3A35725E5D6EFA`。fixture 使用零成本 Provider 和虚拟零时钟并标记 `performanceComparable=false`，只证明数据、指标管线和 32/128/512 correctness 可重复；真实 Provider/system 质量、价格、延迟、内存与设备行为仍未执行，因此 S6 尚未关闭。未构建 HAP、未签名、安装、卸载或运行设备；`AgentRuntimeFacade` 仍是唯一任务控制入口。
 
+T28（M07 Local AI Gateway transport）本地主机与 HAR 门已完成：只读核对 `C:\claude-gateway` 的 `codex/develop` commit `21017a1e91a1` 后，`@harmony_agent/agent-connectors` 升级为 0.3.0，新增严格 loopback 的 OpenAI-compatible `/v1/chat/completions` transport、`aigw/default` 到稳定 registry model 的映射、Bearer/x-api-key credential 边界、JSON schema、请求/响应大小限制、取消、状态错误脱敏和 usage 完整性校验。SDK 原生 Previewer/Hypium 实际运行 33/33，其中原 M06 13 项、通用 M07 15 项、网关协议 fixture 5 项；失败和错误均为 0。Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。当前只读状态为 `running=false`、`activeProfileId=null`、端口 4000 无监听，本轮没有启动/配置网关、读取 token 或运行真实上游请求；HarmonyOS 设备 loopback 也尚未建立桥接，因此真实 Provider、设备网络与 S2/S6 仍未关闭。`AgentRuntimeFacade` 仍是唯一任务控制入口。集成边界见 `docs/LOCAL_AI_GATEWAY_INTEGRATION.md`，证据位于 `artifacts/t28-local-ai-gateway-connector/20261012-215538/`。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -94,7 +96,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T27 已关闭各自记录的任务门。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 已完成 TestKit 基础和可重复 fixture baseline；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T28 已关闭各自记录的任务门。T28 完成 Local AI Gateway 主机协议适配，但真实网关/upstream 与设备网络尚未验收。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 已完成 TestKit 基础和可重复 fixture baseline；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.2.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.3.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -70,3 +70,13 @@ export {
   GenericEmbeddingProvider,
   GenericRemoteApiProvider
 } from './src/main/ets/provider/GenericProviders';
+export {
+  LocalAIGatewayTransportProfile,
+  LocalAIGatewayTransportProfileValidator,
+  LocalAIGatewayHttpRequest,
+  LocalAIGatewayHttpResponse,
+  LocalAIGatewayHttpClientPort,
+  ArkTsLocalAIGatewayHttpClient,
+  LocalAIGatewayModelTransport,
+  createLocalAIGatewayModelProfile
+} from './src/main/ets/provider/LocalAIGatewayTransport';

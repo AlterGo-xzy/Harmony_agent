@@ -2,7 +2,7 @@
 
 这是无 UI 的 harmony_agent Agent Runtime 与其 HarmonyOS/OpenHarmony ArkTS 基础模块，不是示例应用，也不包含产品前端。
 
-harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T26 已关闭各自记录的任务门，M10 已完成 TestKit 基础和 S6 fixture baseline；真实 Provider/system Bench 尚未关闭，当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
+harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T28 已关闭各自记录的本地任务门，M10 已完成 TestKit 基础和 S6 fixture baseline；Local AI Gateway 已完成主机协议适配，真实 Provider/system Bench 尚未关闭，当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
 
 当前工程交付包括：
 
@@ -10,7 +10,7 @@ harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落�
 - `agent_core/`：确定性 Workflow Kernel HAR；提供语义图校验、状态机、调度、恢复边界和 operation journal。
 - `agent_runtime/`：无 UI 的 Agent Runtime HAR；提供唯一 `AgentRuntimeFacade` 业务控制接口、明确标记的 headless fake/consumer、M03 编排、M04 Registry/Router、Policy Gateway，以及生产 persistence/recovery composition ports。
 - `agent_storage/`：无 UI 的执行恢复与长期记忆存储 HAR；提供 durable recovery、RDB backend、Runtime bridge、active operation 保守恢复和长期记忆索引。T26 已完成 API 26 跨进程恢复验收。
-- `agent_connectors/`：MCP、Model、Embedding 与 Remote API 的 provider-neutral Adapter HAR；现有结论为 fake-transport contract gate。
+- `agent_connectors/`：MCP、Model、Embedding 与 Remote API 的 Adapter HAR；包含 Local AI Gateway 的 OpenAI-compatible Model transport，现有结论为主机协议/fixture gate。
 - `native_tools/`：HarmonyOS/OpenHarmony Kit Adapter HAR；首个只读 battery slice 已完成签名 API 26 设备验收。
 - `agent_testkit/`：M10 的确定性故障注入、共用集成 fixtures、benchmark manifest 与指标评估 HAR；不提供任务控制入口。
 - `offline/harmony_agent_bench/`：冻结的十二类任务、32/128/512 工具规模 fixture、价格快照和可重复离线报告；不进入端侧 Runtime。

@@ -1,6 +1,6 @@
 # Provider Connector 集成说明
 
-`@harmony_agent/agent-connectors` 0.2.0 在同一 HAR 中提供 M06 MCP adapter 与 M07 LLM/Remote API connector。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。
+`@harmony_agent/agent-connectors` 0.3.0 在同一 HAR 中提供 M06 MCP adapter、M07 LLM/Remote API connector，以及 Local AI Gateway 的具体 Model transport。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。网关装配见 [LOCAL_AI_GATEWAY_INTEGRATION.md](LOCAL_AI_GATEWAY_INTEGRATION.md)。
 
 ## 组合边界
 
@@ -28,4 +28,4 @@ Remote API 返回 `RemoteApiProviderResult`。其中 `outcome` 是通用 `ToolOu
 
 ## 当前验收边界
 
-M07 的 15 项 contract test 使用 fake credential、timer 和 transport，验证 DTO、追溯、费用、fail-closed、取消与未知结果语义。它不证明某个具体 Provider 的协议兼容性、TLS、设备网络、生产 credential store 或 Runtime 端到端装配。新增具体 Provider transport 时，应独立增加协议 fixture、认证脱敏、真实取消/timeout 资源释放和设备网络验收证据。
+M07 的 15 项 contract test 使用 fake credential、timer 和 transport，验证 DTO、追溯、费用、fail-closed、取消与未知结果语义。Local AI Gateway transport 另有 5 项主机协议 fixture；与 M06 合并运行时为 33/33。它们不证明真实上游 Provider、设备网络、生产 credential store 或 Runtime 端到端装配。具体 transport 仍需独立补充真实取消/timeout 资源释放和设备网络验收证据。

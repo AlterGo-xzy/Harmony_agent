@@ -1,6 +1,6 @@
 {
   "name": "@harmony_agent/agent-connectors",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Headless MCP adapters for the harmony_agent runtime",
   "main": "Index.ets",
   "author": "harmony_agent",

@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-12。M07 Provider Connector 为主机 fake-transport contract gate；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.2.0 已完成主机/HAR 门和 S6 fixture baseline。
+最后更新：2026-10-12。M07 Provider Connector 已增加 Local AI Gateway 主机协议适配；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.2.0 已完成主机/HAR 门和 S6 fixture baseline。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -37,7 +37,7 @@
 | `agent_core` | 21/21 | DAG、Scheduler、Recovery、Budget；完整预算总账原子 hydration | 真实 Planner/Provider/Tool 与设备运行 |
 | `agent_runtime` | 60/60 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 真实 Planner/Provider/Tool、签名设备进程退出/重启运行 |
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
-| `agent_connectors` | 28/28 | M06 MCP adapter 13；M07 Provider connector 15，覆盖 model/embedding/remote API 快照、stream、usage/cost、credential、取消/timeout、grant 与未知写结果 | 未运行真实 Provider/设备网络；不属于本地 connector 门 |
+| `agent_connectors` | 33/33 | M06 MCP adapter 13；M07 Provider connector 15；Local AI Gateway transport 5，覆盖 loopback/profile、chat、schema、认证脱敏、状态/usage 与取消 | 未运行真实 Provider/设备网络；不属于本地主机门 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
 | `agent_testkit` | 16/16 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；Release HAR 与确定性 fixture 报告漂移检查通过 | fixture 使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
