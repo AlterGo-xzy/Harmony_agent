@@ -2,7 +2,7 @@
 
 更新时间：2026-10-12（Asia/Shanghai）
 
-## Agent Runtime T01–T26 与 M10 TestKit 基础（T26 已完成签名设备验收）
+## Agent Runtime T01–T27 与 M10 Bench Pilot（T26 已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -78,6 +78,8 @@ T26（M09-B/M05-A RDB production composition 与跨进程设备恢复）已关�
 
 M10 TestKit 基础切片已完成本地主机与 HAR 门：新增 `@harmony_agent/agent-testkit` 0.1.0，提供十二类确定性故障决策、十个共用集成 fixtures、完整 benchmark 环境 pinning、公平的 Strong Single/Multi Agent arm 约束，以及 overall/按 arm 的质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标。主机 Hypium 11/11 通过；Release HAR 为 15,931 bytes、SHA-256 `D08CB55E1A50C16F66DCA9DBC049CDEAB61046CCE73357760C9C3924A3C58FC4`。TestKit 不暴露任务控制 API，`AgentRuntimeFacade` 仍是唯一入口。本切片未运行真实 Provider 或系统 Bench，S6 Bench Pilot 的十二类任务集、32/128/512 工具规模与可重复 baseline 报告仍待后续实现。
 
+T27（M10/S6 fixture baseline）本地主机与 HAR 门已完成：`@harmony_agent/agent-testkit` 升级为 0.2.0，新增十二种互斥 pilot task、32/128/512 Tool Registry case、严格 dataset/scale validator 与 defensive copy。`offline/harmony_agent_bench` 固定数据集、价格快照、model/provider/region/schema/date/router policy 和公平的 Strong Single/Multi Agent arm，通过无第三方依赖的 Node 生成器输出 24/24 通过的确定性 fixture 报告；连续 write/check SHA-256 均为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。主机 Hypium 16/16 通过；Release HAR 为 20,748 bytes、SHA-256 `01F119AF48D76049379EDDDCB662A80E170C8491EADC8C6A8B3A35725E5D6EFA`。fixture 使用零成本 Provider 和虚拟零时钟并标记 `performanceComparable=false`，只证明数据、指标管线和 32/128/512 correctness 可重复；真实 Provider/system 质量、价格、延迟、内存与设备行为仍未执行，因此 S6 尚未关闭。未构建 HAP、未签名、安装、卸载或运行设备；`AgentRuntimeFacade` 仍是唯一任务控制入口。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -88,11 +90,11 @@ M10 TestKit 基础切片已完成本地主机与 HAR 门：新增 `@harmony_agen
 
 更名前的历史报告为 contracts 14/14、core 19/19（其中 workflow 13、budget 6）、runtime 44/44（其中 policy 8、headless fake 11、M03 orchestration 10、M04 registry/router 15）、storage 34/34（M05-A 21、M05-B 13）。Release HAR 构建均通过；`agent_storage.har` 0.2.0 为 85,193 bytes，SHA-256 为 `E09839C16B037BBB5C8F520B4769688CCBFA9656C3BA67F041411A070058E955`。其余历史 SHA-256：`agent_contracts.har` 为 `5F3D62DCF951E133420504F5A33C7E612BEF5192C543E86D42D6E133B8FA91A0`，`agent_core.har` 为 `26F9557797B4E20DEB01317FB8794F47882C39C042FDA961FA6F6D5C9E0F3F20`，`agent_runtime.har` 0.4.0 为 `DEC6EE715364B69CC3BE4DD83011DEF3953FE10274E2DADAE2FC1630C41FAAC0`。
 
-T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 当前命名版本的签名 HAP 安装、长期记忆 close/reopen、损坏与 stale session CAS；这些既有证据本身不证明 T12 的生产 Facade、产品 HAP、产品 UI、真实 learned artifact、真实 adapter 集成或宿主加密配置。T12 的 Facade 结论仅来自本轮主机测试与 HAR 构建；每个 adapter 仍必须分别通过 M02 授权、M03 编排及自身验收。当前仓库仍无 source commit/tag，因此尚未达到发布交接门。
+T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 当前命名版本的签名 HAP 安装、长期记忆 close/reopen、损坏与 stale session CAS；这些既有证据本身不证明 T12 的生产 Facade、产品 HAP、产品 UI、真实 learned artifact、真实 adapter 集成或宿主加密配置。T12 的 Facade 结论仅来自对应主机测试与 HAR 构建；每个 adapter 仍必须分别通过 M02 授权、M03 编排及自身验收。当前已有 source commit 与模块分支，但尚无 release tag，发布交接门仍未关闭。
 
 ## 当前结论
 
-T01–T26 已关闭各自记录的任务门。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 已开始并完成 TestKit 基础 HAR，但 S6 Bench Pilot 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server 和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T27 已关闭各自记录的任务门。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 已完成 TestKit 基础和可重复 fixture baseline；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
@@ -103,7 +105,7 @@ T01–T26 已关闭各自记录的任务门。T26 已用真实 API 26 RDB、存�
 - Provider Connector contract test 15/15 通过，覆盖版本/region/价格快照、流式 trace、token/cost 结算、凭据边界、取消/timeout 资源释放、Embedding 副本隔离、远程参数/grant fail-closed，以及写操作 `UNKNOWN_OUTCOME`/不重试。
 - Native Battery Tool contract test 12/12 通过，覆盖 capability、grant、identity/schema/参数摘要、后台限制、取消、平台错误、稳定结果归一化与 M03 dispatch 接线；签名 API 26 `BatteryStatusDevice` 设备用例 1/1 通过，随后卸载并验证 bundle 不存在。
 - Agent Core 21/21、Agent Runtime 60/60、Agent Storage 47/47 通过；Runtime 的 M09-B 生产 Facade 在既有 Promise durable gate、同实例 FIFO、checkpoint/authority、授权、回调、命令、澄清、控制、对账、订阅和 shutdown 之外，已覆盖等待授权启动恢复/event replay 与 active operation 原子 normalization。Storage bridge 覆盖 durable authority 回读、backend reopen、fencing 接管、UNKNOWN_OUTCOME 对账转换和 CAS 冲突 fail-closed；Release HAR 构建通过。
-- Agent TestKit 11/11 通过，覆盖十二类故障枚举与确定性触发、非法脚本拒绝、benchmark 环境 pinning、公平 arm 约束、重复/非法样本拒绝、overall/按 arm 指标、p50/p95 和十个共用 fixtures；Release HAR 构建通过。
+- Agent TestKit 16/16 通过，覆盖十二类故障枚举与确定性触发、非法脚本拒绝、benchmark 环境 pinning、公平 arm 约束、重复/非法样本拒绝、overall/按 arm 指标、p50/p95、十个共用 fixtures、十二种 pilot task 和 32/128/512 工具规模校验；Release HAR 与离线 fixture 报告漂移检查通过。
 - Node Fixture 契约测试 10/10 通过，覆盖现代/旧式协议、Tools、Resources、Templates、Prompts、SSE、大响应、断开连接、并发隔离、异常状态和认证脱敏。
 - Release HAR 构建与 Node/stdio 运行时依赖审计通过。
 - 无页面 Debug Test Host 主 HAP 与 ohosTest HAP 构建通过。

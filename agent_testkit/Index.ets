@@ -29,3 +29,12 @@ export {
   IntegrationFixtureDescriptor,
   IntegrationFixtureCatalog
 } from './src/main/ets/testkit/IntegrationFixtures';
+export {
+  BenchmarkTaskKind,
+  BenchmarkTaskCase,
+  BenchmarkDataset,
+  BenchmarkDatasetValidator,
+  HarmonyAgentBenchPilotCatalog,
+  ToolScaleCase,
+  ToolScaleCaseValidator
+} from './src/main/ets/testkit/BenchPilot';

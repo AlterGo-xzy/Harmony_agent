@@ -2,7 +2,7 @@
 
 这是无 UI 的 harmony_agent Agent Runtime 与其 HarmonyOS/OpenHarmony ArkTS 基础模块，不是示例应用，也不包含产品前端。
 
-harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T26 已关闭各自记录的任务门，M10 TestKit 基础切片已开始；当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
+harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T26 已关闭各自记录的任务门，M10 已完成 TestKit 基础和 S6 fixture baseline；真实 Provider/system Bench 尚未关闭，当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
 
 当前工程交付包括：
 
@@ -13,6 +13,7 @@ harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落�
 - `agent_connectors/`：MCP、Model、Embedding 与 Remote API 的 provider-neutral Adapter HAR；现有结论为 fake-transport contract gate。
 - `native_tools/`：HarmonyOS/OpenHarmony Kit Adapter HAR；首个只读 battery slice 已完成签名 API 26 设备验收。
 - `agent_testkit/`：M10 的确定性故障注入、共用集成 fixtures、benchmark manifest 与指标评估 HAR；不提供任务控制入口。
+- `offline/harmony_agent_bench/`：冻结的十二类任务、32/128/512 工具规模 fixture、价格快照和可重复离线报告；不进入端侧 Runtime。
 - `mcp_client/`：可复用的 `@harmony_agent/mcp-client` HAR。
 - `test_host/`：仅承载设备集成测试的无页面、未导出 Ability；不进入 harmony_agent 产品代码。
 - `tools/test-mcp.ps1`：唯一人工验收入口，配套 Node.js Fixture Server。

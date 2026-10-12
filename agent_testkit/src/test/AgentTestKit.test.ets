@@ -4,6 +4,8 @@ import {
   AGENT_TESTKIT_VERSION,
   BenchmarkArm,
   BenchmarkArmKind,
+  BenchmarkDataset,
+  BenchmarkDatasetValidator,
   BenchmarkEvaluator,
   BenchmarkManifest,
   BenchmarkManifestValidator,
@@ -16,9 +18,12 @@ import {
   FaultRule,
   FaultScript,
   FaultScriptValidator,
+  HarmonyAgentBenchPilotCatalog,
   IntegrationFixtureCatalog,
   IntegrationFixtureDescriptor,
-  IntegrationFixtureKind
+  IntegrationFixtureKind,
+  ToolScaleCase,
+  ToolScaleCaseValidator
 } from '../../Index';
 
 function arm(armId: string, kind: BenchmarkArmKind): BenchmarkArm {
@@ -82,7 +87,7 @@ function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
 export default function agentTestKitTest(): void {
   describe('AgentTestKit', () => {
     it('exportsVersionedPublicContract', 0, () => {
-      expect(AGENT_TESTKIT_VERSION).assertEqual('0.1.0');
+      expect(AGENT_TESTKIT_VERSION).assertEqual('0.2.0');
       expect(AGENT_TESTKIT_SCHEMA_VERSION).assertEqual('1');
     });
 
@@ -231,6 +236,51 @@ export default function agentTestKitTest(): void {
       expect(fixtures[6].requiresProcessRestart).assertTrue();
       expect(fixtures[6].expectedAdapterCalls).assertEqual(1);
       expect(fixtures[9].kind).assertEqual(IntegrationFixtureKind.BUDGET_EXHAUSTED);
+    });
+
+    it('publishesTwelveUniqueBenchPilotTaskKinds', 0, () => {
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      expect(BenchmarkDatasetValidator.validate(dataset).valid).assertTrue();
+      expect(dataset.cases.length).assertEqual(12);
+      expect(dataset.cases[0].caseId).assertEqual('pilot-01-read-only-retrieval');
+      expect(dataset.cases[8].requiresAuthorization).assertTrue();
+      expect(dataset.cases[10].includesFailureRecovery).assertTrue();
+    });
+
+    it('returnsAnIsolatedBenchPilotDatasetCopy', 0, () => {
+      const first: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      first.cases[0].caseId = 'mutated';
+      first.cases[0].requiredCapabilities[0] = 'mutated';
+      const second: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      expect(second.cases[0].caseId).assertEqual('pilot-01-read-only-retrieval');
+      expect(second.cases[0].requiredCapabilities[0]).assertEqual('tool.read');
+    });
+
+    it('rejectsIncompleteOrDuplicateBenchPilotCases', 0, () => {
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      dataset.cases.pop();
+      dataset.cases[1].caseId = dataset.cases[0].caseId;
+      dataset.cases[1].kind = dataset.cases[0].kind;
+      const validation = BenchmarkDatasetValidator.validate(dataset);
+      expect(validation.valid).assertFalse();
+      expect(validation.issues.length).assertEqual(3);
+    });
+
+    it('pinsTheRequiredToolRegistryScales', 0, () => {
+      const cases: ToolScaleCase[] = HarmonyAgentBenchPilotCatalog.toolScaleV1();
+      expect(ToolScaleCaseValidator.validate(cases).valid).assertTrue();
+      expect(cases.length).assertEqual(3);
+      expect(cases[0].registrySize).assertEqual(32);
+      expect(cases[1].registrySize).assertEqual(128);
+      expect(cases[2].registrySize).assertEqual(512);
+    });
+
+    it('rejectsMissingAndDuplicateToolRegistryScales', 0, () => {
+      const cases: ToolScaleCase[] = HarmonyAgentBenchPilotCatalog.toolScaleV1();
+      cases[2].registrySize = 128;
+      const validation = ToolScaleCaseValidator.validate(cases);
+      expect(validation.valid).assertFalse();
+      expect(validation.issues.length).assertEqual(2);
     });
   });
 }
