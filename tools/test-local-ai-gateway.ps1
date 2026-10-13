@@ -54,6 +54,8 @@ $summary = [ordered]@{
     credentialInjected = $true
     credentialRecorded = $false
     rawResponseRecorded = $false
+    providerErrorCode = $null
+    providerErrorType = $null
     errorCategory = $null
 }
 
@@ -114,6 +116,20 @@ try {
                         }
                     }
                 } else {
+                    $rawError = $chatResponse.Content.ReadAsStringAsync().GetAwaiter().GetResult()
+                    try {
+                        $decodedError = $rawError | ConvertFrom-Json
+                        if ($null -ne $decodedError.error) {
+                            if ($decodedError.error.code -is [string]) {
+                                $summary.providerErrorCode = $decodedError.error.code
+                            }
+                            if ($decodedError.error.type -is [string]) {
+                                $summary.providerErrorType = $decodedError.error.type
+                            }
+                        }
+                    } catch {
+                        # Error bodies remain unrecorded when they are not a recognized JSON envelope.
+                    }
                     $summary.errorCategory = 'ChatHttpStatus'
                 }
             } finally {

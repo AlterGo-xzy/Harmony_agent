@@ -65,6 +65,8 @@ M05-B 当前 13 项主机用例覆盖：类型化记录的 digest 与显式版�
 
 M05-B 的 `MemoryDeviceRecovery` 当前命名签名主 HAP 与 ohosTest HAP 已在 API 26 实际运行 3/3，通过签名验证、安装、RDB close/reopen/索引重建、stale session CAS 单胜者、损坏 fail-closed 和最终卸载检查。证据位于 `artifacts/t08-signed-device-acceptance/20261002-195000/`。
 
+T28 Local AI Gateway 的主机协议 fixture 与 Release HAR 已通过。2026-10-13 首次真实 Windows smoke 中 `/ready` 为 200，但 chat 请求由配置 Provider 返回 404，usage 为 1 次失败且 0 token；finally stop、`running=false` 与端口无监听均已核实。该结果只通过网关启动、本地认证和 readiness 子门，真实 Provider chat 与设备网络仍未通过。
+
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 
 设备侧 `StorageDeviceRecovery` 的 7 项测试覆盖：HAR 加载；PREPARED/budget close-reopen；调用中退出；已收到结果但提交前退出；已提交 receipt/实际预算；两个 stale session 竞争 lease/CAS；摘要损坏 fail-closed。2026-10-01 在 API 26 模拟器 `127.0.0.1:5555` 上实际报告 `Tests run: 7, Failure: 0, Error: 0, Pass: 7`。签名主 HAP 与 ohosTest HAP 均安装成功，测试 bundle 随后卸载并验证不存在；证据目录为 `artifacts/t07-device-acceptance/20261001-211416/`。因此 T07/M05-A 已通过本地实现与设备验收门，但尚不等于生产 Facade、具体写 adapter 或发布交接已经完成。
