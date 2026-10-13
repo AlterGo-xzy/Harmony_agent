@@ -17,8 +17,11 @@ const EXPECTED_TEXT: string = 'HARMONY_AGENT_DEVICE_OK';
 
 function parameter(name: string): string {
   const parameters: Record<string, string> = abilityDelegatorRegistry.getArguments().parameters;
-  const value: string | undefined = parameters[name];
-  return value === undefined ? '' : value;
+  const directValue: string | undefined = parameters[name];
+  if (directValue !== undefined) return directValue;
+  const literalKey: string = '-s ' + name;
+  const literalValue: string | undefined = parameters[literalKey];
+  return literalValue === undefined ? '' : literalValue;
 }
 
 function gatewayPort(): number {

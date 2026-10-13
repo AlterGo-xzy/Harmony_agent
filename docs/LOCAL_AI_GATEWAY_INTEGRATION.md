@@ -47,9 +47,9 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 仓库已准备 `tools/gateway-device-bridge.mjs` 作为设备验收专用的短生命周期桥接层。它只监听 Windows `127.0.0.1`，只接受 `/ready` 与 `/v1/chat/completions`，设备侧使用固定的非秘密测试标记；桥接进程把该标记替换为 `aigw run` 注入的真实 runtime token，再转发到 loopback 网关。桥接不记录 credential、请求正文或响应正文，并限制请求/响应大小。Node 假上游测试 2/2 已通过，覆盖 token 替换、错误标记拒绝、远程上游拒绝和大小限制。该结果只证明桥接实现，不等于 HDC `rport`、HAP 构建/签名/安装、设备调用或真实 Provider 设备验收。
 
-`test_host` 已准备 `LocalAIGatewayDevice` 两项无页面用例：HAR 加载，以及通过设备 `127.0.0.1`、HDC `rport` 和短生命周期桥接调用 `aigw/default`。后者只断言固定文本是否匹配、finish reason 与 usage 完整性，失败时不把原始模型文本写入断言。`tools/test-local-ai-gateway-device.ps1` 要求显式 `-AllowDeviceChanges`，并在 finally 中移除反向端口、停止自身桥接进程、卸载测试 bundle 和清除父进程 token。本地 file dependency 已通过锁文件与工作区 Junction 解析；两项用例已通过 `OhosTestCompileArkTS`，主 HAP 与 ohosTest HAP 均完成 unsigned 构建。主 HAP 为 8,900 bytes、SHA-256 `553777ABFB2DE7B9A1F90ED265A9101C677C7DBBD0F0AB12560CE99805F4F465`；ohosTest HAP 为 3,190,986 bytes、SHA-256 `54377B94122B124187EA3ACD4C8AD0FF9A5B47B1E7E692333408076D0C214954`。构建日志明确 `No signingConfig found`；尚未签名、安装、卸载或运行设备。
+`test_host` 的 `LocalAIGatewayDevice` 包含两项无页面用例：HAR 加载，以及通过设备 `127.0.0.1`、HDC `rport` 和短生命周期桥接调用 `aigw/default`。后者只断言固定文本、finish reason 与 usage 完整性，失败时不把原始模型文本写入断言。API 26 的 `AbilityDelegatorArgs.parameters` 可能把 `aa test -s gatewayPort <port>` 暴露为字面键 `-s gatewayPort`；设备测试先读取规范键，再兼容该字面键。修复后 unsigned 主 HAP 为 8,900 bytes、SHA-256 `C164FBABD0A7CEEC77CD3971034A08E1240161E194C1CDED7C81C44F15FDB9D4`；ohosTest HAP 为 3,191,501 bytes、SHA-256 `24659AD4C308185FDAB2761D15CBFD8B6C1F4DA54DF88192EFCD7B4071A88E73`。
 
-设备 orchestrator 在安装前检查同包名 bundle；若设备已有 `com.harmony.agent`，脚本直接失败，不覆盖或卸载既有安装。该保护不改变签名、安装和运行仍需单独授权的边界。
+设备 orchestrator 在安装前检查同包名 bundle。默认模式遇到既有 `com.harmony.agent` 会失败；显式 `-PreserveExistingMain` 只允许既有 `test_host` 且不存在 `test_host_test` 的场景，只安装并最终按模块卸载测试 HAP，保留主模块。脚本还拒绝覆盖既有设备端口转发，并用完整 HDC task pair 移除本轮反向转发。签名、安装和运行仍需单独授权。
 
 ## 当前证据边界
 
@@ -70,3 +70,7 @@ SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 
 同日 22:45 经单次明确授权执行更新后真实 smoke。执行前真实配置为 revision 12，Profile `deepseek` 完整且活动，`aigw/default` 仍映射到官方 Provider 的 `deepseek-flash`。探针取得 `/ready` 200 与 `/v1/chat/completions` 200；usage 前后差值为 1 次成功、42 input tokens、24 output tokens、66 total tokens，证明受管 runtime token、本地认证、alias 路由和官方 DeepSeek 请求链路已实际工作。模型输出在 `max_tokens=24` 处以 `finish_reason=length` 结束，固定文本未完全匹配，因此严格内容断言保持失败，未自动重试。证据不含 credential、原始响应或错误正文；网关在 finally 中停止，postcheck 确认恢复到执行前的 `running=false`。该结果仍不证明 HarmonyOS 设备 loopback、设备网络、真实取消/timeout 资源释放或 S6 benchmark。
 
 为避免下一次获准验证重复命中同一截断条件，probe 的 `MaxOutputTokens` 已改为显式范围校验参数，默认值为 128，并写入脱敏摘要。该修改本身不启动网关、不访问 Provider，也不改变已记录的 24-token 结果；后续真实请求仍需单独授权。
+
+同日 23:22 的严格主机复验以 `max_tokens=128` 取得固定内容完全匹配、`finish_reason=stop`，只产生 1 次成功请求；usage 差值为 42 input、33 output、75 total tokens。证据位于 `artifacts/t28-local-ai-gateway-connector/20261012-215538/strict-content-20261013-232245/`。
+
+同日 23:33 的 API 26 设备验收使用已安装的 `test_host` 主模块与本轮 unsigned `test_host_test`。`LocalAIGatewayDevice` 实际报告 `Tests run: 2, Failure: 0, Error: 0, Pass: 2`；桥接只收到 1 次 chat，上游状态 200，网关 usage 增加 1 次成功、42 input、41 output、83 total tokens。finally 已卸载 `test_host_test`、移除反向转发、停止桥接和网关，复核原 `test_host` 仍在。修复后源码对应的 signed 主 HAP 与 ohosTest HAP 也已重新构建并分别通过 `verify-app`、`verify-profile` 和包名匹配：主包 47,064 bytes、SHA-256 `E17AE5BAE6737527CD68782C64FDE5E910380144231FD74F30BC879243A0BB0B`；测试包 3,242,252 bytes、SHA-256 `E6334FB36E6B88221E9774419ACB5EAF4466A202F192DC1FD3467BB1ED23B269`。现有设备主包与本次签名身份不一致，signed 测试包的首次安装返回 `install sign info inconsistent`；因此真实设备行为门已通过，signed 安装门仍单独保持未通过，未擅自卸载或替换原主包。设备证据位于 `artifacts/t28-local-ai-gateway-device/20261013-233303-device-orchestration-api26-fallback/` 与 `artifacts/t28-local-ai-gateway-device/20261013-233312/`，签名构建证据位于 `artifacts/t28-local-ai-gateway-device/20261013-233440-signed-build-current-source/`。

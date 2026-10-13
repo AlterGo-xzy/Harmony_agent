@@ -13,6 +13,8 @@ param(
 
     [string]$BundleName = 'com.harmony.agent',
 
+    [switch]$PreserveExistingMain,
+
     [switch]$AllowDeviceChanges
 )
 
@@ -81,6 +83,8 @@ $bridgeStderr = Join-Path $logsDirectory 'bridge.stderr.log'
 $bridgeProcess = $null
 $reverseCreated = $false
 $installed = $false
+$testModuleInstalled = $false
+$preservedExistingMain = $false
 $testPassed = $false
 $uninstalled = $false
 $reverseRemoved = $false
@@ -101,9 +105,25 @@ try {
     $preexistingAll = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-a') `
         -LogName 'preinstall-bundle-list.log' -AllowFailure
     $escapedBundle = [regex]::Escape($BundleName)
-    if ($preexistingNamed -match $escapedBundle -or
-        $preexistingAll -match ('(?m)^\s*' + $escapedBundle + '\s*$')) {
+    $bundleExists = $preexistingNamed -match $escapedBundle -or
+        $preexistingAll -match ('(?m)^\s*' + $escapedBundle + '\s*$')
+    if ($PreserveExistingMain) {
+        if (-not $bundleExists -or
+            $preexistingNamed -notmatch '"moduleName"\s*:\s*"test_host"') {
+            throw "Bundle $BundleName must already contain the test_host main module."
+        }
+        if ($preexistingNamed -match '"moduleName"\s*:\s*"test_host_test"') {
+            throw 'The test_host_test module is already installed; refusing to replace or remove it.'
+        }
+        $preservedExistingMain = $true
+    } elseif ($bundleExists) {
         throw "Bundle $BundleName is already installed; refusing to replace or remove it."
+    }
+
+    $preexistingForwards = Invoke-HdcLogged -Arguments @('fport', 'ls') `
+        -LogName 'preinstall-forward-list.log' -AllowFailure
+    if ($preexistingForwards -match [regex]::Escape("tcp:$DevicePort")) {
+        throw "Device port tcp:$DevicePort already has a forwarding rule; refusing to replace it."
     }
 
     $bridgeArguments = @(
@@ -134,13 +154,16 @@ try {
         -LogName 'reverse-port-create.log' | Out-Null
     $reverseCreated = $true
 
-    $mainInstall = Invoke-HdcLogged -Arguments @('install', '-r', $resolvedMainHap) `
-        -LogName 'install-main.log'
-    $installed = $true
-    Assert-InstallSucceeded -Output $mainInstall -Kind 'Main'
+    if (-not $PreserveExistingMain) {
+        $mainInstall = Invoke-HdcLogged -Arguments @('install', '-r', $resolvedMainHap) `
+            -LogName 'install-main.log'
+        Assert-InstallSucceeded -Output $mainInstall -Kind 'Main'
+        $installed = $true
+    }
     $testInstall = Invoke-HdcLogged -Arguments @('install', '-r', $resolvedTestHap) `
         -LogName 'install-test.log'
     Assert-InstallSucceeded -Output $testInstall -Kind 'ohosTest'
+    $testModuleInstalled = $true
 
     $testOutput = Invoke-HdcLogged -Arguments @(
         'shell', 'aa', 'test', '-b', $BundleName, '-m', 'test_host_test',
@@ -159,11 +182,12 @@ try {
     [Environment]::SetEnvironmentVariable('HARMONY_AGENT_GATEWAY_TOKEN', $null, 'Process')
     $gatewayToken = $null
     if ($reverseCreated) {
-        Invoke-HdcLogged -Arguments @('fport', 'rm', "tcp:$DevicePort") `
+        Invoke-HdcLogged -Arguments @('fport', 'rm', "tcp:$DevicePort", "tcp:$bridgePort") `
             -LogName 'reverse-port-remove.log' -AllowFailure | Out-Null
         $forwardList = Invoke-HdcLogged -Arguments @('fport', 'ls') `
             -LogName 'reverse-port-postcheck.log' -AllowFailure
-        $reverseRemoved = $forwardList -notmatch [regex]::Escape("tcp:$DevicePort")
+        $reverseRemoved = $forwardList -notmatch (
+            [regex]::Escape("tcp:$DevicePort") + '\s+' + [regex]::Escape("tcp:$bridgePort"))
     }
     if ($null -ne $bridgeProcess) {
         $bridgeProcess.Refresh()
@@ -173,7 +197,14 @@ try {
         }
         $bridgeStopped = $bridgeProcess.HasExited
     }
-    if ($installed) {
+    if ($PreserveExistingMain -and $testModuleInstalled) {
+        Invoke-HdcLogged -Arguments @('shell', 'bm', 'uninstall', '-n', $BundleName,
+            '-m', 'test_host_test') -LogName 'uninstall-test-module.log' -AllowFailure | Out-Null
+        $preserved = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-n', $BundleName) `
+            -LogName 'post-uninstall-preserved-main.log' -AllowFailure
+        $uninstalled = $preserved -match '"moduleName"\s*:\s*"test_host"' -and
+            $preserved -notmatch '"moduleName"\s*:\s*"test_host_test"'
+    } elseif ($installed) {
         Invoke-HdcLogged -Arguments @('uninstall', $BundleName) `
             -LogName 'uninstall.log' -AllowFailure | Out-Null
         $named = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-n', $BundleName) `
@@ -196,6 +227,10 @@ $summary = [ordered]@{
     testsPassed = $testPassed
     gatewayCredentialRecorded = $false
     rawProviderResponseRecorded = $false
+    preserveExistingMain = [bool]$PreserveExistingMain
+    preservedExistingMain = $preservedExistingMain
+    mainInstalledByScript = $installed
+    testModuleInstalledByScript = $testModuleInstalled
     reverseRemoved = $reverseRemoved
     bridgeStopped = $bridgeStopped
     uninstalled = $uninstalled
