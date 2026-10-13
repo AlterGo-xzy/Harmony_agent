@@ -37,7 +37,7 @@
 | `agent_core` | 21/21 | DAG、Scheduler、Recovery、Budget；完整预算总账原子 hydration | 真实 Planner/Provider/Tool 与设备运行 |
 | `agent_runtime` | 60/60 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 真实 Planner/Provider/Tool、签名设备进程退出/重启运行 |
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
-| `agent_connectors` | 33/33 | M06 MCP adapter 13；M07 Provider connector 15；Local AI Gateway transport 5，覆盖 loopback/profile、chat、schema、认证脱敏、状态/usage 与取消 | Windows 网关两次到达真实 Provider 但均为 404/0 token；成功 completion 与设备网络仍未通过 |
+| `agent_connectors` | 33/33 | M06 MCP adapter 13；M07 Provider connector 15；Local AI Gateway transport 5，覆盖 loopback/profile、chat、schema、认证脱敏、状态/usage 与取消 | Windows 网关三次到达真实 Provider：旧模型两次 404、候选模型一次 403，合计 0 token；成功 completion 与设备网络仍未通过 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
 | `agent_testkit` | 16/16 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；Release HAR 与确定性 fixture 报告漂移检查通过 | fixture 使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
@@ -65,7 +65,7 @@ M05-B 当前 13 项主机用例覆盖：类型化记录的 digest 与显式版�
 
 M05-B 的 `MemoryDeviceRecovery` 当前命名签名主 HAP 与 ohosTest HAP 已在 API 26 实际运行 3/3，通过签名验证、安装、RDB close/reopen/索引重建、stale session CAS 单胜者、损坏 fail-closed 和最终卸载检查。证据位于 `artifacts/t08-signed-device-acceptance/20261002-195000/`。
 
-T28 Local AI Gateway 的主机协议 fixture 与 Release HAR 已通过。2026-10-13 两次逐次授权的真实 Windows smoke 中 `/ready` 均为 200，但 chat 请求均由配置 Provider 返回 404；第二次脱敏诊断确认 `error.code="404"`、`error.type` 缺失，usage 累计为 2 次失败且 0 token。两次 finally stop 均成功，第二次 `running=false` 与端口无监听已核实。静态源码核对确认 public alias 会经 LiteLLM 配置映射为 Provider 上游模型，故障现收敛到当前上游模型/账号可用性或其他 Provider 资源判断。该结果只通过网关启动、本地认证和 readiness 子门，真实 Provider 成功 completion 与设备网络仍未通过。
+T28 Local AI Gateway 的主机协议 fixture 与 Release HAR 已通过。2026-10-13 三次逐次授权的真实 Windows smoke 中 `/ready` 均为 200；原 `deepseek-v4-flash` 两次返回 404，候选 `deepseek-flash` 返回 403，脱敏 code 与 HTTP 状态一致、type 均缺失，usage 累计为 3 次失败且 0 token。三次 finally stop 均成功，最终 `running=false` 与端口无监听已核实。候选失败后官方 CLI 连续回滚暴露本机 EFS 配置的 `aigw_config_io`，最终用哈希验证的自动备份恢复 revision 6/原模型，并保留 revision 7 候选备份。故障现收敛到 Token Hub 模型目录、账号权限或 Provider 策略。该结果只通过网关启动、本地认证和 readiness 子门，真实 Provider 成功 completion 与设备网络仍未通过。
 
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 
