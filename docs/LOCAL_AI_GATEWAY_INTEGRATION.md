@@ -47,6 +47,10 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 仓库已准备 `tools/gateway-device-bridge.mjs` 作为设备验收专用的短生命周期桥接层。它只监听 Windows `127.0.0.1`，只接受 `/ready` 与 `/v1/chat/completions`，设备侧使用固定的非秘密测试标记；桥接进程把该标记替换为 `aigw run` 注入的真实 runtime token，再转发到 loopback 网关。桥接不记录 credential、请求正文或响应正文，并限制请求/响应大小。Node 假上游测试 2/2 已通过，覆盖 token 替换、错误标记拒绝、远程上游拒绝和大小限制。该结果只证明桥接实现，不等于 HDC `rport`、HAP 构建/签名/安装、设备调用或真实 Provider 设备验收。
 
+`test_host` 已准备 `LocalAIGatewayDevice` 两项无页面用例：HAR 加载，以及通过设备 `127.0.0.1`、HDC `rport` 和短生命周期桥接调用 `aigw/default`。后者只断言固定文本是否匹配、finish reason 与 usage 完整性，失败时不把原始模型文本写入断言。`tools/test-local-ai-gateway-device.ps1` 要求显式 `-AllowDeviceChanges`，并在 finally 中移除反向端口、停止自身桥接进程、卸载测试 bundle 和清除父进程 token。本地 file dependency 已通过锁文件与工作区 Junction 解析；两项用例已通过 `OhosTestCompileArkTS`，主 HAP 与 ohosTest HAP 均完成 unsigned 构建。主 HAP 为 8,900 bytes、SHA-256 `553777ABFB2DE7B9A1F90ED265A9101C677C7DBBD0F0AB12560CE99805F4F465`；ohosTest HAP 为 3,190,986 bytes、SHA-256 `54377B94122B124187EA3ACD4C8AD0FF9A5B47B1E7E692333408076D0C214954`。构建日志明确 `No signingConfig found`；尚未签名、安装、卸载或运行设备。
+
+设备 orchestrator 在安装前检查同包名 bundle；若设备已有 `com.harmony.agent`，脚本直接失败，不覆盖或卸载既有安装。该保护不改变签名、安装和运行仍需单独授权的边界。
+
 ## 当前证据边界
 
 SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 项覆盖 profile/loopback 校验、chat 请求与结构化响应、两种认证方式及脱敏、HTTP 状态映射、usage 完整性和取消委托。Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。该门使用内存 HTTP fixture，证明协议映射和安全边界，不证明 Windows 网关进程、活动 Profile、真实上游 Provider、设备网络或生产 credential store。
