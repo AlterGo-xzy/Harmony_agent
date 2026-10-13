@@ -50,3 +50,5 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 项覆盖 profile/loopback 校验、chat 请求与结构化响应、两种认证方式及脱敏、HTTP 状态映射、usage 完整性和取消委托。Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。该门使用内存 HTTP fixture，证明协议映射和安全边界，不证明 Windows 网关进程、活动 Profile、真实上游 Provider、设备网络或生产 credential store。
 
 2026-10-13 的只读查询确认已安装 `aigw.exe`，配置中已有一个完整且已选中的 Profile，并提供默认 alias `aigw/default`；Runtime 尚未加载它，状态为 `running=false`、`activeProfileId=null`，端口 4000 无监听。因此本次没有启动网关、读取 token 或发起真实 Provider 请求；这些动作需要独立运行验收。
+
+仓库提供 `tools/test-local-ai-gateway.ps1` 作为受控真实 smoke probe。它只能由 `aigw run --client ...` 注入 loopback base URL 和当前用户 runtime token；脚本拒绝工作区外输出，不打印或持久化 token，也不保存原始 Provider 响应，只记录 `/ready`、chat HTTP 状态、固定回复是否匹配、finish reason 和 token usage。运行该 probe 会启动已安装网关并发起一次真实上游模型请求，必须单独授权；完成后的进程停止也必须包含在同一授权范围内。
