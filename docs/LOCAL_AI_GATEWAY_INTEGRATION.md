@@ -45,6 +45,8 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 默认地址仅允许 `http://127.0.0.1:<port>/v1` 或 `http://localhost:<port>/v1`，并校验端口范围。它适用于与网关处于同一网络命名空间的宿主。HarmonyOS 设备或模拟器中的 `127.0.0.1` 指向设备自身，不会自动到达 Windows 主机；设备验收必须另行建立并记录明确的端口转发或受控桥接，验证 `/ready`、认证调用、取消/timeout 和清理。
 
+仓库已准备 `tools/gateway-device-bridge.mjs` 作为设备验收专用的短生命周期桥接层。它只监听 Windows `127.0.0.1`，只接受 `/ready` 与 `/v1/chat/completions`，设备侧使用固定的非秘密测试标记；桥接进程把该标记替换为 `aigw run` 注入的真实 runtime token，再转发到 loopback 网关。桥接不记录 credential、请求正文或响应正文，并限制请求/响应大小。Node 假上游测试 2/2 已通过，覆盖 token 替换、错误标记拒绝、远程上游拒绝和大小限制。该结果只证明桥接实现，不等于 HDC `rport`、HAP 构建/签名/安装、设备调用或真实 Provider 设备验收。
+
 ## 当前证据边界
 
 SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 项覆盖 profile/loopback 校验、chat 请求与结构化响应、两种认证方式及脱敏、HTTP 状态映射、usage 完整性和取消委托。Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。该门使用内存 HTTP fixture，证明协议映射和安全边界，不证明 Windows 网关进程、活动 Profile、真实上游 Provider、设备网络或生产 credential store。
@@ -62,3 +64,5 @@ SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 
 2026-10-13 16:00 的更新后只读核对确认：安装版本为 unsigned development `0.1.1-dev+b7fbc52`，活动配置已变为 revision 11，完整 Profile `deepseek` 通过 OpenAI-compatible Provider `https://api.deepseek.com` 把 `aigw/default` 映射到 `deepseek-flash`。Runtime 当时正在运行，doctor healthy、target circuit closed、连续失败为 0；该检查明确标记 `modelProbePerformed=false`、`upstreamContacted=false`，因此只是新配置预检。安装提交相对先前核对的源码只改动 `README.md` 和 `scripts/package.ps1`，没有改变 Runtime 或 `ConfigurationStore`，上段 `IOException` 回退缺口仍然存在。
 
 同日 22:45 经单次明确授权执行更新后真实 smoke。执行前真实配置为 revision 12，Profile `deepseek` 完整且活动，`aigw/default` 仍映射到官方 Provider 的 `deepseek-flash`。探针取得 `/ready` 200 与 `/v1/chat/completions` 200；usage 前后差值为 1 次成功、42 input tokens、24 output tokens、66 total tokens，证明受管 runtime token、本地认证、alias 路由和官方 DeepSeek 请求链路已实际工作。模型输出在 `max_tokens=24` 处以 `finish_reason=length` 结束，固定文本未完全匹配，因此严格内容断言保持失败，未自动重试。证据不含 credential、原始响应或错误正文；网关在 finally 中停止，postcheck 确认恢复到执行前的 `running=false`。该结果仍不证明 HarmonyOS 设备 loopback、设备网络、真实取消/timeout 资源释放或 S6 benchmark。
+
+为避免下一次获准验证重复命中同一截断条件，probe 的 `MaxOutputTokens` 已改为显式范围校验参数，默认值为 128，并写入脱敏摘要。该修改本身不启动网关、不访问 Provider，也不改变已记录的 24-token 结果；后续真实请求仍需单独授权。

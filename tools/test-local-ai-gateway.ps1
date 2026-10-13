@@ -3,7 +3,10 @@ param(
     [Parameter(Mandatory = $true)]
     [string] $OutputPath,
 
-    [string] $ExpectedText = 'HARMONY_AGENT_GATEWAY_OK'
+    [string] $ExpectedText = 'HARMONY_AGENT_GATEWAY_OK',
+
+    [ValidateRange(1, 4096)]
+    [int] $MaxOutputTokens = 128
 )
 
 Set-StrictMode -Version Latest
@@ -46,6 +49,7 @@ $summary = [ordered]@{
     finishedAt = $null
     baseUrl = $apiBaseUrl
     modelAlias = 'aigw/default'
+    requestedMaxOutputTokens = $MaxOutputTokens
     readyStatus = $null
     chatStatus = $null
     contentMatched = $false
@@ -82,7 +86,7 @@ try {
                     content = "Return exactly $ExpectedText"
                 }
             )
-            max_tokens = 24
+            max_tokens = $MaxOutputTokens
             temperature = 0
             stream = $false
         }
