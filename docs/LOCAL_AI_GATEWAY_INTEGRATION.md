@@ -53,4 +53,6 @@ SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 
 
 仓库提供 `tools/test-local-ai-gateway.ps1` 作为受控真实 smoke probe。它只能由 `aigw run --client ...` 注入 loopback base URL 和当前用户 runtime token；脚本拒绝工作区外输出，不打印或持久化 token，也不保存原始 Provider 响应或错误 message，只记录 `/ready`、chat HTTP 状态、固定回复是否匹配、finish reason、token usage，以及失败时可选的 `error.code`/`error.type`。运行该 probe 会启动已安装网关并发起一次真实上游模型请求，必须单独授权；完成后的进程停止也必须包含在同一授权范围内。
 
-首次真实 smoke 已于 2026-10-13 执行。`/ready` 返回 200，说明已安装 Runtime、受管 token 注入、本地认证及活动配置加载成功；随后 `POST /v1/chat/completions` 返回 404。网关 usage 将它记录为配置 Provider 的一次失败，输入、输出和总 token 均为 0。finally 中的 stop 返回成功，随后 `running=false` 且端口 4000 无监听。无凭据的独立路由检查中，配置上游的 `/v1/models` 与 `/v1/chat/completions` 均返回 401，证明域名和 API 路径存在；带 Provider 凭据后的 404 更可能对应模型 ID、账号模型权限或其他 Provider 资源判断。该证据没有关闭真实 Provider 门；需要在不记录原始响应的前提下取得 Provider `error.code`/`error.type`，或由网关配置所有者核对模型和账号可用性。
+两次真实 smoke 已于 2026-10-13 逐次授权执行。两次 `/ready` 均返回 200，说明已安装 Runtime、受管 token 注入、本地认证及活动配置加载成功；随后 `POST /v1/chat/completions` 均返回 404。第二次脱敏诊断只提取到 Provider `error.code="404"`，`error.type` 缺失，没有保存错误 message 或原始响应。网关 usage 累计记录 2 次失败，输入、输出和总 token 均为 0。两次 finally stop 均成功，第二次复核 `running=false` 且端口 4000 无监听。
+
+无凭据的独立路由检查中，配置上游的 `/v1/models` 与 `/v1/chat/completions` 均返回 401，证明域名和 API 路径存在。网关源码核对确认请求进入 public endpoint 后先校验 alias，再由生成的 LiteLLM 配置把 `aigw/default` 映射到 Provider 专用上游模型；public alias 不会原样发送给上游。现有脱敏证据把故障范围收敛到当前上游模型/账号可用性或其他 Provider 资源判断，但数字 `404` 本身不足以继续区分。真实 Provider 门仍未关闭；下一步需要配置所有者核对活动模型及账号可用性，任何 Profile 修改和再次计费请求都应单独授权。
