@@ -65,7 +65,7 @@ M05-B 当前 13 项主机用例覆盖：类型化记录的 digest 与显式版�
 
 M05-B 的 `MemoryDeviceRecovery` 当前命名签名主 HAP 与 ohosTest HAP 已在 API 26 实际运行 3/3，通过签名验证、安装、RDB close/reopen/索引重建、stale session CAS 单胜者、损坏 fail-closed 和最终卸载检查。证据位于 `artifacts/t08-signed-device-acceptance/20261002-195000/`。
 
-T28 Local AI Gateway 的主机协议 fixture 与 Release HAR 已通过。2026-10-13 三次逐次授权的真实 Windows smoke 中 `/ready` 均为 200；原 `deepseek-v4-flash` 两次返回 404，候选 `deepseek-flash` 返回 403，脱敏 code 与 HTTP 状态一致、type 均缺失，usage 累计为 3 次失败且 0 token。三次 finally stop 均成功，最终 `running=false` 与端口无监听已核实。候选失败后官方 CLI 连续回滚暴露本机 EFS 配置的 `aigw_config_io`，最终用哈希验证的自动备份恢复 revision 6/原模型，并保留 revision 7 候选备份。故障现收敛到 Token Hub 模型目录、账号权限或 Provider 策略。该结果只通过网关启动、本地认证和 readiness 子门，真实 Provider 成功 completion 与设备网络仍未通过。
+T28 Local AI Gateway 的主机协议 fixture 与 Release HAR 已通过。2026-10-13 三次逐次授权的真实 Windows smoke 中 `/ready` 均为 200；原 `deepseek-v4-flash` 两次返回 404，候选 `deepseek-flash` 返回 403，脱敏 code 与 HTTP 状态一致、type 均缺失，usage 累计为 3 次失败且 0 token。三次 finally stop 均成功。候选失败后官方 CLI 连续回滚暴露本机 EFS 配置的 `aigw_config_io`，最终用哈希验证的自动备份恢复 revision 6/原模型，并保留 revision 7 候选备份。随后网关更新为 unsigned development `0.1.1-dev+b7fbc52`，活动 revision 11 改用官方 DeepSeek endpoint/`deepseek-flash`；只读 doctor healthy 且未访问上游。更新只涉及打包版本支持，未修复配置写入的 `IOException` 回退缺口；新 Profile 的真实 completion 尚未执行，设备网络也仍未通过。
 
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 
