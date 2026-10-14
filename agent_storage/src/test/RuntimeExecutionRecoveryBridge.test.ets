@@ -122,15 +122,15 @@ class BridgeCollaboration implements CollaborationSelectorPort {
 }
 
 class BridgePlanner implements SemanticPlannerPort {
-  plan(request: PlanningRequest): PlanningResult {
+  async plan(request: PlanningRequest): Promise<PlanningResult> {
     return bridgePlan(request);
   }
 
-  resume(request: PlanningRequest): PlanningResult {
+  async resume(request: PlanningRequest): Promise<PlanningResult> {
     return bridgePlan(request);
   }
 
-  replan(request: PlanningRequest): PlanningResult {
+  async replan(request: PlanningRequest): Promise<PlanningResult> {
     return bridgePlan(request);
   }
 }

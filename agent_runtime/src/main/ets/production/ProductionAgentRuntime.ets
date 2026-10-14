@@ -549,7 +549,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
 
   private async submitTaskNow(submission: TaskSubmission): Promise<TaskHandle> {
     this.requireActive();
-    const accepted: OrchestrationAcceptance = this.coordinator.acceptTask(submission);
+    const accepted: OrchestrationAcceptance = await this.coordinator.acceptTask(submission);
     if (!accepted.duplicate) this.drive(accepted.handle.taskId);
     await this.flushLifecycle();
     const snapshot: AgentTaskSnapshot = this.coordinator.getSnapshot(accepted.handle.taskId);
@@ -660,7 +660,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       return this.remember(fingerprint,
         await this.rejected(response.commandId, response.taskId, 'TASK_NOT_ACTIVE'));
     }
-    const result: CoordinatorCommandResult = this.coordinator.provideClarification(response);
+    const result: CoordinatorCommandResult = await this.coordinator.provideClarification(response);
     const receipt: CommandReceipt = this.remember(fingerprint,
       this.receipt(response.commandId, response.taskId, result));
     if (receipt.accepted) this.drive(response.taskId);

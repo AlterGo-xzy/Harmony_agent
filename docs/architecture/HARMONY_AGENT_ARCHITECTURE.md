@@ -48,7 +48,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - `agent_core/` 已增加 task、step、provider 三层 Budget Ledger；预留、结算、释放和未知费用保留均为同步确定性状态转换。
 - `agent_runtime/` 已建立 `@harmony_agent/agent-runtime` HAR，并实现 M02 的确定性资格过滤、Policy Gateway、内部 grant 签发/校验/撤回和 secret 脱敏。
 - `agent_runtime/` 已实现 M09-A 的 `AgentRuntimeFacade` 接口、observer/subscription、明确标记的 headless fake runtime 与 fake consumer。
-- `agent_runtime/` 0.12.0 已用 M09-B production factory 把 M03 内部 Session/Task Analyzer/Planner/RuntimeCoordinator 包装到唯一 Promise-based `AgentRuntimeFacade`；composition 2.4 在 checkpoint/authority 写入、只读恢复源和异步 recovered factory 之外，新增 active operation 的专用 durable normalization 门，在 Facade 暴露前完成保守对账转换。内部 coordinator 与生产实现类均不从公共入口导出。
+- `agent_runtime/` 0.13.0 已用 M09-B production factory 把 M03 内部 Session/Task Analyzer/Planner/RuntimeCoordinator 包装到唯一 Promise-based `AgentRuntimeFacade`；T32 将 Semantic Planner 的 plan/resume/replan 统一为 Promise，并在 Planner 完成前阻止 workflow drive 与 Tool dispatch。composition 2.4 在 checkpoint/authority 写入、只读恢复源和异步 recovered factory 之外，提供 active operation 的专用 durable normalization 门，在 Facade 暴露前完成保守对账转换。内部 coordinator 与生产实现类均不从公共入口导出。
 - `agent_runtime/` 已实现 M04 的 Model/Role/Tool/Workflow Registry 与确定性 Model、Collaboration、Context、Tool Router；硬资格过滤先于评分，learned Model/Tool policy 可关闭并在低置信度、异常或越界输出时回退。
 - `agent_storage/` 已建立 `@harmony_agent/agent-storage` HAR：当前包含执行恢复 Repository ports、纯 ArkTS 恢复协议 Store、完整快照 integrity/migration 边界、snapshot CAS durable session、Runtime persistence bridge，以及接收宿主已打开 `RdbStore` 的 API 26 RDB backend；主机测试与 Release HAR 构建已通过。
 - `agent_storage/` 0.8.0/schema 1.2 保存版本化 opaque Runtime checkpoint 并提供任务枚举；`RuntimeExecutionRecoveryBridge` 用 backend CAS 保存 checkpoint、Policy、完整预算、operation 和 lease/fencing，并从这些 durable 记录组装严格验证的恢复 authority。T25 新增 `openForRuntimeRecovery` 与单 CAS active normalization；T26 新增只返回唯一 Facade 的 `createRdbRecoveredAgentRuntime`。主机 47/47 与 Release HAR 已通过，签名 API 26 设备验收进一步完成 seed 就绪/PID、force-stop、recover 1/1、UNKNOWN 归一化、Adapter 零重放和卸载核对。
@@ -60,7 +60,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1，证明生产 Facade composition 经真实 MCP HTTP transport 完成一次受控只读调用，并在运行后清理 bundle、转发和 fixture。
 - `agent_connectors/` 0.3.0 已完成 M06 MCP adapter、M07 Provider connector、Local AI Gateway Model transport 和 T29 MCP Production Facade composition 的本地主机/HAR 门。M07 提供通用 Model/Embedding/Remote API ports、版本/region/price snapshot、streaming、usage/cost、credential、取消/timeout 和 `UNKNOWN_OUTCOME` 边界；Local AI Gateway 具体适配固定走 loopback `/v1/chat/completions`，凭据仍由宿主 port 注入。MCP adapter/composition 18 项、M07 15 项和网关协议 5 项合并运行 38/38；当前 Release HAR 为 44,144 bytes、SHA-256 `A23F3E200F7ED11F8E1F6AE3CA235484927E3965D59D7AACD70DAEC61A05B701`。严格主机固定内容断言与 API 26 `LocalAIGatewayDevice` 2/2 已通过，设备侧仅使用非秘密测试标记，真实 runtime token 只存在于受管 Windows 桥接进程。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库仍没有真实语义 Planner、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 或离线 Router 工程；Runtime 0.12.0 与 Storage 0.8.0 已接通 Promise lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、无在途和 active operation 的启动恢复，以及具体 RDB composition。Local AI Gateway HTTP transport 已实现；严格主机固定内容断言通过，signed 主/ohosTest HAP 已在 API 26 安装，经 HDC 反向转发和受控桥接调用官方 Provider 的 `LocalAIGatewayDevice` 2/2 通过，并完成 bundle、转发和网关清理。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
+- 当前仓库仍没有真实语义 Planner、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 或离线 Router 工程；Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、无在途和 active operation 的启动恢复，以及具体 RDB composition。Local AI Gateway HTTP transport 已实现；严格主机固定内容断言通过，signed 主/ohosTest HAP 已在 API 26 安装，经 HDC 反向转发和受控桥接调用官方 Provider 的 `LocalAIGatewayDevice` 2/2 通过，并完成 bundle、转发和网关清理。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
@@ -210,6 +210,8 @@ v1 baseline 使用确定性规则：默认 `SINGLE`；只有可独立分解、�
 MasRouter 进入时只能替换该策略实现，不能修改角色注册表、预算上限或权限边界。低置信度、超时、checkpoint 不兼容统一回退到 single-agent。
 
 ### 5.4 Semantic Planner 与 Typed Workflow
+
+Planner port 的 `plan`、`resume` 与 `replan` 均为异步 Promise 边界。生产 Facade 的同实例 FIFO 会等待该 Promise 完成，之后才能推进 Scheduler 或调用 Adapter；Promise 拒绝以稳定的 `plannerInvocationFailed` 事件和快照闭合，Provider/transport 异常文本不进入公共证据。该边界允许后续 Provider-backed Planner 接入，同时保持 `AgentRuntimeFacade` 为唯一任务控制入口。
 
 Planner 输出不可执行的声明式图。每个步骤至少声明：
 

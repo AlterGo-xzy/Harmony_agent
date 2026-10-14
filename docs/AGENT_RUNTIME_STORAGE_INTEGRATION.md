@@ -1,6 +1,6 @@
 # Agent Runtime 与执行恢复存储集成边界
 
-本文说明 `@harmony_agent/agent-runtime` 0.12.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.8.0 的 M05-A 执行恢复存储对齐。T25 已接入 active operation 的原子恢复归一化；T26 新增具体 RDB composition 与两阶段设备 fixture，本文同时记录其本地验证范围和后续设备运行门。
+本文说明 `@harmony_agent/agent-runtime` 0.13.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.8.0 的 M05-A 执行恢复存储对齐。T25 已接入 active operation 的原子恢复归一化；T26 新增具体 RDB composition 与两阶段设备 fixture；T32 将 Semantic Planner 的 plan/resume/replan 纳入同一 Promise/FIFO 生命周期。本文同时记录其验证范围。
 
 ## 1. 控制入口与生命周期
 
@@ -87,7 +87,7 @@ Tool step 通过 Policy Gateway 后，Runtime 为 `StepDispatchRequest` 生成 `
 
 `AgentRuntimeFacade`、`ProductionRuntimePersistencePort` 和 completion sink 均返回 `Promise`。生产组合层暂存同步协调器产生的 checkpoint，逐个等待普通 checkpoint 保存；对 dispatch 则把最终 checkpoint、expected previous version 与最小 `DispatchPersistenceContext` 一起交给异步 `beforeDispatch`。只有该 Promise 接受后才调用 Adapter。主机测试通过人为挂起 Promise 证明等待期间 Adapter 调用数保持 0，释放后才发生 dispatch；持久化拒绝或异常会让 Facade fail-closed。Observer 事件也只在对应 checkpoint durable 后发送。
 
-0.12.0/production composition 2.4 保留同一 Facade 实例的 FIFO 和 checkpoint authority 参数：`saveCheckpoint` 与 `beforeDispatch` 都收到同状态深拷贝。前者只允许保存 checkpoint、budget 图及 version 1 pending policy request，不能准备或回退 operation；后者才允许把 version 3 Policy、reservation、scope 与新 operation 作为单 CAS 写前准备。`normalizeRecoveredOperation` 只接受协调器产生的下一版本、无 active invocation 且处于 `WAITING_RECONCILIATION` 的 checkpoint。任务提交、读取、控制、授权、澄清、对账、订阅、shutdown 和异步 Adapter completion 继续按调用顺序执行。
+0.13.0/production composition 2.4 保留同一 Facade 实例的 FIFO 和 checkpoint authority 参数：`saveCheckpoint` 与 `beforeDispatch` 都收到同状态深拷贝。前者只允许保存 checkpoint、budget 图及 version 1 pending policy request，不能准备或回退 operation；后者才允许把 version 3 Policy、reservation、scope 与新 operation 作为单 CAS 写前准备。`normalizeRecoveredOperation` 只接受协调器产生的下一版本、无 active invocation 且处于 `WAITING_RECONCILIATION` 的 checkpoint。任务提交、异步 Planner、读取、控制、授权、澄清、对账、订阅、shutdown 和异步 Adapter completion 继续按调用顺序执行。
 
 `agent_storage` 0.8.0 的 `RuntimeExecutionRecoveryBridge` 已完成上述写入、只读恢复和 active normalization 映射：普通 checkpoint 可保存 version 1 pending policy 与初始预算图；Tool dispatch 以一次 CAS 写入 checkpoint、version 3 Policy/Grant、完整 scope/reservation、operation 和 lease/fencing，再允许 Adapter 调用。Adapter 拒绝会原子转为已确认未执行的 `PREPARED` 并释放 lease；明确 outcome 需要 `RuntimeOutcomeAccountingPort` 提供实际预算；未知 outcome 保持对账状态；确认型 reconciliation 需要 `RuntimeReconciliationSettlementPort` 提供具体 outcome 与预算。缺少宿主证据时桥接拒绝写入，不从报告文本推断结果或费用。
 

@@ -27,9 +27,9 @@ export interface CollaborationSelectorPort {
 }
 
 export interface SemanticPlannerPort {
-  plan(request: PlanningRequest): PlanningResult;
-  resume(request: PlanningRequest, response: ClarificationResponse): PlanningResult;
-  replan(request: PlanningRequest): PlanningResult;
+  plan(request: PlanningRequest): Promise<PlanningResult>;
+  resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult>;
+  replan(request: PlanningRequest): Promise<PlanningResult>;
 }
 
 export interface ToolInvocationPreparerPort {

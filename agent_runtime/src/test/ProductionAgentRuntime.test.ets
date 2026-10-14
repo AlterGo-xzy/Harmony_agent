@@ -100,8 +100,14 @@ class FixtureCollaboration implements CollaborationSelectorPort {
 
 class FixturePlanner implements SemanticPlannerPort {
   kind: ProductionPlanKind = ProductionPlanKind.BASIC;
+  gate?: FixtureAsyncGate;
+  rejectPlan: boolean = false;
+  rejectResume: boolean = false;
 
-  plan(request: PlanningRequest): PlanningResult {
+  async plan(request: PlanningRequest): Promise<PlanningResult> {
+    const currentGate: FixtureAsyncGate | undefined = this.gate;
+    if (currentGate !== undefined) await currentGate.wait();
+    if (this.rejectPlan) throw new Error('fixture provider secret must not escape');
     if (this.kind === ProductionPlanKind.CLARIFY) {
       const result: PlanningResult = new PlanningResult();
       result.status = PlanningStatus.CLARIFICATION_REQUIRED;
@@ -120,11 +126,12 @@ class FixturePlanner implements SemanticPlannerPort {
     return readyPlan(request, this.kind);
   }
 
-  resume(request: PlanningRequest, response: ClarificationResponse): PlanningResult {
+  async resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult> {
+    if (this.rejectResume) throw new Error('fixture resume failure');
     return readyPlan(request, ProductionPlanKind.BASIC);
   }
 
-  replan(request: PlanningRequest): PlanningResult {
+  async replan(request: PlanningRequest): Promise<PlanningResult> {
     return readyPlan(request, this.kind);
   }
 }
@@ -601,6 +608,46 @@ export default function productionAgentRuntimeTest(): void {
         fixture.journal.values.indexOf('adapterDispatch')).assertTrue();
     });
 
+    it('doesNotDispatchUntilAsyncPlannerResolves', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      const gate: FixtureAsyncGate = new FixtureAsyncGate();
+      fixture.planner.gate = gate;
+      let settled: boolean = false;
+      const pending: Promise<TaskHandle> = fixture.runtime.submitTask(
+        submission('production-planner-async-gate'));
+      const observed: Promise<TaskHandle> = pending.then((handle: TaskHandle): TaskHandle => {
+        settled = true;
+        return handle;
+      });
+      for (let i: number = 0; i < 20 && !gate.entered; i++) await Promise.resolve();
+      expect(gate.entered).assertTrue();
+      expect(settled).assertFalse();
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+
+      gate.release();
+      await observed;
+      expect(settled).assertTrue();
+      expect(fixture.factory.adapter.requests.length).assertEqual(1);
+    });
+
+    it('failsClosedAndPersistsStableEvidenceWhenPlannerRejects', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      fixture.planner.rejectPlan = true;
+      const handle: TaskHandle = await fixture.runtime.submitTask(
+        submission('production-planner-reject'));
+      const snapshot: AgentTaskSnapshot = await fixture.runtime.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(snapshot.resultJson).assertEqual('{"reason":"plannerInvocationFailed"}');
+      expect(snapshot.resultJson.indexOf('secret')).assertEqual(-1);
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+      expect(fixture.persistence.checkpoints.length > 0).assertTrue();
+      const checkpoint: RuntimeTaskRecoveryCheckpoint =
+        fixture.persistence.checkpoints[fixture.persistence.checkpoints.length - 1];
+      expect(checkpoint.snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(checkpoint.events[checkpoint.events.length - 1].payloadJson)
+        .assertEqual('{"reason":"plannerInvocationFailed"}');
+    });
+
     it('serializesOverlappingFacadeCommandsBehindDurableLifecycle', 0, async () => {
       const fixture: ProductionFixture = new ProductionFixture();
       const gate: FixtureAsyncGate = new FixtureAsyncGate();
@@ -814,6 +861,29 @@ export default function productionAgentRuntimeTest(): void {
       response.respondedAtMs = 1000;
       expect((await fixture.runtime.provideClarification(response)).accepted).assertTrue();
       expect(fixture.factory.adapter.requests.length).assertEqual(1);
+    });
+
+    it('failsClosedWhenAsyncClarificationResumeRejects', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture(ProductionPlanKind.CLARIFY);
+      const handle: TaskHandle = await fixture.runtime.submitTask(
+        submission('production-clarification-reject'));
+      const observer: FixtureObserver = new FixtureObserver();
+      await subscribe(fixture.runtime, handle.taskId, observer);
+      fixture.planner.rejectResume = true;
+      const response: ClarificationResponse = new ClarificationResponse();
+      response.commandId = 'clarify-reject-1';
+      response.clarificationId = observer.clarifications[0].clarificationId;
+      response.taskId = handle.taskId;
+      response.answerJson = '{"target":"team"}';
+      response.respondedAt = '1970-01-01T00:00:01.000Z';
+      response.respondedAtMs = 1000;
+      const receipt = await fixture.runtime.provideClarification(response);
+      expect(receipt.accepted).assertFalse();
+      expect(receipt.rejectionCode).assertEqual('PLANNER_INVOCATION_FAILED');
+      const snapshot: AgentTaskSnapshot = await fixture.runtime.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(snapshot.resultJson).assertEqual('{"reason":"plannerInvocationFailed"}');
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
     });
 
     it('persistsUnknownOutcomeAndReconciliationBeforeCompletion', 0, async () => {

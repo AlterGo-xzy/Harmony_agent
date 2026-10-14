@@ -255,7 +255,7 @@ export class RuntimeCoordinator {
     this.policy = new PolicyGateway(config.policyVersion, config.grantTtlMs, this.ledger);
   }
 
-  acceptTask(submission: TaskSubmission): OrchestrationAcceptance {
+  async acceptTask(submission: TaskSubmission): Promise<OrchestrationAcceptance> {
     const accepted: SessionAcceptance = this.sessions.accept(submission);
     const existing: number = this.findTask(accepted.handle.taskId);
     if (existing >= 0) {
@@ -274,7 +274,7 @@ export class RuntimeCoordinator {
     this.tasks.push(record);
     this.ledger.registerTask(record.envelope.taskId, record.envelope.executionBudget);
     this.emit(record, AgentRuntimeEventType.TASK_ACCEPTED, '{"status":"received"}');
-    this.beginPlanning(record, false);
+    await this.beginPlanning(record, false);
     return this.acceptance(record, false);
   }
 
@@ -512,7 +512,7 @@ export class RuntimeCoordinator {
     return this.dispatch(record, this.requireStep(record, pending.stepId), invocation, pending, result.grant);
   }
 
-  provideClarification(response: ClarificationResponse): CoordinatorCommandResult {
+  async provideClarification(response: ClarificationResponse): Promise<CoordinatorCommandResult> {
     if (!ContractValidator.validateClarificationResponse(response).valid) {
       throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT, 'invalid ClarificationResponse');
     }
@@ -534,11 +534,17 @@ export class RuntimeCoordinator {
     if (!this.consumePlannerCall(record, false)) {
       return this.command(false, 'PLANNER_BUDGET_EXHAUSTED', record);
     }
-    record.pendingClarification = undefined;
     const isolatedResponse: ClarificationResponse =
       ContractCodec.parseClarificationResponse(ContractCodec.stringify(response));
-    const planned: PlanningResult = this.planner.resume(this.copyPlanningRequest(record.planningRequest),
-      isolatedResponse);
+    let planned: PlanningResult;
+    try {
+      planned = await this.planner.resume(this.copyPlanningRequest(record.planningRequest), isolatedResponse);
+    } catch (error) {
+      record.pendingClarification = undefined;
+      this.failPlannerInvocation(record);
+      return this.command(false, 'PLANNER_INVOCATION_FAILED', record);
+    }
+    record.pendingClarification = undefined;
     this.applyPlanningResult(record, planned);
     return this.command(true, 'CLARIFICATION_APPLIED', record);
   }
@@ -583,7 +589,7 @@ export class RuntimeCoordinator {
     return this.command(true, 'RECONCILED', record);
   }
 
-  requestReplan(taskId: string, affectedStepIds: string[]): CoordinatorCommandResult {
+  async requestReplan(taskId: string, affectedStepIds: string[]): Promise<CoordinatorCommandResult> {
     const record: RuntimeTaskRecord = this.requireTask(taskId);
     if (record.recoveryBlocked) return this.command(false, 'RECOVERY_AUTHORITY_REQUIRED', record);
     const current: WorkflowGraph | undefined = record.workflow;
@@ -602,7 +608,13 @@ export class RuntimeCoordinator {
     record.planningRequest.previousWorkflow =
       ContractCodec.parseWorkflowGraph(ContractCodec.stringify(current));
     record.planningRequest.affectedStepIds = affected.slice();
-    const planned: PlanningResult = this.planner.replan(this.copyPlanningRequest(record.planningRequest));
+    let planned: PlanningResult;
+    try {
+      planned = await this.planner.replan(this.copyPlanningRequest(record.planningRequest));
+    } catch (error) {
+      this.failPlannerInvocation(record);
+      return this.command(false, 'PLANNER_INVOCATION_FAILED', record);
+    }
     if (planned.status !== PlanningStatus.READY || planned.workflow === undefined) {
       return this.command(false, 'INVALID_REPLAN_RESULT', record);
     }
@@ -820,7 +832,7 @@ export class RuntimeCoordinator {
     return value === undefined ? undefined : copyClarification(value);
   }
 
-  private beginPlanning(record: RuntimeTaskRecord, replan: boolean): void {
+  private async beginPlanning(record: RuntimeTaskRecord, replan: boolean): Promise<void> {
     if (!this.consumePlannerCall(record, replan)) {
       this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
         '{"reason":"plannerBudgetExhausted"}');
@@ -839,8 +851,19 @@ export class RuntimeCoordinator {
     record.planningRequest.frame = copyFrame(record.frame);
     record.planningRequest.collaborationMode = record.collaborationMode;
     const isolated: PlanningRequest = this.copyPlanningRequest(record.planningRequest);
-    const result: PlanningResult = replan ? this.planner.replan(isolated) : this.planner.plan(isolated);
+    let result: PlanningResult;
+    try {
+      result = replan ? await this.planner.replan(isolated) : await this.planner.plan(isolated);
+    } catch (error) {
+      this.failPlannerInvocation(record);
+      return;
+    }
     this.applyPlanningResult(record, result);
+  }
+
+  private failPlannerInvocation(record: RuntimeTaskRecord): void {
+    this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+      '{"reason":"plannerInvocationFailed"}');
   }
 
   private applyPlanningResult(record: RuntimeTaskRecord, result: PlanningResult): void {

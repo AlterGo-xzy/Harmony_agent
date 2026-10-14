@@ -112,15 +112,15 @@ function devicePlan(request: PlanningRequest): PlanningResult {
 }
 
 class DeviceRuntimePlanner implements SemanticPlannerPort {
-  plan(request: PlanningRequest): PlanningResult {
+  async plan(request: PlanningRequest): Promise<PlanningResult> {
     return devicePlan(request);
   }
 
-  resume(request: PlanningRequest): PlanningResult {
+  async resume(request: PlanningRequest): Promise<PlanningResult> {
     return devicePlan(request);
   }
 
-  replan(request: PlanningRequest): PlanningResult {
+  async replan(request: PlanningRequest): Promise<PlanningResult> {
     return devicePlan(request);
   }
 }

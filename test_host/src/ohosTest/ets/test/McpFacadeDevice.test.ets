@@ -122,15 +122,15 @@ class DevicePlanner implements SemanticPlannerPort {
     this.registry = registry;
   }
 
-  plan(request: PlanningRequest): PlanningResult {
+  async plan(request: PlanningRequest): Promise<PlanningResult> {
     return this.ready(request);
   }
 
-  resume(request: PlanningRequest, _response: ClarificationResponse): PlanningResult {
+  async resume(request: PlanningRequest, _response: ClarificationResponse): Promise<PlanningResult> {
     return this.ready(request);
   }
 
-  replan(request: PlanningRequest): PlanningResult {
+  async replan(request: PlanningRequest): Promise<PlanningResult> {
     return this.ready(request);
   }
 

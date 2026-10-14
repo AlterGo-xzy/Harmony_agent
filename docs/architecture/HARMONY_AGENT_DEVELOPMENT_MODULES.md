@@ -213,7 +213,7 @@ T01 已完成基础契约；T03/T04 又完成了 `TaskSubmission`、`Authorizati
 
 - Session Controller；
 - Task Analyzer；
-- Semantic Planner port；
+- Semantic Planner port；plan/resume/replan 使用 Promise，Facade 串行队列在规划完成前禁止 workflow drive 和 Tool dispatch；
 - plan sketch -> collaboration -> full plan 两阶段流程；
 - 内部 Runtime application service 与 composition API；
 - `TaskSubmission -> TaskEnvelope` 规范化、重复提交去重和 ID 分配；
@@ -422,6 +422,8 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 当前实施状态（T24，本地主机与未签名构建门已通过）：`@harmony_agent/agent-runtime` 0.11.0/composition 2.3 已完成 Promise-based Facade、同实例 FIFO、checkpoint 1.1 严格校验、锁定式协调器重建、recovery authority hydration、checkpoint/authority 同状态写入，以及无在途 operation 的启动恢复与 event replay；`@harmony_agent/agent-core` 0.2.0 提供按 taskId 防御性导出的完整 scope/reservation 图；`@harmony_agent/agent-storage` 0.6.0/schema 1.2 已提供 opaque checkpoint、任务枚举、单 CAS transaction、Runtime bridge 和 durable authority 回读组装。core 21/21、runtime 59/59、storage 45/45 与对应 Release HAR 已通过。active operation 的 durable 状态归一化、lease 接管、RDB composition 和跨进程设备验收仍未完成；当前存储设备套件只完成 unsigned HAP 编译。
 
 当前实施状态（T25，本地主机与 HAR 门已通过）：`@harmony_agent/agent-runtime` 0.12.0/composition 2.4 与 `@harmony_agent/agent-storage` 0.7.0 新增 active operation 的专用恢复事务。恢复 factory 在暴露唯一 Facade 前读取旧 checkpoint/authority，协调器生成 `WAITING_RECONCILIATION` checkpoint；bridge 通过一次 backend CAS 接管 fencing、把 operation 与预算保守规范化为 `UNKNOWN_OUTCOME`、释放 recovery lease 并保存下一版本 checkpoint。CAS 冲突或绑定错误继续 fail-closed，Adapter 不会被重放。runtime 60/60、storage 47/47 与两个 Release HAR 已通过；RDB composition 和设备跨进程验收仍未完成。
+
+当前实施状态（T32，本地主机与 HAR 门已通过）：`@harmony_agent/agent-runtime` 0.13.0 将 `SemanticPlannerPort.plan/resume/replan` 统一为 Promise。内部协调器等待 Planner 返回后才应用 typed workflow，生产 Facade 随后才可 drive/dispatch；拒绝路径只发布稳定的 `plannerInvocationFailed`，不把底层异常文本写入公共 snapshot/event。主机 63/63 与 Release HAR 已通过；真实语义 Planner、Provider-backed typed workflow 生成和 S6 system run 仍待后续。
 
 ### M10：TestKit、故障注入与 harmony_agent Bench
 
