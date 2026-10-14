@@ -22,6 +22,12 @@ import {
   IntegrationFixtureCatalog,
   IntegrationFixtureDescriptor,
   IntegrationFixtureKind,
+  SystemBenchmarkEnvironment,
+  SystemBenchmarkEvidence,
+  SystemBenchmarkMeasurementMode,
+  SystemBenchmarkRecord,
+  SystemBenchmarkRun,
+  SystemBenchmarkRunValidator,
   ToolScaleCase,
   ToolScaleCaseValidator
 } from '../../Index';
@@ -74,6 +80,72 @@ function sample(caseId: string, runId: string, armId: string, latencyMs: number)
   return value;
 }
 
+function fullDigest(character: string): string {
+  let value: string = 'sha256:';
+  for (let index: number = 0; index < 64; index++) value += character;
+  return value;
+}
+
+function systemManifest(): BenchmarkManifest {
+  const value: BenchmarkManifest = manifest();
+  value.datasetDigest = fullDigest('a');
+  value.modelId = 'aigw/default';
+  value.modelVersion = 'deepseek-pinned-2026-10-14';
+  value.providerId = 'local-ai-gateway';
+  value.region = 'local-windows';
+  value.priceSnapshotId = 'deepseek-price-2026-10-14';
+  value.priceSnapshotDigest = fullDigest('b');
+  return value;
+}
+
+function systemEvidence(taskId: string): SystemBenchmarkEvidence {
+  const value: SystemBenchmarkEvidence = new SystemBenchmarkEvidence();
+  value.taskId = taskId;
+  value.taskSnapshotDigest = fullDigest('1');
+  value.eventTraceDigest = fullDigest('2');
+  value.providerUsageDigest = fullDigest('3');
+  value.resultDigest = fullDigest('4');
+  value.qualityEvidenceDigest = fullDigest('5');
+  value.usedAgentRuntimeFacade = true;
+  value.providerRequestCount = 1;
+  return value;
+}
+
+function systemRun(valueManifest: BenchmarkManifest, dataset: BenchmarkDataset): SystemBenchmarkRun {
+  const run: SystemBenchmarkRun = new SystemBenchmarkRun();
+  run.executionId = 'system-run-20261014-1';
+  run.measurementMode = SystemBenchmarkMeasurementMode.REAL_PROVIDER_RUNTIME;
+  run.startedAt = '2026-10-14T14:00:00+08:00';
+  run.completedAt = '2026-10-14T14:30:00+08:00';
+  run.performanceComparable = true;
+  run.redactionPolicyVersion = 'bench-redaction-1';
+  run.qualityJudgeId = 'pinned-rubric';
+  run.qualityJudgeVersion = '1';
+  const environment: SystemBenchmarkEnvironment = new SystemBenchmarkEnvironment();
+  environment.sourceCommit = '1234567890abcdef1234567890abcdef12345678';
+  environment.runtimeVersion = '0.12.0';
+  environment.compositionVersion = '2.4';
+  environment.harnessVersion = '1';
+  environment.sdkVersion = '26.0.0';
+  environment.osVersion = 'OpenHarmony-7.0.0';
+  environment.deviceClass = 'api26-emulator';
+  environment.measurementClock = 'system-monotonic-ms';
+  environment.environmentDigest = fullDigest('c');
+  run.environment = environment;
+  for (let caseIndex: number = 0; caseIndex < dataset.cases.length; caseIndex++) {
+    for (let armIndex: number = 0; armIndex < valueManifest.arms.length; armIndex++) {
+      const armValue: BenchmarkArm = valueManifest.arms[armIndex];
+      const record: SystemBenchmarkRecord = new SystemBenchmarkRecord();
+      record.sample = sample(dataset.cases[caseIndex].caseId, run.executionId, armValue.armId,
+        100 + caseIndex + armIndex);
+      record.sample.agentActivations = armValue.kind === BenchmarkArmKind.MULTI_AGENT ? 2 : 1;
+      record.evidence = systemEvidence('task-' + caseIndex.toString() + '-' + armIndex.toString());
+      run.records.push(record);
+    }
+  }
+  return run;
+}
+
 function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
   const value: FaultRule = new FaultRule();
   value.ruleId = ruleId;
@@ -87,7 +159,7 @@ function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
 export default function agentTestKitTest(): void {
   describe('AgentTestKit', () => {
     it('exportsVersionedPublicContract', 0, () => {
-      expect(AGENT_TESTKIT_VERSION).assertEqual('0.2.0');
+      expect(AGENT_TESTKIT_VERSION).assertEqual('0.3.0');
       expect(AGENT_TESTKIT_SCHEMA_VERSION).assertEqual('1');
     });
 
@@ -281,6 +353,58 @@ export default function agentTestKitTest(): void {
       const validation = ToolScaleCaseValidator.validate(cases);
       expect(validation.valid).assertFalse();
       expect(validation.issues.length).assertEqual(2);
+    });
+
+    it('acceptsACompleteRealProviderFacadeSystemBenchRun', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      expect(SystemBenchmarkRunValidator.validate(valueManifest, dataset, run).valid).assertTrue();
+    });
+
+    it('rejectsFixtureIdentityAndVirtualClockAsSystemEvidence', 0, () => {
+      const valueManifest: BenchmarkManifest = manifest();
+      valueManifest.datasetDigest = fullDigest('a');
+      valueManifest.priceSnapshotDigest = fullDigest('b');
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.environment.measurementClock = 'deterministic-virtual-zero';
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      expect(validation.issues.join('|').includes('production candidate')).assertTrue();
+      expect(validation.issues.join('|').includes('real monotonic clock')).assertTrue();
+    });
+
+    it('requiresExactlyOneRecordForEveryCaseAndArm', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.records.pop();
+      run.records.push(run.records[0]);
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      expect(validation.issues.join('|').includes('caseId and armId must be unique')).assertTrue();
+      expect(validation.issues.join('|').includes('missing record')).assertTrue();
+    });
+
+    it('requiresFacadeProviderUsageAndDigestOnlyEvidence', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.records[0].evidence.usedAgentRuntimeFacade = false;
+      run.records[0].evidence.providerRequestCount = 0;
+      run.records[0].evidence.eventTraceDigest = '';
+      run.records[0].sample.inputTokens = 0;
+      run.records[0].sample.outputTokens = 0;
+      run.records[0].sample.latencyMs = 0;
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      const issues: string = validation.issues.join('|');
+      expect(issues.includes('AgentRuntimeFacade')).assertTrue();
+      expect(issues.includes('providerRequestCount')).assertTrue();
+      expect(issues.includes('eventTraceDigest')).assertTrue();
+      expect(issues.includes('provider token usage')).assertTrue();
+      expect(issues.includes('real clock')).assertTrue();
     });
   });
 }

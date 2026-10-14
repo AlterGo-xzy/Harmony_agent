@@ -324,7 +324,7 @@ M00 完成后可以设计并实现纯 adapter 映射；只有 M02 grant/policy �
 
 当前实施状态（T09/T29，本地主机门已通过）：`@harmony_agent/agent-connectors` 提供 MCP Provider registry、受控只读 Tool allowlist、规范 JSON/schema digest、绑定 Profile 版本、Profile 内容与 schema 的 tool identity、`McpClientManager.callTool` 端口、M02 grant verifier 与一次性 `McpInvocationPolicy` ticket、MCP outcome/error taxonomy 映射，以及实现 M03 `StepDispatchPort` 的异步 adapter。T29 新增生产组合工厂，在暴露唯一 `AgentRuntimeFacade` 前完成 catalog discovery、临时 Registry 校验、共享空 Registry 发布、Strong Single selector 与私有 completion sink 接线；空/部分失败 catalog、非法 entry 和非空目标 Registry fail-closed。MCP adapter 及 composition 18/18、合并 connector 38/38 与 Release HAR 构建通过；既有 MCP client 26/26 证据单独保留。真实远端 MCP、设备网络和 S2 端到端任务闭环仍不由本地主机门证明。
 
-T30 已把生产组合工厂、显式授权和真实 `McpClientManager` HTTP transport 接入 `test_host` 的独立 `McpFacadeDevice` class，并以 fixture stats 约束一次 Tool 调用。当前只通过 unsigned ohosTest 编译，尚未安装或运行设备，因此该项仍是 S2 待关闭门。
+T30 已把生产组合工厂、显式授权和真实 `McpClientManager` HTTP transport 接入 `test_host` 的独立 `McpFacadeDevice` class，并以 fixture stats 约束一次 Tool 调用。当前源码的 unsigned 主/ohosTest HAP 已在 API 26 安装，`McpFacadeDevice` 通过 1/1，并完成 bundle、HDC 转发和 fixture 清理；S2 的受控只读 MCP Facade 设备闭环已关闭。该门仍不证明发布签名、生产 Planner/credential store 或第三方远端 MCP 兼容性。
 
 ### M07：LLM 与 Remote API Connectors
 
@@ -445,7 +445,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 0.2.0 与 S6 fixture baseline，本地主机与 HAR 门已通过）：除十二类确定性故障和十个共用集成 fixture 外，公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case，并校验缺失、重复和 copy isolation。离线目录保存固定 model/provider/region/价格/schema/date/dataset/router policy 的双 arm manifest、输入 digest 和无第三方依赖的确定性报告生成器。Hypium 16/16 通过；Release HAR 为 20,748 bytes、SHA-256 `01F119AF48D76049379EDDDCB662A80E170C8491EADC8C6A8B3A35725E5D6EFA`；fixture 报告 SHA-256 为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。TestKit 不提交或控制任务，`AgentRuntimeFacade` 仍是唯一入口。fixture 使用零成本 Provider 和虚拟零时钟并标记为不可做性能比较；真实 Provider/system Bench 仍是 S6 的剩余验收门。
+当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：除十二类确定性故障和十个共用集成 fixture 外，公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case，并校验缺失、重复和 copy isolation。离线目录保存固定 model/provider/region/价格/schema/date/dataset/router policy 的双 arm manifest、输入 digest 和无第三方依赖的确定性报告生成器。0.3.0 新增 `SystemBenchmarkRunValidator`，要求完整 source commit、runtime/composition/harness、SDK/OS/device、真实单调时钟、生产候选 Provider/model/region/价格、12×2 case/arm 完整覆盖，以及每个样本的 Facade、Provider usage、token/延迟/Agent 激活数和五类脱敏 digest。Hypium 20/20 通过；当前 Release HAR 为 27,670 bytes、SHA-256 `D4C84E50A0105CFF58EBF01A642E1C06B862A2B3C729F43736420A095E234947`；fixture 报告 SHA-256 仍为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。TestKit 不提交、控制或恢复任务，`AgentRuntimeFacade` 仍是唯一入口。fixture 使用零成本 Provider 和虚拟零时钟并标记为不可做性能比较；仓库仍无生产语义 Planner，真实 Provider/system Bench 仍是 S6 的剩余验收门。
 
 ### M11：Artifact、Parity 与策略发布链
 
@@ -562,7 +562,7 @@ M04 可在 M00 后设计，在 M02 后实现 deterministic baseline。M11 在 M0
 | S3 | Persistent Execution Recovery | M05-A | 崩溃点、预算恢复、对账和多执行者防重 |
 | S4 | Production Headless Agent SDK | M09-B | 唯一 Facade、生产端口、持久化恢复与已验收 adapter |
 | S5 | 首个 Native Tool | M08 | 权限拒绝/允许和设备结果；写能力依赖 M05-A |
-| S6 | harmony_agent Bench Pilot | M10 | baseline 可重复报告 |
+| S6 | harmony_agent Bench Pilot | M10 | baseline 可重复报告、真实 Provider/system 证据合同与实际双 arm system run |
 | S7 | 策略供应链 | M11 | shadow/canary/rollback 演练 |
 | S8 | Model Routing | M12 | MTRouter head-to-head |
 | S9 | Collaboration Routing | M13 | single vs multi head-to-head |

@@ -38,3 +38,11 @@ export {
   ToolScaleCase,
   ToolScaleCaseValidator
 } from './src/main/ets/testkit/BenchPilot';
+export {
+  SystemBenchmarkMeasurementMode,
+  SystemBenchmarkEnvironment,
+  SystemBenchmarkEvidence,
+  SystemBenchmarkRecord,
+  SystemBenchmarkRun,
+  SystemBenchmarkRunValidator
+} from './src/main/ets/testkit/SystemBench';

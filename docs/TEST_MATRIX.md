@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-13。M07 Provider Connector 已增加 Local AI Gateway 主机协议适配，并以一次 HTTP 200/66-token 调用证明 Windows 网关到官方 DeepSeek 的真实路由；严格内容断言仍待通过。M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.2.0 已完成主机/HAR 门和 S6 fixture baseline。
+最后更新：2026-10-14。M07 Provider Connector 与 T30 MCP Facade 已完成各自记录的真实设备门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.3.0 已完成主机/HAR 门、S6 fixture baseline 和真实 system run 的 fail-closed 证据合同，真实 Provider/system Bench 仍未运行。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -39,7 +39,7 @@
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
 | `agent_connectors` | 38/38 + bridge 2/2 + signed Provider device 2/2 + unsigned MCP device 1/1 | M06 MCP adapter 13；M09-B/S2 MCP Facade composition 5；M07 Provider connector 15；Local AI Gateway transport 5；设备验收桥接覆盖 token 替换、拒绝和大小限制；严格主机固定内容断言通过；signed `LocalAIGatewayDevice` 2/2；unsigned `McpFacadeDevice` 经 HDC 反向转发完成 Facade → MCP `echo` → completion 1/1；两轮均完成卸载清理 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、生产 Planner 与第三方远端 MCP 兼容性、S6 未覆盖 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
-| `agent_testkit` | 16/16 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；Release HAR 与确定性 fixture 报告漂移检查通过 | fixture 使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench、真实性能与设备行为尚未执行 |
+| `agent_testkit` | 20/20 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.3.0 新增真实 system run 的 source/environment/Provider/Facade/usage/digest 和 12×2 完整性 fail-closed 校验；Release HAR 与确定性 fixture 报告漂移检查通过 | validator 只验证脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
 M03 用例覆盖提交去重与冻结时间语义、validated workflow dispatch、澄清与授权分离、内部 grant 后才允许工具 dispatch、暂停/恢复、未知副作用对账、取消后延迟对账、迟到 completion 拒绝、单调 sequence/version，以及 partial replan 保护成功和未知结果。该结果来自 `agent_runtime@default test` 的主机侧 Hypium 运行；HAR 构建不等于 HAP、安装或设备验收。
 
@@ -70,6 +70,8 @@ T28 Local AI Gateway 的主机协议 fixture 5/5、合并 connector 套件 33/33
 T29 新增 5 项 MCP Production Facade composition 主机用例，合并 connector 套件增至 38/38。覆盖 catalog 先绑定、固定 Strong Single、Facade 提交与授权、一次 MCP 调用、异步 completion、恢复型 Facade，以及空 catalog、部分 Server 失败和非空 Registry 的暴露前 fail-closed。Release HAR 为 44,144 bytes、SHA-256 `A23F3E200F7ED11F8E1F6AE3CA235484927E3965D59D7AACD70DAEC61A05B701`。本轮没有签名、安装、设备运行或真实 MCP 网络，因此 S2 仍需真实只读 MCP Server 任务闭环。
 
 T30 `McpFacadeDevice` 已编译进当前源码的 unsigned ohosTest HAP，并在 API 26 实际运行 1/1。它使用生产 Facade composition、显式授权与真实 `McpClientManager` HTTP transport 调用本轮独占 fixture `echo`，通过 `fixture://stats` 断言 Tool 调用恰好增加 1；设备报告 `Tests run: 1, Failure: 0, Error: 0, Pass: 1, Ignore: 0`、result code 0。主/ohosTest HAP 均安装成功，finally 移除 HDC 转发、停止 fixture 并卸载 bundle；脚本与独立复核均确认包不存在且映射为空。T30/S2 的受控只读 MCP Facade 设备闭环已关闭。该证据仍是 unsigned 测试包及确定性本机 fixture，不覆盖发布签名、生产 Planner/credential store 或第三方远端 MCP。证据位于 `artifacts/t30-s2-mcp-facade-device/20261014-132524/`。
+
+T31 将 TestKit 升级为 0.3.0，新增真实 System Bench 证据合同并把主机套件增至 20/20。验证器要求固定完整 Git source SHA、runtime/composition/harness、SDK/OS/device、真实单调时钟、Provider/model/region/价格，严格覆盖十二种 case × Strong Single/Multi 两个 arm，并为每个样本记录 Facade、Provider usage、延迟、token、Agent 激活数和五类脱敏 digest。无签名隔离工程 Release HAR 为 27,670 bytes、SHA-256 `D4C84E50A0105CFF58EBF01A642E1C06B862A2B3C729F43736420A095E234947`。本门没有运行真实 Provider/system workload、构建 HAP或操作设备，因此 S6 仍未关闭。证据位于 `artifacts/t31-s6-system-bench-evidence-gate/20261014-202326/`。
 
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 

@@ -711,7 +711,7 @@ external_consumer (out of scope)
       -> agent_contracts
 ```
 
-`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。`agent_testkit` 只产生故障决策、fixture 描述和评估报告，不能提交或控制任务。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
+`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。`agent_testkit` 只产生故障决策、fixture 描述、评估报告与脱敏证据校验结果，不能提交、控制或恢复任务。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
 
 源码交接与运行证据分别管理。一个可交接版本至少绑定 source commit/tag、模块版本、锁文件、SDK/系统要求、构建命令、HAR digest、测试报告和已知限制；host test、HAR build、test HAP build、安装、模拟器和真机证据不能相互替代。当前已有版本化 source commit 与模块分支，但尚无 release tag；各阶段仍按自身证据边界报告。
 
@@ -756,7 +756,7 @@ external_consumer (out of scope)
 
 验收：baseline 可重复，模型、价格、region、schema 与日期全部冻结到报告。
 
-当前进度：TestKit 0.2.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告。该报告使用虚拟零时钟并标记为不可做性能比较；真实 Provider/system 报告仍是关闭本阶段的剩余门。
+当前进度：TestKit 0.3.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并增加真实 System Bench 的 fail-closed 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖，以及每个样本的 `AgentRuntimeFacade`、Provider usage、延迟、token、Agent 激活数与脱敏 digest；主机 Hypium 20/20 和 Release HAR 已通过。该 validator 不执行 workload；当前 fixture 报告仍使用虚拟零时钟并标记为不可做性能比较，生产语义 Planner 与真实 Strong Single/Multi Agent system run 仍是关闭本阶段的剩余门。
 
 ### Phase 3：MTRouter
 
