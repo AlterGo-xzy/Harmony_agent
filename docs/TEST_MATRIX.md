@@ -37,7 +37,7 @@
 | `agent_core` | 21/21 | DAG、Scheduler、Recovery、Budget；完整预算总账原子 hydration | 真实 Planner/Provider/Tool 与设备运行 |
 | `agent_runtime` | 60/60 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 真实 Planner/Provider/Tool、签名设备进程退出/重启运行 |
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
-| `agent_connectors` | 38/38 + bridge 2/2 + signed device 2/2 | M06 MCP adapter 13；M09-B/S2 MCP Facade composition 5；M07 Provider connector 15；Local AI Gateway transport 5；设备验收桥接覆盖 token 替换、拒绝和大小限制；严格主机固定内容断言通过；signed 主/ohosTest HAP 安装成功，API 26 经 HDC 反向转发与受控桥接完成 1 次官方 Provider 调用，`LocalAIGatewayDevice` 2/2，最终卸载清理 | 生产 credential store、真实取消/timeout、真实 MCP Server/设备网络 S2 闭环、S6 未覆盖 |
+| `agent_connectors` | 38/38 + bridge 2/2 + signed Provider device 2/2 + unsigned MCP device 1/1 | M06 MCP adapter 13；M09-B/S2 MCP Facade composition 5；M07 Provider connector 15；Local AI Gateway transport 5；设备验收桥接覆盖 token 替换、拒绝和大小限制；严格主机固定内容断言通过；signed `LocalAIGatewayDevice` 2/2；unsigned `McpFacadeDevice` 经 HDC 反向转发完成 Facade → MCP `echo` → completion 1/1；两轮均完成卸载清理 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、生产 Planner 与第三方远端 MCP 兼容性、S6 未覆盖 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
 | `agent_testkit` | 16/16 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；Release HAR 与确定性 fixture 报告漂移检查通过 | fixture 使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
@@ -69,7 +69,7 @@ T28 Local AI Gateway 的主机协议 fixture 5/5、合并 connector 套件 33/33
 
 T29 新增 5 项 MCP Production Facade composition 主机用例，合并 connector 套件增至 38/38。覆盖 catalog 先绑定、固定 Strong Single、Facade 提交与授权、一次 MCP 调用、异步 completion、恢复型 Facade，以及空 catalog、部分 Server 失败和非空 Registry 的暴露前 fail-closed。Release HAR 为 44,144 bytes、SHA-256 `A23F3E200F7ED11F8E1F6AE3CA235484927E3965D59D7AACD70DAEC61A05B701`。本轮没有签名、安装、设备运行或真实 MCP 网络，因此 S2 仍需真实只读 MCP Server 任务闭环。
 
-T30 `McpFacadeDevice` 已编译进 unsigned ohosTest HAP。它使用生产 Facade composition、显式授权与真实 `McpClientManager` HTTP transport 调用 fixture `echo`，并用 `fixture://stats` 断言恰好一次 Tool 调用；专用脚本具备目标/bundle/转发预检及 finally 清理。当前只有源码与 unsigned 编译证据，尚无签名、安装或设备运行结果，不能据此关闭 T30/S2。
+T30 `McpFacadeDevice` 已编译进当前源码的 unsigned ohosTest HAP，并在 API 26 实际运行 1/1。它使用生产 Facade composition、显式授权与真实 `McpClientManager` HTTP transport 调用本轮独占 fixture `echo`，通过 `fixture://stats` 断言 Tool 调用恰好增加 1；设备报告 `Tests run: 1, Failure: 0, Error: 0, Pass: 1, Ignore: 0`、result code 0。主/ohosTest HAP 均安装成功，finally 移除 HDC 转发、停止 fixture 并卸载 bundle；脚本与独立复核均确认包不存在且映射为空。T30/S2 的受控只读 MCP Facade 设备闭环已关闭。该证据仍是 unsigned 测试包及确定性本机 fixture，不覆盖发布签名、生产 Planner/credential store 或第三方远端 MCP。证据位于 `artifacts/t30-s2-mcp-facade-device/20261014-132524/`。
 
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 
