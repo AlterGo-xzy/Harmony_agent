@@ -58,14 +58,14 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
 - `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试源码。
-- `agent_connectors/` 0.3.0 已完成 M06 MCP adapter、M07 Provider connector 和 Local AI Gateway Model transport 的本地主机/HAR 门。M07 提供通用 Model/Embedding/Remote API ports、版本/region/price snapshot、streaming、usage/cost、credential、取消/timeout 和 `UNKNOWN_OUTCOME` 边界；Local AI Gateway 具体适配固定走 loopback `/v1/chat/completions`，凭据仍由宿主 port 注入。15 项 M07 contract test、5 项网关协议 fixture 与 M06 合并运行 33/33；Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。严格主机固定内容断言与 API 26 `LocalAIGatewayDevice` 2/2 已通过，设备侧仅使用非秘密测试标记，真实 runtime token 只存在于受管 Windows 桥接进程。
+- `agent_connectors/` 0.3.0 已完成 M06 MCP adapter、M07 Provider connector、Local AI Gateway Model transport 和 T29 MCP Production Facade composition 的本地主机/HAR 门。M07 提供通用 Model/Embedding/Remote API ports、版本/region/price snapshot、streaming、usage/cost、credential、取消/timeout 和 `UNKNOWN_OUTCOME` 边界；Local AI Gateway 具体适配固定走 loopback `/v1/chat/completions`，凭据仍由宿主 port 注入。MCP adapter/composition 18 项、M07 15 项和网关协议 5 项合并运行 38/38；当前 Release HAR 为 44,144 bytes、SHA-256 `A23F3E200F7ED11F8E1F6AE3CA235484927E3965D59D7AACD70DAEC61A05B701`。严格主机固定内容断言与 API 26 `LocalAIGatewayDevice` 2/2 已通过，设备侧仅使用非秘密测试标记，真实 runtime token 只存在于受管 Windows 桥接进程。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
 - 当前仓库仍没有真实语义 Planner、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 或离线 Router 工程；Runtime 0.12.0 与 Storage 0.8.0 已接通 Promise lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、无在途和 active operation 的启动恢复，以及具体 RDB composition。Local AI Gateway HTTP transport 已实现；严格主机固定内容断言通过，signed 主/ohosTest HAP 已在 API 26 安装，经 HDC 反向转发和受控桥接调用官方 Provider 的 `LocalAIGatewayDevice` 2/2 通过，并完成 bundle、转发和网关清理。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
 
-- `agent_connectors` 的 M06/M07 本地门与 M09-B 主机 composition 门不代表真实 Provider/设备网络、生产 credential store、具体 Adapter 的生产装配或 S2 真实远端任务闭环；`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
+- `agent_connectors` 的 M06/M07 本地门与 T29 M09-B MCP Facade composition 门不代表真实 MCP Server/设备网络、生产 credential store 或 S2 真实远端任务闭环；T29 已完成具体 MCP Adapter 的生产 Facade 装配。`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
 - 真实 Semantic Planner、learned Router artifact、具体生产 adapter composition、持久化 Registry 的生产接线及 Artifact Registry。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。

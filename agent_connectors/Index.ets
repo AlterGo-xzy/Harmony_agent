@@ -18,6 +18,12 @@ export { McpClientManagerToolPort } from './src/main/ets/mcp/McpClientManagerToo
 export { McpAgentAdapter } from './src/main/ets/mcp/McpAgentAdapter';
 export { McpStepDispatchAdapter } from './src/main/ets/mcp/McpStepDispatchAdapter';
 export {
+  McpRuntimeCompositionErrorCode,
+  McpRuntimeCompositionError,
+  createMcpProductionAgentRuntime,
+  createRecoveredMcpProductionAgentRuntime
+} from './src/main/ets/mcp/McpProductionRuntime';
+export {
   ProviderCapabilityKind,
   ProviderErrorCode,
   ProviderFinishReason,

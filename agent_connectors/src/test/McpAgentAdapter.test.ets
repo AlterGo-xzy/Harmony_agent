@@ -1,17 +1,56 @@
 import { describe, expect, it } from '@ohos/hypium';
 import {
   AgentErrorClass,
+  AgentRuntimeEvent,
+  AgentTaskSnapshot,
+  AgentTaskStatus,
+  AuthorizationDecision,
+  AuthorizationDecisionType,
+  ClarificationRequest,
+  ClarificationResponse,
+  CollaborationMode,
   DataBoundary,
+  ExecutionBudget,
+  IdempotencyMode,
+  PolicyRequest,
+  ReconciliationReport,
   RiskLevel,
+  SideEffect,
+  TaskHandle,
+  TaskSubmission,
   TaskEnvelope,
   ToolInvocation,
   ToolOutcome,
   ToolOutcomeStatus,
+  WorkflowGraph,
+  WorkflowStepKind,
   WorkflowStep
 } from '@harmony_agent/agent-contracts';
 import {
+  AgentRuntimeFacade,
+  AgentRuntimeObserver,
+  AgentSubscription,
+  DispatchPersistenceContext,
+  PlanningRequest,
+  PlanningResult,
+  PlanningStatus,
+  PreparedToolDispatch,
+  ProductionAgentRuntimeConfig,
+  ProductionAgentRuntimePorts,
+  ProductionRuntimePersistencePort,
+  ProductionRuntimeRecoverySourcePort,
   RegistryWriteCode,
+  RuntimeClockPort,
+  RuntimeDurableAuthorityPayload,
+  RuntimeIdGeneratorPort,
+  RuntimePersistenceCode,
+  RuntimePersistenceResult,
+  RuntimeRecoveryAuthority,
+  RuntimeTaskRecoveryCheckpoint,
+  SemanticPlannerPort,
+  SubscriptionRequest,
   StepDispatchRequest,
+  ToolInvocationPreparerPort,
   ToolRegistry
 } from '@harmony_agent/agent-runtime';
 import {
@@ -42,6 +81,10 @@ import {
   McpReadOnlyToolPolicyRegistry,
   McpStepDispatchAdapter,
   McpToolOutcomeSinkPort,
+  McpRuntimeCompositionError,
+  McpRuntimeCompositionErrorCode,
+  createMcpProductionAgentRuntime,
+  createRecoveredMcpProductionAgentRuntime,
   canonicalJson
 } from '../../Index';
 
@@ -253,6 +296,230 @@ function invocation(refresh: McpCatalogRefreshResult, digest: ConnectorDigestPor
   return value;
 }
 
+class CompositionClock implements RuntimeClockPort {
+  nowMs(): number {
+    return 1000;
+  }
+}
+
+class CompositionIds implements RuntimeIdGeneratorPort {
+  private next: number = 0;
+
+  nextId(kind: string, requestId: string): string {
+    this.next++;
+    return kind + ':' + requestId + ':' + this.next.toString();
+  }
+}
+
+class CompositionPlanner implements SemanticPlannerPort {
+  private readonly registry: ToolRegistry;
+  lastMode: CollaborationMode = CollaborationMode.MULTI;
+
+  constructor(registry: ToolRegistry) {
+    this.registry = registry;
+  }
+
+  plan(request: PlanningRequest): PlanningResult {
+    this.lastMode = request.collaborationMode;
+    return this.ready(request);
+  }
+
+  resume(request: PlanningRequest, _response: ClarificationResponse): PlanningResult {
+    this.lastMode = request.collaborationMode;
+    return this.ready(request);
+  }
+
+  replan(request: PlanningRequest): PlanningResult {
+    this.lastMode = request.collaborationMode;
+    return this.ready(request);
+  }
+
+  private ready(request: PlanningRequest): PlanningResult {
+    const graph: WorkflowGraph = new WorkflowGraph();
+    graph.workflowId = 'workflow:' + request.envelope.taskId;
+    graph.taskId = request.envelope.taskId;
+    graph.workflowVersion = '1';
+    graph.createdAt = '2026-10-14T00:00:00.000Z';
+    const step: WorkflowStep = new WorkflowStep();
+    step.stepId = 'read-current';
+    step.kind = WorkflowStepKind.TOOL;
+    step.goal = 'Read the current station measurement';
+    step.capabilityRequirements = ['weather', 'read-only'];
+    step.expectedOutputSchemaJson = '{"type":"object"}';
+    step.riskLevel = RiskLevel.LOW;
+    step.sideEffect = SideEffect.NONE;
+    step.idempotencyMode = IdempotencyMode.NONE;
+    step.retryPolicyRef = 'no-tool-retry';
+    step.verificationPolicyRef = 'mcp-result-contract';
+    step.timeoutMs = 3000;
+    graph.steps = [step];
+    graph.entryStepIds = [step.stepId];
+    const result: PlanningResult = new PlanningResult();
+    result.status = this.registry.activeEntries().length === 1 ? PlanningStatus.READY : PlanningStatus.REJECTED;
+    result.workflow = graph;
+    result.rejectionCode = result.status === PlanningStatus.READY ? '' : 'MCP_CATALOG_NOT_BOUND';
+    return result;
+  }
+}
+
+class CompositionToolPreparer implements ToolInvocationPreparerPort {
+  private readonly registry: ToolRegistry;
+  private readonly digest: ConnectorDigestPort;
+
+  constructor(registry: ToolRegistry, digest: ConnectorDigestPort) {
+    this.registry = registry;
+    this.digest = digest;
+  }
+
+  prepare(request: PlanningRequest, step: WorkflowStep, nowMs: number): PreparedToolDispatch {
+    const entry = this.registry.activeEntries()[0];
+    const argumentsJson: string = '{"station":"CN-101"}';
+    const argumentsDigest: string = this.digest.digest(canonicalJson(JSON.parse(argumentsJson) as Object));
+    const prepared: PreparedToolDispatch = new PreparedToolDispatch();
+    const policy: PolicyRequest = prepared.policyRequest;
+    policy.requestId = 'policy:' + request.envelope.taskId + ':' + step.stepId;
+    policy.userId = request.envelope.userId;
+    policy.taskId = request.envelope.taskId;
+    policy.stepId = step.stepId;
+    policy.operationId = 'operation:' + request.envelope.taskId + ':' + step.stepId;
+    policy.toolId = entry.descriptor.toolId;
+    policy.toolIdentityVersion = entry.descriptor.toolIdentityVersion;
+    policy.providerId = entry.descriptor.providerId;
+    policy.schemaDigest = entry.descriptor.schemaDigest;
+    policy.argumentsDigest = argumentsDigest;
+    policy.riskLevel = step.riskLevel;
+    policy.sideEffect = step.sideEffect;
+    policy.estimatedCostMicros = entry.estimatedCostMicros;
+    policy.requestedAt = new Date(nowMs).toISOString();
+    policy.expiresAtMs = nowMs + 60000;
+    policy.expiresAt = new Date(policy.expiresAtMs).toISOString();
+    const current: ToolInvocation = prepared.invocation;
+    current.invocationId = 'invocation:' + request.envelope.taskId;
+    current.taskId = request.envelope.taskId;
+    current.stepId = step.stepId;
+    current.operationId = policy.operationId;
+    current.attemptId = 'attempt-1';
+    current.toolId = policy.toolId;
+    current.toolIdentityVersion = policy.toolIdentityVersion;
+    current.schemaDigest = policy.schemaDigest;
+    current.argumentsJson = argumentsJson;
+    current.argumentsDigest = argumentsDigest;
+    current.idempotencyKey = 'read:' + current.operationId;
+    current.authorizationGrantId = '';
+    current.timeoutMs = step.timeoutMs;
+    current.createdAt = policy.requestedAt;
+    return prepared;
+  }
+}
+
+function compositionPersistenceResult(): RuntimePersistenceResult {
+  const result: RuntimePersistenceResult = new RuntimePersistenceResult();
+  result.accepted = true;
+  result.code = RuntimePersistenceCode.SAVED;
+  return result;
+}
+
+class CompositionPersistence implements ProductionRuntimePersistencePort, ProductionRuntimeRecoverySourcePort {
+  saveCheckpoint(_checkpoint: RuntimeTaskRecoveryCheckpoint, _expectedPreviousVersion: number,
+    _authority: RuntimeDurableAuthorityPayload, _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  loadCheckpoint(_taskId: string): Promise<RuntimeTaskRecoveryCheckpoint | undefined> {
+    return Promise.resolve(undefined);
+  }
+
+  normalizeRecoveredOperation(_checkpoint: RuntimeTaskRecoveryCheckpoint, _expectedPreviousVersion: number,
+    _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  beforeDispatch(_checkpoint: RuntimeTaskRecoveryCheckpoint, _expectedPreviousVersion: number,
+    _context: DispatchPersistenceContext | undefined, _authority: RuntimeDurableAuthorityPayload,
+    _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  recordDispatchRejected(_context: DispatchPersistenceContext | undefined, _dispatchId: string,
+    _rejectionCode: string,
+    _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  recordOutcome(_taskId: string, _stepId: string, _dispatchId: string, _outcome: ToolOutcome,
+    _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  recordReconciliation(_report: ReconciliationReport, _nowMs: number): Promise<RuntimePersistenceResult> {
+    return Promise.resolve(compositionPersistenceResult());
+  }
+
+  listRecoveryTaskIds(): Promise<string[]> {
+    return Promise.resolve([]);
+  }
+
+  loadRecoveryAuthority(_taskId: string): Promise<RuntimeRecoveryAuthority | undefined> {
+    return Promise.resolve(undefined);
+  }
+}
+
+class CompositionObserver implements AgentRuntimeObserver {
+  policies: PolicyRequest[] = [];
+
+  onEvent(_event: AgentRuntimeEvent): void {
+  }
+
+  onPolicyRequest(request: PolicyRequest): void {
+    this.policies.push(request);
+  }
+
+  onClarificationRequest(_request: ClarificationRequest): void {
+  }
+}
+
+function compositionPorts(registry: ToolRegistry, digest: ConnectorDigestPort,
+  planner: CompositionPlanner, recovery: boolean = false): ProductionAgentRuntimePorts {
+  const ports: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
+  ports.clock = new CompositionClock();
+  ports.ids = new CompositionIds();
+  ports.planner = planner;
+  ports.toolPreparer = new CompositionToolPreparer(registry, digest);
+  const persistence: CompositionPersistence = new CompositionPersistence();
+  ports.persistence = persistence;
+  if (recovery) ports.recovery = persistence;
+  return ports;
+}
+
+function compositionConfig(): ProductionAgentRuntimeConfig {
+  const config: ProductionAgentRuntimeConfig = new ProductionAgentRuntimeConfig();
+  config.policyVersion = 'policy-v1';
+  config.grantTtlMs = 30000;
+  return config;
+}
+
+function compositionSubmission(): TaskSubmission {
+  const budget: ExecutionBudget = new ExecutionBudget();
+  budget.maxWallTimeMs = 60000;
+  budget.maxInputTokens = 1000;
+  budget.maxOutputTokens = 1000;
+  budget.maxMonetaryCostMicros = 1000;
+  budget.maxToolCalls = 2;
+  budget.maxAgentActivations = 1;
+  budget.maxRetries = 0;
+  budget.maxReplans = 0;
+  const value: TaskSubmission = new TaskSubmission();
+  value.requestId = 'request-mcp-composition';
+  value.userId = 'user-1';
+  value.userIntent = 'Read the current station measurement';
+  value.locale = 'zh-CN';
+  value.timeZone = 'Asia/Shanghai';
+  value.referenceTime = '2026-10-14T00:00:00.000Z';
+  value.requestedBudget = budget;
+  value.submittedAt = value.referenceTime;
+  return value;
+}
+
 export default function mcpAgentAdapterTest(): void {
   describe('McpAgentAdapter', () => {
     it('normalizesAllowlistedToolAndPreservesMcpIdentity', 0, async () => {
@@ -437,6 +704,126 @@ export default function mcpAgentAdapterTest(): void {
       expect(sink.stepId).assertEqual('read-current');
       expect(sink.dispatchId).assertEqual('dispatch-weather-1');
       expect(sink.outcome?.status).assertEqual(ToolOutcomeStatus.SUCCEEDED);
+    });
+  });
+
+  describe('McpProductionRuntime', () => {
+    it('composesSingleAgentFacadeAndCompletesAuthorizedReadOnlyMcpTask', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      const runtime: AgentRuntimeFacade = await createMcpProductionAgentRuntime(
+        compositionConfig(), compositionPorts(registry, fixture.digest, planner), fixture.adapter, registry);
+
+      expect(registry.activeEntries().length).assertEqual(1);
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(planner.lastMode).assertEqual(CollaborationMode.SINGLE);
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      const observer: CompositionObserver = new CompositionObserver();
+      const subscriptionRequest: SubscriptionRequest = new SubscriptionRequest();
+      subscriptionRequest.subscriptionId = 'subscription:mcp-composition';
+      subscriptionRequest.taskId = handle.taskId;
+      const subscription: AgentSubscription = await runtime.subscribe(subscriptionRequest, observer);
+      expect(observer.policies.length).assertEqual(1);
+      const decision: AuthorizationDecision = new AuthorizationDecision();
+      decision.commandId = 'authorize:mcp-composition';
+      decision.policyRequestId = observer.policies[0].requestId;
+      decision.userId = 'user-1';
+      decision.taskId = handle.taskId;
+      decision.decision = AuthorizationDecisionType.APPROVED;
+      decision.decidedAt = '1970-01-01T00:00:01.000Z';
+      decision.decidedAtMs = 1000;
+      await runtime.provideAuthorization(decision);
+      let snapshot: AgentTaskSnapshot = await runtime.getTaskSnapshot(handle.taskId);
+      for (let i: number = 0; i < 20 && snapshot.status !== AgentTaskStatus.COMPLETED; i++) {
+        await Promise.resolve();
+        snapshot = await runtime.getTaskSnapshot(handle.taskId);
+      }
+
+      expect(snapshot.status).assertEqual(AgentTaskStatus.COMPLETED);
+      expect(fixture.client.callCount).assertEqual(1);
+      subscription.close();
+    });
+
+    it('failsClosedBeforeFacadeWhenControlledMcpCatalogIsEmpty', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      fixture.client.tools = [];
+      const registry: ToolRegistry = new ToolRegistry();
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      let code: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createMcpProductionAgentRuntime(
+          compositionConfig(), compositionPorts(registry, fixture.digest, planner), fixture.adapter, registry);
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) {
+          code = (error as McpRuntimeCompositionError).code;
+        }
+      }
+
+      expect(code).assertEqual(McpRuntimeCompositionErrorCode.CATALOG_EMPTY);
+      expect(registry.snapshot().snapshotVersion).assertEqual(0);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('failsClosedWithoutPublishingPartialCatalogWhenDiscoveryHasServerFailure', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      fixture.client.failures = [{
+        serverId: 'offline-server',
+        code: McpErrorCode.NETWORK,
+        message: 'fixture network failure'
+      }];
+      const registry: ToolRegistry = new ToolRegistry();
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      let code: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createMcpProductionAgentRuntime(
+          compositionConfig(), compositionPorts(registry, fixture.digest, planner), fixture.adapter, registry);
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) {
+          code = (error as McpRuntimeCompositionError).code;
+        }
+      }
+
+      expect(code).assertEqual(McpRuntimeCompositionErrorCode.CATALOG_PARTIAL_FAILURE);
+      expect(registry.snapshot().snapshotVersion).assertEqual(0);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('bindsCatalogBeforeExposingRecoveredFacade', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      const runtime: AgentRuntimeFacade = await createRecoveredMcpProductionAgentRuntime(
+        compositionConfig(), compositionPorts(registry, fixture.digest, planner, true), fixture.adapter, registry);
+
+      expect(registry.activeEntries().length).assertEqual(1);
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(handle.taskId.length > 0).assertTrue();
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('refusesPrepopulatedRegistryBeforeCatalogDiscovery', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const first: McpCatalogRefreshResult = await fixture.adapter.refreshCatalog();
+      const registry: ToolRegistry = new ToolRegistry();
+      registry.register(first.entries[0]);
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      let code: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createMcpProductionAgentRuntime(
+          compositionConfig(), compositionPorts(registry, fixture.digest, planner), fixture.adapter, registry);
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) {
+          code = (error as McpRuntimeCompositionError).code;
+        }
+      }
+
+      expect(code).assertEqual(McpRuntimeCompositionErrorCode.REGISTRY_NOT_EMPTY);
+      expect(registry.activeEntries().length).assertEqual(1);
+      expect(fixture.client.callCount).assertEqual(0);
     });
   });
 }

@@ -4,7 +4,7 @@
 
 ## 装配边界
 
-宿主或后续 M09-B 生产装配按以下顺序连接：
+宿主按以下顺序连接：
 
 1. 创建一个 `ConnectorDigestPort`。生产实现必须返回稳定的密码学摘要；测试可以注入确定性 fixture。
 2. 用同一个 digest port 创建 `McpInvocationPolicyBridge`。
@@ -13,8 +13,10 @@
 5. 向 `McpProviderRegistry` 注册实际交给 manager 的 Server Profile 和受控版本。Profile 的 endpoint、协议或超时配置变化会生成新的 profile digest。
 6. 向 `McpReadOnlyToolPolicyRegistry` 注册明确允许的只读工具。远端 annotations 不决定 risk、side effect、权限或数据边界；未进入本地 allowlist 的工具不会进入 Agent Tool Registry。
 7. 注入 `McpGrantVerifierPort`。它必须校验完整 `ToolInvocation` 与 M02 grant 的 task、step、operation、tool identity、schema 和 arguments 绑定。由于 `RuntimeCoordinator` 已在 dispatch 前消费一次 grant，同一 invocation 的 `IDEMPOTENT_REPLAY` 可以作为允许结果；不同 invocation 的复用必须拒绝。没有 verifier 的默认放行实现。
-8. 调用 `refreshCatalog()`，把返回的 `ToolRegistryEntry` 写入 `agent_runtime.ToolRegistry`。Provider/Profile 或 schema 变化会改变 `registryVersion` 和 Registry snapshot；`invalidatedToolIds` 用于清除外部 Router cache。旧 grant 携带的 identity/schema 会在调用前失败。
-9. 把 `McpStepDispatchAdapter` 作为 M03 `StepDispatchPort` 注入内部 Runtime 装配。异步完成通过 `McpToolOutcomeSinkPort` 回送给 Runtime 的 completion 通道；它不是第二个任务控制入口。
+8. 创建一个空 `agent_runtime.ToolRegistry`，并让注入的 Planner 与 Tool Preparer 共享它。调用 `createMcpProductionAgentRuntime`；需要启动恢复时调用 `createRecoveredMcpProductionAgentRuntime`。工厂会先运行 catalog discovery，在临时 Registry 完整校验后才填充共享 Registry，并强制使用 `SingleAgentCollaborationSelector`。
+9. 工厂在内部把 `McpStepDispatchAdapter` 连接到 Production Runtime 的私有 completion sink，最终只返回 `AgentRuntimeFacade`。宿主不能传入第二个 AdapterFactory；部分 Server discovery 失败、空受控目录、非空目标 Registry 或非法 entry 都会在 Facade 暴露前 fail-closed。
+
+Provider/Profile 或 schema 变化会改变 `registryVersion` 和 Registry snapshot；旧 grant 携带的 identity/schema 会在调用前失败。当前生产组合要求每次创建 Facade 使用新的空 Registry；运行中 catalog 刷新与 Router cache 原子替换仍需后续生命周期设计，宿主不能直接调用 `refreshCatalog()` 绕过组合门。
 
 真实网络宿主需要在自己的 HAP `module.json5` 中声明 `ohos.permission.INTERNET`；HAR 本身不拥有宿主权限或 Ability 生命周期。
 
@@ -30,4 +32,4 @@
 
 ## 验收边界
 
-M06 的 HAR 构建和 adapter contract test 证明纯映射、授权桥、一次调用和 M03 dispatch port 接线。它们不等于产品 HAP、真实远端 MCP、设备网络、M09-B 生产 Facade 装配或 S2 真实任务闭环；这些场景必须使用各自的运行证据关闭。
+M06 的 HAR 构建和 adapter contract test 证明纯映射、授权桥、一次调用和 M03 dispatch port 接线。T29 主机组合测试进一步证明 catalog 先绑定、Single Agent Facade、授权决定、一次 MCP dispatch、异步 completion 和恢复型 Facade 装配。fixture client 不等于真实远端 MCP、设备网络或 S2 真实任务闭环；这些场景必须使用各自的运行证据关闭。
