@@ -69,6 +69,8 @@ T28 Local AI Gateway 的主机协议 fixture 5/5、合并 connector 套件 33/33
 
 T29 新增 5 项 MCP Production Facade composition 主机用例，合并 connector 套件增至 38/38。覆盖 catalog 先绑定、固定 Strong Single、Facade 提交与授权、一次 MCP 调用、异步 completion、恢复型 Facade，以及空 catalog、部分 Server 失败和非空 Registry 的暴露前 fail-closed。Release HAR 为 44,144 bytes、SHA-256 `A23F3E200F7ED11F8E1F6AE3CA235484927E3965D59D7AACD70DAEC61A05B701`。本轮没有签名、安装、设备运行或真实 MCP 网络，因此 S2 仍需真实只读 MCP Server 任务闭环。
 
+T30 `McpFacadeDevice` 已编译进 unsigned ohosTest HAP。它使用生产 Facade composition、显式授权与真实 `McpClientManager` HTTP transport 调用 fixture `echo`，并用 `fixture://stats` 断言恰好一次 Tool 调用；专用脚本具备目标/bundle/转发预检及 finally 清理。当前只有源码与 unsigned 编译证据，尚无签名、安装或设备运行结果，不能据此关闭 T30/S2。
+
 M08 首个工具是 permission-free 的只读 battery status：主机 contract test 12/12；Release HAR 和 API 26 主/ohosTest HAP 构建通过。签名包已在 API 26 模拟器完成验证与安装，真实 `SystemNativeCapabilityProbe` 与 `SystemBatteryStatusPort` 的 `BatteryStatusDevice` 运行 1/1 通过，随后卸载并确认 bundle 不存在。该证据关闭首个 battery slice 的设备门，但不满足未来 permission-required Native Kit 的拒绝/允许完成标准，也不证明写能力。
 
 设备侧 `StorageDeviceRecovery` 的 7 项测试覆盖：HAR 加载；PREPARED/budget close-reopen；调用中退出；已收到结果但提交前退出；已提交 receipt/实际预算；两个 stale session 竞争 lease/CAS；摘要损坏 fail-closed。2026-10-01 在 API 26 模拟器 `127.0.0.1:5555` 上实际报告 `Tests run: 7, Failure: 0, Error: 0, Pass: 7`。签名主 HAP 与 ohosTest HAP 均安装成功，测试 bundle 随后卸载并验证不存在；证据目录为 `artifacts/t07-device-acceptance/20261001-211416/`。因此 T07/M05-A 已通过本地实现与设备验收门，但尚不等于生产 Facade、具体写 adapter 或发布交接已经完成。

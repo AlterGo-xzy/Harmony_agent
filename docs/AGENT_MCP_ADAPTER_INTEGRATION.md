@@ -33,3 +33,5 @@ Provider/Profile 或 schema 变化会改变 `registryVersion` 和 Registry snaps
 ## 验收边界
 
 M06 的 HAR 构建和 adapter contract test 证明纯映射、授权桥、一次调用和 M03 dispatch port 接线。T29 主机组合测试进一步证明 catalog 先绑定、Single Agent Facade、授权决定、一次 MCP dispatch、异步 completion 和恢复型 Facade 装配。fixture client 不等于真实远端 MCP、设备网络或 S2 真实任务闭环；这些场景必须使用各自的运行证据关闭。
+
+T30 的 `test_host` 无页面套件 `McpFacadeDevice` 用于真实设备网络闭环。运行 `tools/test-mcp-facade-device.ps1` 时必须显式提供当前源码构建的主/ohosTest HAP 和 `-AllowDeviceChanges`；脚本只执行该 class，并要求 fixture Tool 计数精确增加 1。unsigned 编译不等于安装或设备运行，只有保存 1/1 Hypium、安装、转发与最终卸载清理证据后才能关闭该门。

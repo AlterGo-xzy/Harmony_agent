@@ -324,6 +324,8 @@ M00 完成后可以设计并实现纯 adapter 映射；只有 M02 grant/policy �
 
 当前实施状态（T09/T29，本地主机门已通过）：`@harmony_agent/agent-connectors` 提供 MCP Provider registry、受控只读 Tool allowlist、规范 JSON/schema digest、绑定 Profile 版本、Profile 内容与 schema 的 tool identity、`McpClientManager.callTool` 端口、M02 grant verifier 与一次性 `McpInvocationPolicy` ticket、MCP outcome/error taxonomy 映射，以及实现 M03 `StepDispatchPort` 的异步 adapter。T29 新增生产组合工厂，在暴露唯一 `AgentRuntimeFacade` 前完成 catalog discovery、临时 Registry 校验、共享空 Registry 发布、Strong Single selector 与私有 completion sink 接线；空/部分失败 catalog、非法 entry 和非空目标 Registry fail-closed。MCP adapter 及 composition 18/18、合并 connector 38/38 与 Release HAR 构建通过；既有 MCP client 26/26 证据单独保留。真实远端 MCP、设备网络和 S2 端到端任务闭环仍不由本地主机门证明。
 
+T30 已把生产组合工厂、显式授权和真实 `McpClientManager` HTTP transport 接入 `test_host` 的独立 `McpFacadeDevice` class，并以 fixture stats 约束一次 Tool 调用。当前只通过 unsigned ohosTest 编译，尚未安装或运行设备，因此该项仍是 S2 待关闭门。
+
 ### M07：LLM 与 Remote API Connectors
 
 目标：用统一端口隔离 Provider 差异、价格和网络行为。

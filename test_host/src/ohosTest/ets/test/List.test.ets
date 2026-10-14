@@ -4,6 +4,7 @@ import memoryDeviceRecoveryTest from './MemoryDeviceRecovery.test';
 import batteryStatusDeviceTest from './BatteryStatusDevice.test';
 import runtimeRdbDeviceRecoveryTest from './RuntimeRdbDeviceRecovery.test';
 import localAIGatewayDeviceTest from './LocalAIGatewayDevice.test';
+import mcpFacadeDeviceTest from './McpFacadeDevice.test';
 
 export default function testsuite(): void {
   deviceSmokeTest();
@@ -12,5 +13,6 @@ export default function testsuite(): void {
   batteryStatusDeviceTest();
   runtimeRdbDeviceRecoveryTest();
   localAIGatewayDeviceTest();
+  mcpFacadeDeviceTest();
 }
 
