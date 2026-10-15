@@ -28,7 +28,7 @@ Remote API 返回 `RemoteApiProviderResult`。其中 `outcome` 是通用 `ToolOu
 
 ## Semantic Planner 适配
 
-`ProviderSemanticPlanner` 由 composition root 注入一个已注册的 `RegisteredModelProvider`、匹配的 `ModelProvider`、Runtime 时钟和 Runtime ID 生成器。构造时会核对 Provider registry 身份；每次调用依据注册时冻结的 profile 和 price snapshot 填充 model、version、region 与 price ID，并在任何 Provider 调用前检查任务 privacy、输出 token、金额与 prompt 长度预算。
+`createProviderMcpProductionAgentRuntime` 与恢复型工厂接收一个已注册的 `RegisteredModelProvider`、匹配的 `ModelProvider` 和 Planner 配置，并使用 `ProductionAgentRuntimePorts` 中同一组 Runtime 时钟与 ID 生成器构造 `ProviderSemanticPlanner`。调用方不得预置另一 Planner；缺 clock 或 ID 时会在 MCP 目录发现前失败。构造完成后仍复用既有 catalog-before-Facade 边界，外部只获得唯一 `AgentRuntimeFacade`。
 
 Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow/clarification 的可信 task、workflow、version、时间和 ID 字段，随后检查步骤字段、JSON schema、依赖与 entry、DAG、binding、Tool capability，以及副作用与幂等关系。ready、clarificationRequired 与 rejected 的 payload 必须互斥；身份/usage 不一致、非 `stop` 结束、额外字段或非法图都返回稳定拒绝码。输入/输出 token 和金额按任务预算严格比较，0 表示没有可用额度。Provider Promise 异常保留为异常边界，由 T32 Runtime 统一闭合为脱敏的 `plannerInvocationFailed`。
 
@@ -36,6 +36,6 @@ Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow
 
 ## 当前验收边界
 
-M07 的 15 项 contract test 使用 fake credential、timer 和 transport，验证 DTO、追溯、费用、fail-closed、取消与未知结果语义。Local AI Gateway transport 另有 5 项主机协议 fixture；T33 Provider Semantic Planner 另有 6 项主机用例。与 M06/M09-B MCP 用例合并运行时为 44/44。T33 的无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。
+M07 的 15 项 contract test 使用 fake credential、timer 和 transport；Local AI Gateway transport 有 5 项主机协议 fixture；T33 Provider Semantic Planner 有 6 项；T34 production composition 增加 3 项。与 M06/M09-B MCP 用例合并运行时为 47/47。T34 的无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。
 
-这些主机门不证明真实 Provider Planner 请求、生产凭据存储、真实取消/timeout、具体 Planner 的生产 composition、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T33 的真实 Provider Planner 系统证据。
+这些主机门不证明真实 Provider Planner 请求、生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T34 的真实 Provider Planner 系统证据。

@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T33 已完成各自记录的实现门；T26/T28 已完成签名 API 26 验收**
+状态：**In progress / T01–T34 已完成各自记录的实现门；T26/T28 已完成签名 API 26 验收**
 日期：2026-10-15
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
@@ -58,15 +58,15 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
 - `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1，证明生产 Facade composition 经真实 MCP HTTP transport 完成一次受控只读调用，并在运行后清理 bundle、转发和 fixture。
-- `agent_connectors/` 0.4.0 已完成 M06 MCP adapter、M07 Provider connector、Local AI Gateway Model transport、T29 MCP Production Facade composition 和 T33 Provider-backed Semantic Planner Adapter 的本地主机/HAR 门。M07 提供通用 Model/Embedding/Remote API ports、版本/region/price snapshot、streaming、usage/cost、credential、取消/timeout 和 `UNKNOWN_OUTCOME` 边界；T33 以冻结 Provider 身份和价格快照实现异步 `SemanticPlannerPort`，把受约束 JSON 转成经校验的 typed workflow/clarification。合并 connector 主机套件为 44/44；当前无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。严格网关主机断言与 API 26 `LocalAIGatewayDevice` 2/2 已通过，设备侧仅使用非秘密测试标记，真实 runtime token 只存在于受管 Windows 桥接进程；T33 本身尚未执行真实 Provider Planner 请求或设备运行。
+- `agent_connectors/` 0.5.0 已完成 M06 MCP adapter、M07 Provider connector、Local AI Gateway Model transport、T29 MCP Production Facade composition、T33 Provider-backed Semantic Planner Adapter 和 T34 Provider Planner production composition 的本地主机/HAR 门。T34 用 Runtime 同一 clock/ID port 构造具体 Planner，再复用受控 MCP catalog 与唯一 `AgentRuntimeFacade` 工厂；预置第二 Planner 或缺端口会在目录发现前拒绝。合并 connector 主机套件为 47/47；当前无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。严格网关主机断言与 API 26 `LocalAIGatewayDevice` 2/2 已通过；T34 本身使用 fake Provider/MCP fixture，尚未执行真实 Provider Planner/system run 或设备运行。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库已有 Provider-backed Semantic Planner Adapter，但尚未把具体 Planner 装入生产 composition，也没有执行真实 Provider Planner/system run；需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、无在途和 active operation 的启动恢复，以及具体 RDB composition。Local AI Gateway HTTP transport 已实现；严格主机固定内容断言通过，signed 主/ohosTest HAP 已在 API 26 安装，经 HDC 反向转发和受控桥接调用官方 Provider 的 `LocalAIGatewayDevice` 2/2 通过，并完成 bundle、转发和网关清理。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
+- 当前仓库已把 Provider-backed Semantic Planner 装入 MCP production composition，但尚未接入生产 credential store 或执行真实 Provider Planner/system run；需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、无在途和 active operation 的启动恢复，以及具体 RDB composition。Local AI Gateway HTTP transport 已实现；严格主机固定内容断言通过，signed 主/ohosTest HAP 已在 API 26 安装，经 HDC 反向转发和受控桥接调用官方 Provider 的 `LocalAIGatewayDevice` 2/2 通过，并完成 bundle、转发和网关清理。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
 
 - `agent_connectors` 的 M06/M07 本地门与 T29 M09-B MCP Facade composition 门已由 T30 的 API 26 `McpFacadeDevice` 1/1 补齐受控只读 S2 设备闭环。该门使用 unsigned 测试包、确定性本机 MCP fixture 和测试 Planner/persistence/digest/grant 实现；发布签名、生产 credential store、生产 Planner 及第三方远端 MCP 兼容性仍待各自验收。`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
-- Provider Semantic Planner 的具体生产 composition、真实 Provider/system 运行、learned Router artifact、持久化 Registry 的生产接线及 Artifact Registry。
+- Provider Semantic Planner 的生产 credential/transport 接线、真实 Provider/system 运行、learned Router artifact、持久化 Registry 的生产接线及 Artifact Registry。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。
 

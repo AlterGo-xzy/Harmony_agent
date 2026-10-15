@@ -348,7 +348,7 @@ M00 完成后可以设计 Provider 端口和独立 fake/contract test；真实 R
 - 取消和 timeout 会释放网络资源；
 - 凭据只在 connector 边界注入。
 
-当前实施状态（T10/T28/T29/T33，本地主机、HAR 与已记录设备门已通过）：`@harmony_agent/agent-connectors` 0.4.0 已提供 Provider-neutral 的 Model、Embedding 与 Remote API contracts、隔离复制的 provider catalog、版本/region/price snapshot 绑定、stream trace、usage/cost 结算、credential port、统一取消/timeout runner 和错误分类。具体 Provider 的 model ID、认证 header 与网络实现只进入 transport port；Runtime-facing DTO 不包含 Provider 专用请求类型。T28 增加 Local AI Gateway transport；T29 完成 MCP Adapter 到唯一 Production Facade 的主机装配；T33 增加实现异步 `SemanticPlannerPort` 的 `ProviderSemanticPlanner`，在 Provider 调用前检查 privacy、输入/输出 token、金额和 prompt 预算，并把互斥的结构化输出转换为使用 Runtime 时钟和 ID 的 typed workflow/clarification。身份、usage、finish reason、字段或 DAG 不合法均 fail-closed，observer 不接收 prompt/output 正文。合并 connector 主机套件 44/44；当前无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。既有网关 signed `LocalAIGatewayDevice` 2/2 与 MCP Facade 1/1 设备证据继续按各自范围有效；T33 未执行真实 Provider Planner 请求、生产 composition、HAP 或设备运行，生产 credential store、真实取消/timeout 和 S6 system run 仍待后续。
+当前实施状态（T10/T28/T29/T33/T34，本地主机、HAR 与已记录设备门已通过）：`@harmony_agent/agent-connectors` 0.5.0 已提供 Provider-neutral contracts、catalog、Local AI Gateway transport、MCP Production Facade、Provider-backed `SemanticPlannerPort` 及其 production composition。T34 新建/恢复工厂使用 Runtime 同一 clock/ID port 构造 Planner，拒绝第二 Planner 或缺失端口，并继续在返回唯一 Facade 前原子绑定受控 MCP catalog。合并 connector 主机套件 47/47；当前无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。既有网关 signed `LocalAIGatewayDevice` 2/2 与 MCP Facade 1/1 设备证据继续按各自范围有效；T34 使用 fake Provider/MCP fixture，生产 credential store、真实 Provider Planner/system run、HAP 和设备门仍待后续。
 
 ### M08：Native Kit Tools
 
@@ -427,6 +427,8 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 
 当前实施状态（T33，本地主机与 HAR 门已通过）：`@harmony_agent/agent-connectors` 0.4.0 的 `ProviderSemanticPlanner` 已实现 T32 的异步 Planner port。Adapter 冻结 Provider/model/version/region/price，预检 privacy 与输入/输出 token、金额、prompt 预算，只接受结构化 JSON，并在返回 Runtime 前重建可信 workflow/clarification 身份、校验字段、DAG、binding、副作用/幂等与 Tool capability。connector 合并主机套件 44/44，无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。这仍是 fake Provider 的 host gate；具体生产 composition、真实 Provider Planner/system run、HAP 和设备门未执行。
 
+当前实施状态（T34，本地主机与 HAR 门已通过）：`@harmony_agent/agent-connectors` 0.5.0 新增 Provider Planner 的 MCP production 新建/恢复工厂。工厂不导出内部协调器或第二控制入口，只返回既有 `AgentRuntimeFacade`；它在目录发现前校验 Planner 所有权及 Runtime clock/ID，并复用 T29 catalog-before-Facade 与 completion sink 边界。新增 3 项后 connector 为 47/47；无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。真实 Provider、生产凭据、HAP、签名和设备均未执行。
+
 ### M10：TestKit、故障注入与 harmony_agent Bench
 
 目标：让每个开发模块都能在没有完整产品的情况下独立验收。
@@ -449,7 +451,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：除十二类确定性故障和十个共用集成 fixture 外，公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case，并校验缺失、重复和 copy isolation。离线目录保存固定 model/provider/region/价格/schema/date/dataset/router policy 的双 arm manifest、输入 digest 和无第三方依赖的确定性报告生成器。0.3.0 新增 `SystemBenchmarkRunValidator`，要求完整 source commit、runtime/composition/harness、SDK/OS/device、真实单调时钟、生产候选 Provider/model/region/价格、12×2 case/arm 完整覆盖，以及每个样本的 Facade、Provider usage、token/延迟/Agent 激活数和五类脱敏 digest。Hypium 20/20 通过；当前 Release HAR 为 27,670 bytes、SHA-256 `D4C84E50A0105CFF58EBF01A642E1C06B862A2B3C729F43736420A095E234947`；fixture 报告 SHA-256 仍为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。TestKit 不提交、控制或恢复任务，`AgentRuntimeFacade` 仍是唯一入口。仓库已有 T33 Provider Planner Adapter，但 fixture 仍使用零成本 Provider 和虚拟零时钟，且具体 Planner 尚未进入生产 composition；真实 Provider/system Bench 仍是 S6 的剩余验收门。
+当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：除十二类确定性故障和十个共用集成 fixture 外，公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case，并校验缺失、重复和 copy isolation。离线目录保存固定 model/provider/region/价格/schema/date/dataset/router policy 的双 arm manifest、输入 digest 和无第三方依赖的确定性报告生成器。0.3.0 新增 `SystemBenchmarkRunValidator`，要求完整 source commit、runtime/composition/harness、SDK/OS/device、真实单调时钟、生产候选 Provider/model/region/价格、12×2 case/arm 完整覆盖，以及每个样本的 Facade、Provider usage、token/延迟/Agent 激活数和五类脱敏 digest。Hypium 20/20 通过；当前 Release HAR 为 27,670 bytes、SHA-256 `D4C84E50A0105CFF58EBF01A642E1C06B862A2B3C729F43736420A095E234947`；fixture 报告 SHA-256 仍为 `FBA257498A349E0FD1FE9954E7B4EE5FE2632FD075335950C788D8591B9811CB`。TestKit 不提交、控制或恢复任务，`AgentRuntimeFacade` 仍是唯一入口。T34 已将 Provider Planner 装入生产 composition，但 fixture 仍使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench 仍是 S6 的剩余验收门。
 
 ### M11：Artifact、Parity 与策略发布链
 

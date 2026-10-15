@@ -13,6 +13,7 @@ import {
   ExecutionBudget,
   IdempotencyMode,
   PolicyRequest,
+  PrivacyClass,
   ReconciliationReport,
   RiskLevel,
   SideEffect,
@@ -31,6 +32,7 @@ import {
   AgentRuntimeObserver,
   AgentSubscription,
   DispatchPersistenceContext,
+  ModelRegistryEntry,
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
@@ -83,6 +85,19 @@ import {
   McpToolOutcomeSinkPort,
   McpRuntimeCompositionError,
   McpRuntimeCompositionErrorCode,
+  ModelInvocation,
+  ModelProvider,
+  ModelProviderProfile,
+  ModelProviderResult,
+  ProviderCancellationSignalPort,
+  ProviderCapabilityKind,
+  ProviderCatalog,
+  ProviderFinishReason,
+  ProviderPriceSnapshot,
+  ProviderSemanticPlannerConfig,
+  RegisteredModelProvider,
+  createProviderMcpProductionAgentRuntime,
+  createRecoveredProviderMcpProductionAgentRuntime,
   createMcpProductionAgentRuntime,
   createRecoveredMcpProductionAgentRuntime,
   canonicalJson
@@ -311,6 +326,90 @@ class CompositionIds implements RuntimeIdGeneratorPort {
   }
 }
 
+class CompositionModelProvider implements ModelProvider {
+  readonly registered: RegisteredModelProvider;
+  calls: number = 0;
+
+  constructor(registered: RegisteredModelProvider) {
+    this.registered = registered;
+  }
+
+  registryEntry(estimatedInputTokens: number, estimatedOutputTokens: number): ModelRegistryEntry {
+    return this.registered.registryEntry(estimatedInputTokens, estimatedOutputTokens);
+  }
+
+  async generate(request: ModelInvocation,
+    _cancellation: ProviderCancellationSignalPort): Promise<ModelProviderResult> {
+    this.calls++;
+    const profile: ModelProviderProfile = this.registered.profileSnapshot();
+    const price: ProviderPriceSnapshot = this.registered.priceSnapshot();
+    const result: ModelProviderResult = new ModelProviderResult();
+    result.requestId = request.context.requestId;
+    result.outputJson = '{"status":"ready","workflow":{"entryStepIds":["read-current"],"steps":[' +
+      '{"stepId":"read-current","kind":"tool","goal":"Read the current station measurement",' +
+      '"dependencies":[],"inputBindings":[],"expectedOutputSchemaJson":"{\\"type\\":\\"object\\"}",' +
+      '"capabilityRequirements":["weather","read-only"],"sideEffect":"none","riskLevel":"low",' +
+      '"permissionRequirements":[],"idempotencyMode":"none","timeoutMs":3000,' +
+      '"retryPolicyRef":"no-tool-retry","verificationPolicyRef":"mcp-result-contract"}]}}';
+    result.finishReason = ProviderFinishReason.STOP;
+    result.modelId = profile.registryModelId;
+    result.modelVersion = profile.modelVersion;
+    result.region = profile.region;
+    result.priceSnapshotId = price.snapshotId;
+    result.usage.inputTokens = 100;
+    result.usage.outputTokens = 20;
+    result.usage.totalTokens = 120;
+    result.usage.providerReportedCostMicros = 143;
+    result.usage.settledCostMicros = 143;
+    return result;
+  }
+}
+
+function compositionRegisteredModel(digest: ConnectorDigestPort): RegisteredModelProvider {
+  const profile: ModelProviderProfile = new ModelProviderProfile();
+  profile.registryModelId = 'model/planner';
+  profile.providerId = 'provider-planner';
+  profile.providerModelId = 'provider-model-v1';
+  profile.modelVersion = '2026-10';
+  profile.region = 'local';
+  profile.capabilityKind = ProviderCapabilityKind.MODEL;
+  profile.capabilityTags = ['planning', 'json'];
+  profile.privacyClasses = [PrivacyClass.PERSONAL];
+  profile.maxInputTokens = 8192;
+  profile.maxOutputTokens = 1024;
+  profile.qualityTier = 2;
+  profile.credentialScope = 'planner.invoke';
+  profile.available = true;
+  const price: ProviderPriceSnapshot = new ProviderPriceSnapshot();
+  price.snapshotId = 'planner-price-v1';
+  price.providerId = profile.providerId;
+  price.capabilityId = profile.providerModelId;
+  price.capabilityVersion = profile.modelVersion;
+  price.region = profile.region;
+  price.currency = 'USD';
+  price.inputMicrosPerMillionTokens = 1000000;
+  price.outputMicrosPerMillionTokens = 2000000;
+  price.fixedCostMicros = 3;
+  price.effectiveAt = '2026-10-01T00:00:00.000Z';
+  price.snapshotDigest = 'planner-price-digest-v1';
+  const catalog: ProviderCatalog = new ProviderCatalog(digest);
+  expect(catalog.registerModel(profile, price)).assertTrue();
+  return catalog.getModel(profile.registryModelId) as RegisteredModelProvider;
+}
+
+function compositionPlannerConfig(): ProviderSemanticPlannerConfig {
+  const result: ProviderSemanticPlannerConfig = new ProviderSemanticPlannerConfig();
+  result.promptVersion = 'typed-workflow-v1';
+  result.estimatedInputTokens = 100;
+  result.maxOutputTokens = 256;
+  result.temperature = 0;
+  result.timeoutMs = 10000;
+  result.clarificationTtlMs = 60000;
+  result.maxSteps = 8;
+  result.maxPromptCharacters = 20000;
+  return result;
+}
+
 class CompositionPlanner implements SemanticPlannerPort {
   private readonly registry: ToolRegistry;
   lastMode: CollaborationMode = CollaborationMode.MULTI;
@@ -484,6 +583,18 @@ function compositionPorts(registry: ToolRegistry, digest: ConnectorDigestPort,
   ports.clock = new CompositionClock();
   ports.ids = new CompositionIds();
   ports.planner = planner;
+  ports.toolPreparer = new CompositionToolPreparer(registry, digest);
+  const persistence: CompositionPersistence = new CompositionPersistence();
+  ports.persistence = persistence;
+  if (recovery) ports.recovery = persistence;
+  return ports;
+}
+
+function providerCompositionPorts(registry: ToolRegistry, digest: ConnectorDigestPort,
+  recovery: boolean = false): ProductionAgentRuntimePorts {
+  const ports: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
+  ports.clock = new CompositionClock();
+  ports.ids = new CompositionIds();
   ports.toolPreparer = new CompositionToolPreparer(registry, digest);
   const persistence: CompositionPersistence = new CompositionPersistence();
   ports.persistence = persistence;
@@ -824,6 +935,106 @@ export default function mcpAgentAdapterTest(): void {
       expect(code).assertEqual(McpRuntimeCompositionErrorCode.REGISTRY_NOT_EMPTY);
       expect(registry.activeEntries().length).assertEqual(1);
       expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('composesProviderPlannerIntoSoleFacadeAndCompletesMcpTask', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const registered: RegisteredModelProvider = compositionRegisteredModel(fixture.digest);
+      const provider: CompositionModelProvider = new CompositionModelProvider(registered);
+      const runtime: AgentRuntimeFacade = await createProviderMcpProductionAgentRuntime(
+        compositionConfig(), providerCompositionPorts(registry, fixture.digest), fixture.adapter, registry,
+        registered, provider, compositionPlannerConfig());
+
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(provider.calls).assertEqual(1);
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      const observer: CompositionObserver = new CompositionObserver();
+      const subscriptionRequest: SubscriptionRequest = new SubscriptionRequest();
+      subscriptionRequest.subscriptionId = 'subscription:provider-mcp-composition';
+      subscriptionRequest.taskId = handle.taskId;
+      const subscription: AgentSubscription = await runtime.subscribe(subscriptionRequest, observer);
+      const decision: AuthorizationDecision = new AuthorizationDecision();
+      decision.commandId = 'authorize:provider-mcp-composition';
+      decision.policyRequestId = observer.policies[0].requestId;
+      decision.userId = 'user-1';
+      decision.taskId = handle.taskId;
+      decision.decision = AuthorizationDecisionType.APPROVED;
+      decision.decidedAt = '1970-01-01T00:00:01.000Z';
+      decision.decidedAtMs = 1000;
+      await runtime.provideAuthorization(decision);
+      let snapshot: AgentTaskSnapshot = await runtime.getTaskSnapshot(handle.taskId);
+      for (let i: number = 0; i < 20 && snapshot.status !== AgentTaskStatus.COMPLETED; i++) {
+        await Promise.resolve();
+        snapshot = await runtime.getTaskSnapshot(handle.taskId);
+      }
+
+      expect(snapshot.status).assertEqual(AgentTaskStatus.COMPLETED);
+      expect(fixture.client.callCount).assertEqual(1);
+      subscription.close();
+    });
+
+    it('composesProviderPlannerBeforeExposingRecoveredFacade', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const registered: RegisteredModelProvider = compositionRegisteredModel(fixture.digest);
+      const provider: CompositionModelProvider = new CompositionModelProvider(registered);
+      const runtime: AgentRuntimeFacade = await createRecoveredProviderMcpProductionAgentRuntime(
+        compositionConfig(), providerCompositionPorts(registry, fixture.digest, true), fixture.adapter, registry,
+        registered, provider, compositionPlannerConfig());
+
+      expect(registry.activeEntries().length).assertEqual(1);
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(provider.calls).assertEqual(1);
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('rejectsAmbiguousOrIncompleteProviderPlannerCompositionBeforeDiscovery', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registered: RegisteredModelProvider = compositionRegisteredModel(fixture.digest);
+      const provider: CompositionModelProvider = new CompositionModelProvider(registered);
+      const registryWithPlanner: ToolRegistry = new ToolRegistry();
+      const preconfigured: ProductionAgentRuntimePorts = providerCompositionPorts(registryWithPlanner, fixture.digest);
+      preconfigured.planner = new CompositionPlanner(registryWithPlanner);
+      let plannerCode: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createProviderMcpProductionAgentRuntime(compositionConfig(), preconfigured, fixture.adapter,
+          registryWithPlanner, registered, provider, compositionPlannerConfig());
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) plannerCode = error.code;
+      }
+      expect(plannerCode).assertEqual(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_ALREADY_CONFIGURED);
+
+      const registryWithoutClock: ToolRegistry = new ToolRegistry();
+      const withoutClock: ProductionAgentRuntimePorts = providerCompositionPorts(registryWithoutClock, fixture.digest);
+      withoutClock.clock = undefined;
+      let clockCode: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createProviderMcpProductionAgentRuntime(compositionConfig(), withoutClock, fixture.adapter,
+          registryWithoutClock, registered, provider, compositionPlannerConfig());
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) clockCode = error.code;
+      }
+      expect(clockCode).assertEqual(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_CLOCK_REQUIRED);
+
+      const registryWithoutIds: ToolRegistry = new ToolRegistry();
+      const withoutIds: ProductionAgentRuntimePorts = providerCompositionPorts(registryWithoutIds, fixture.digest);
+      withoutIds.ids = undefined;
+      let idsCode: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createProviderMcpProductionAgentRuntime(compositionConfig(), withoutIds, fixture.adapter,
+          registryWithoutIds, registered, provider, compositionPlannerConfig());
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) idsCode = error.code;
+      }
+      expect(idsCode).assertEqual(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_IDS_REQUIRED);
+      expect(provider.calls).assertEqual(0);
+      expect(registryWithPlanner.snapshot().snapshotVersion).assertEqual(0);
+      expect(registryWithoutClock.snapshot().snapshotVersion).assertEqual(0);
+      expect(registryWithoutIds.snapshot().snapshotVersion).assertEqual(0);
     });
   });
 }

@@ -15,6 +15,13 @@ import { ToolOutcome } from '@harmony_agent/agent-contracts';
 import { McpAgentAdapter } from './McpAgentAdapter';
 import { McpCatalogRefreshResult, McpToolOutcomeSinkPort } from './McpConnectorTypes';
 import { McpStepDispatchAdapter } from './McpStepDispatchAdapter';
+import { ModelProvider } from '../provider/ProviderContracts';
+import { RegisteredModelProvider } from '../provider/ProviderCatalog';
+import {
+  ProviderSemanticPlanner,
+  ProviderSemanticPlannerConfig,
+  ProviderSemanticPlannerObserverPort
+} from '../provider/ProviderSemanticPlanner';
 
 function ignoreCompletionRejection(_error: Error): void {
   // ProductionAgentRuntime records its own persistence fault before rejecting the completion Promise.
@@ -25,7 +32,37 @@ export enum McpRuntimeCompositionErrorCode {
   CATALOG_DISCOVERY_FAILED = 'CATALOG_DISCOVERY_FAILED',
   CATALOG_PARTIAL_FAILURE = 'CATALOG_PARTIAL_FAILURE',
   CATALOG_EMPTY = 'CATALOG_EMPTY',
-  CATALOG_ENTRY_REJECTED = 'CATALOG_ENTRY_REJECTED'
+  CATALOG_ENTRY_REJECTED = 'CATALOG_ENTRY_REJECTED',
+  PROVIDER_PLANNER_ALREADY_CONFIGURED = 'PROVIDER_PLANNER_ALREADY_CONFIGURED',
+  PROVIDER_PLANNER_CLOCK_REQUIRED = 'PROVIDER_PLANNER_CLOCK_REQUIRED',
+  PROVIDER_PLANNER_IDS_REQUIRED = 'PROVIDER_PLANNER_IDS_REQUIRED'
+}
+
+function withProviderPlanner(source: ProductionAgentRuntimePorts, registered: RegisteredModelProvider,
+  provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
+  observer?: ProviderSemanticPlannerObserverPort): ProductionAgentRuntimePorts {
+  if (source.planner !== undefined) {
+    throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_ALREADY_CONFIGURED,
+      'Provider MCP production composition owns the Semantic Planner port');
+  }
+  if (source.clock === undefined) {
+    throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_CLOCK_REQUIRED,
+      'Provider MCP production composition requires the Runtime clock port');
+  }
+  if (source.ids === undefined) {
+    throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_IDS_REQUIRED,
+      'Provider MCP production composition requires the Runtime ID generator port');
+  }
+  const value: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
+  value.clock = source.clock;
+  value.ids = source.ids;
+  value.planner = observer === undefined ?
+    new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids) :
+    new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids, observer);
+  value.toolPreparer = source.toolPreparer;
+  value.persistence = source.persistence;
+  value.recovery = source.recovery;
+  return value;
 }
 
 export class McpRuntimeCompositionError extends Error {
@@ -128,4 +165,27 @@ export async function createRecoveredMcpProductionAgentRuntime(config: Productio
   registry: ToolRegistry): Promise<AgentRuntimeFacade> {
   await bindCatalog(adapter, registry);
   return await createRecoveredProductionAgentRuntime(config, copyPorts(ports, adapter));
+}
+
+/**
+ * Owns the concrete Provider-backed Semantic Planner and exposes only the single production Facade.
+ * The MCP catalog is still discovered and bound before the Facade is returned.
+ */
+export async function createProviderMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
+  ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
+  registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
+  observer?: ProviderSemanticPlannerObserverPort): Promise<AgentRuntimeFacade> {
+  const composed: ProductionAgentRuntimePorts = withProviderPlanner(
+    ports, registered, provider, plannerConfig, observer);
+  return await createMcpProductionAgentRuntime(config, composed, adapter, registry);
+}
+
+/** Restores durable tasks through the same Provider Planner and catalog-before-Facade boundary. */
+export async function createRecoveredProviderMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
+  ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
+  registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
+  observer?: ProviderSemanticPlannerObserverPort): Promise<AgentRuntimeFacade> {
+  const composed: ProductionAgentRuntimePorts = withProviderPlanner(
+    ports, registered, provider, plannerConfig, observer);
+  return await createRecoveredMcpProductionAgentRuntime(config, composed, adapter, registry);
 }

@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.4.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.5.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -21,7 +21,9 @@ export {
   McpRuntimeCompositionErrorCode,
   McpRuntimeCompositionError,
   createMcpProductionAgentRuntime,
-  createRecoveredMcpProductionAgentRuntime
+  createRecoveredMcpProductionAgentRuntime,
+  createProviderMcpProductionAgentRuntime,
+  createRecoveredProviderMcpProductionAgentRuntime
 } from './src/main/ets/mcp/McpProductionRuntime';
 export {
   ProviderCapabilityKind,

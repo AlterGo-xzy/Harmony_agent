@@ -1,8 +1,8 @@
 # harmony_agent Runtime（ArkTS）— 项目状态
 
-更新时间：2026-10-14（Asia/Shanghai）
+更新时间：2026-10-15（Asia/Shanghai）
 
-## Agent Runtime T01–T33 与 M10 Bench Pilot（T26/T28 已完成签名设备验收）
+## Agent Runtime T01–T34 与 M10 Bench Pilot（T26/T28 已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -92,6 +92,8 @@ T32（M03 异步 Semantic Planner 生命周期门）本地主机与 HAR 门已�
 
 T33（M07 Provider-backed Semantic Planner Adapter）本地主机与 HAR 门已完成：`@harmony_agent/agent-connectors` 升级为 0.4.0，新增实现既有 `SemanticPlannerPort` 的 `ProviderSemanticPlanner`。Adapter 冻结注册时的 Provider/model/version/region/price 身份，在网络调用前检查 privacy、输入/输出 token、金额和 prompt 大小预算；只接受结构化 JSON，并把模型草图转换为由 Runtime 时钟和 ID port 生成身份的 typed `WorkflowGraph` 或 `ClarificationRequest`。畸形 JSON、混合状态字段、非法 DAG、身份/usage 不匹配和非 `stop` 结束均 fail-closed；观察 trace 只含身份、状态和 usage，不含 prompt 或输出正文。新增 6 项后 connector 主机 Hypium 实测 `Tests run: 44, Failure: 0, Error: 0, Pass: 44, Ignore: 0`；无签名隔离工程 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。本门没有调用真实 Provider、读取生产凭据、构建 HAP、签名、安装或运行设备，也没有把具体 Provider Planner 装入生产 composition；S6 真实双 arm system run 仍未关闭。证据位于 `artifacts/t33-provider-semantic-planner/20261014-211648/`。
 
+T34（M07/M09-B Provider Planner production composition）本地主机与 HAR 门已完成：`@harmony_agent/agent-connectors` 升级为 0.5.0，在既有 MCP production factory 上新增 `createProviderMcpProductionAgentRuntime` 与恢复型工厂。两个工厂使用同一组 Runtime clock/ID port 构造 T33 `ProviderSemanticPlanner`，拒绝调用方预置第二 Planner 或缺失必需端口，并继续在返回唯一 `AgentRuntimeFacade` 前完成受控 MCP catalog 的原子发现与绑定。新增 3 项覆盖 Provider typed workflow → 等待授权 → 一次 MCP 调用 → completion、新恢复 Facade，以及构造期 fail-closed；connector 主机 Hypium 实测 `Tests run: 47, Failure: 0, Error: 0, Pass: 47, Ignore: 0`。无签名隔离工程 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`，包内版本为 0.5.0、`debug=false`，并包含两个新工厂的公开声明。本门使用 fake Provider/MCP fixture，没有读取生产凭据、调用真实 Provider、构建 HAP、签名、安装、卸载或运行设备；S6 真实双 arm system run 仍未关闭。证据位于 `artifacts/t34-provider-mcp-composition/20261015-142912/`。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -106,14 +108,14 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T33 已关闭各自记录的任务门。T33 已提供 Provider-backed typed Semantic Planner Adapter 的主机/HAR 证据，但具体生产 composition 与真实 Provider/system run 仍未执行。T29 已把受控只读 MCP catalog、Strong Single selector、Production Runtime completion sink 与唯一 `AgentRuntimeFacade` 组成可复用生产工厂；T30 进一步在 API 26 上通过真实 HTTP transport、显式授权、一次 MCP Tool 调用与异步 completion 完成 S2 受控只读设备闭环，并完成 bundle、转发和 fixture 清理。该设备门使用 unsigned 测试包及确定性本机 fixture；发布签名、生产 Planner/credential store 和第三方远端 MCP 兼容性仍需分别验证。T28 已完成 Local AI Gateway 主机协议适配、严格固定内容断言、signed HAP 验证与安装，以及 API 26 真实设备 Provider 调用；`LocalAIGatewayDevice` 2/2 通过并完成 bundle、转发和网关清理，signed 设备门已关闭。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 TestKit 0.3.0 已完成基础、可重复 fixture baseline 和真实报告 fail-closed 证据合同；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T34 已关闭各自记录的任务门。T34 已把 T33 Provider-backed typed Semantic Planner 装入既有 MCP production composition，继续只返回唯一 `AgentRuntimeFacade`；该门是 fake Provider/MCP 的主机/HAR 证据，生产 credential store 与真实 Provider/system run 仍未执行。T30 已在 API 26 上通过真实 HTTP transport、显式授权、一次 MCP Tool 调用与异步 completion 完成 S2 受控只读设备闭环，并完成 bundle、转发和 fixture 清理。该设备门使用 unsigned 测试包及确定性本机 fixture；发布签名、生产 credential store 和第三方远端 MCP 兼容性仍需分别验证。T28 已完成 Local AI Gateway 主机协议适配、严格固定内容断言、signed HAP 验证与安装，以及 API 26 真实设备 Provider 调用；`LocalAIGatewayDevice` 2/2 通过并完成 bundle、转发和网关清理，signed 设备门已关闭。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter；T25 完成其 durable 原子归一化，T24 完成启动恢复与事件回放，T23 完成生产 Runtime persistence bridge。T12/M09-B 已完成生产 Headless Facade 的本地 composition/test/HAR 门，T11/M08 首个只读 Native Tool 已通过本地 contract test、Release HAR、签名 HAP 验证、安装、API 26 设备运行和卸载清理。M10 TestKit 0.3.0 已完成基础、可重复 fixture baseline 和真实报告 fail-closed 证据合同；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
 ## 已验证
 
 - ArkTS 单元测试 26/26 通过，包括 JSON-RPC、SSE、严格协商/回退、分页、空目录缓存、Tools、Resources、Resource Templates、Prompts、全部内容块、响应上限、超时、取消、查询重试、多 Server 隔离和默认拒绝策略。
-- MCP Agent Adapter 与生产 Facade composition 共 18/18 通过：原 13 项覆盖 allowlist、稳定 MCP 身份、Profile/version/schema 失效、Router registry snapshot 更新、Grant 拒绝、参数摘要防篡改、一次性 policy ticket、工具调用不重试、错误分类和 M03 dispatch；新增 5 项覆盖 Single Agent Facade 授权闭环、一次 MCP completion、恢复工厂、空/部分失败 catalog 及非空 Registry fail-closed。
+- MCP Agent Adapter 与生产 Facade composition 共 21/21 通过：原 13 项覆盖 allowlist、稳定 MCP 身份、Profile/version/schema 失效、Router registry snapshot 更新、Grant 拒绝、参数摘要防篡改、一次性 policy ticket、工具调用不重试、错误分类和 M03 dispatch；MCP production 的 5 项覆盖 Single Agent Facade 授权闭环、一次 MCP completion、恢复工厂、空/部分失败 catalog 及非空 Registry fail-closed；T34 的 3 项覆盖 Provider Planner 新建/恢复组合与构造期失败原子性。
 - Provider Connector contract test 15/15 通过，覆盖版本/region/价格快照、流式 trace、token/cost 结算、凭据边界、取消/timeout 资源释放、Embedding 副本隔离、远程参数/grant fail-closed，以及写操作 `UNKNOWN_OUTCOME`/不重试。
 - Native Battery Tool contract test 12/12 通过，覆盖 capability、grant、identity/schema/参数摘要、后台限制、取消、平台错误、稳定结果归一化与 M03 dispatch 接线；签名 API 26 `BatteryStatusDevice` 设备用例 1/1 通过，随后卸载并验证 bundle 不存在。
 - Agent Core 21/21、Agent Runtime 63/63、Agent Storage 47/47 通过；Runtime 的 M09-B 生产 Facade 在异步 Planner、Promise durable gate、同实例 FIFO、checkpoint/authority、授权、回调、命令、澄清、控制、对账、订阅和 shutdown 之外，已覆盖等待授权启动恢复/event replay 与 active operation 原子 normalization。Storage bridge 覆盖 durable authority 回读、backend reopen、fencing 接管、UNKNOWN_OUTCOME 对账转换和 CAS 冲突 fail-closed；Release HAR 构建通过。
