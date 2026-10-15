@@ -1,6 +1,6 @@
 # Provider Connector 集成说明
 
-`@harmony_agent/agent-connectors` 0.3.0 在同一 HAR 中提供 M06 MCP adapter、M07 LLM/Remote API connector，以及 Local AI Gateway 的具体 Model transport。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。网关装配见 [LOCAL_AI_GATEWAY_INTEGRATION.md](LOCAL_AI_GATEWAY_INTEGRATION.md)。
+`@harmony_agent/agent-connectors` 0.4.0 在同一 HAR 中提供 M06 MCP adapter、M07 LLM/Remote API connector、Local AI Gateway 的具体 Model transport，以及把 `ModelProvider` 适配到既有 `SemanticPlannerPort` 的 `ProviderSemanticPlanner`。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。网关装配见 [LOCAL_AI_GATEWAY_INTEGRATION.md](LOCAL_AI_GATEWAY_INTEGRATION.md)。
 
 ## 组合边界
 
@@ -26,6 +26,16 @@ Remote API 返回 `RemoteApiProviderResult`。其中 `outcome` 是通用 `ToolOu
 
 取消或 timeout 会调用当前 `ProviderOperationHandle.cancel()`，取消计时器并解除取消订阅。transport 的 `cancel()` 必须关闭或中止实际 HTTP/SDK 资源。对于已经启动且带副作用的 Remote API，网络中断、取消或 timeout 返回 `UNKNOWN_OUTCOME`；connector 不自动重试，后续由恢复与对账流程处理。
 
+## Semantic Planner 适配
+
+`ProviderSemanticPlanner` 由 composition root 注入一个已注册的 `RegisteredModelProvider`、匹配的 `ModelProvider`、Runtime 时钟和 Runtime ID 生成器。构造时会核对 Provider registry 身份；每次调用依据注册时冻结的 profile 和 price snapshot 填充 model、version、region 与 price ID，并在任何 Provider 调用前检查任务 privacy、输出 token、金额与 prompt 长度预算。
+
+Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow/clarification 的可信 task、workflow、version、时间和 ID 字段，随后检查步骤字段、JSON schema、依赖与 entry、DAG、binding、Tool capability，以及副作用与幂等关系。ready、clarificationRequired 与 rejected 的 payload 必须互斥；身份/usage 不一致、非 `stop` 结束、额外字段或非法图都返回稳定拒绝码。输入/输出 token 和金额按任务预算严格比较，0 表示没有可用额度。Provider Promise 异常保留为异常边界，由 T32 Runtime 统一闭合为脱敏的 `plannerInvocationFailed`。
+
+可选 observer 只接收 phase、task ID、Provider request ID、Provider/model/version/region/price、finish reason、planning status、稳定拒绝码和 usage。它不接收 prompt、模型输出、凭据或用户回答；observer 异常不能影响规划结果。
+
 ## 当前验收边界
 
-M07 的 15 项 contract test 使用 fake credential、timer 和 transport，验证 DTO、追溯、费用、fail-closed、取消与未知结果语义。Local AI Gateway transport 另有 5 项主机协议 fixture；与 M06 合并运行时为 33/33。它们不证明真实上游 Provider、设备网络、生产 credential store 或 Runtime 端到端装配。具体 transport 仍需独立补充真实取消/timeout 资源释放和设备网络验收证据。
+M07 的 15 项 contract test 使用 fake credential、timer 和 transport，验证 DTO、追溯、费用、fail-closed、取消与未知结果语义。Local AI Gateway transport 另有 5 项主机协议 fixture；T33 Provider Semantic Planner 另有 6 项主机用例。与 M06/M09-B MCP 用例合并运行时为 44/44。T33 的无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。
+
+这些主机门不证明真实 Provider Planner 请求、生产凭据存储、真实取消/timeout、具体 Planner 的生产 composition、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T33 的真实 Provider Planner 系统证据。

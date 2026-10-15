@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.3.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.4.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -76,6 +76,15 @@ export {
   GenericEmbeddingProvider,
   GenericRemoteApiProvider
 } from './src/main/ets/provider/GenericProviders';
+export {
+  ProviderPlanningPhase,
+  ProviderSemanticPlannerErrorCode,
+  ProviderSemanticPlannerError,
+  ProviderSemanticPlannerConfig,
+  ProviderPlannerTrace,
+  ProviderSemanticPlannerObserverPort,
+  ProviderSemanticPlanner
+} from './src/main/ets/provider/ProviderSemanticPlanner';
 export {
   LocalAIGatewayTransportProfile,
   LocalAIGatewayTransportProfileValidator,
