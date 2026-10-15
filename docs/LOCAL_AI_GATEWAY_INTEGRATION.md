@@ -54,7 +54,7 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 ## 当前证据边界
 
-SDK 原生 Previewer/Hypium 当前运行 `agent_connectors` 50/50。T35 新增 3 项覆盖具体 Provider 链经唯一 Facade 生成 typed workflow、解析一次 credential、发起一次 gateway HTTP、等待授权后完成一次 MCP Tool，以及恢复工厂和网络前 fail-closed。无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T35 使用内存 credential/timer/HTTP/MCP fixture，不证明 Windows 网关进程、真实上游 Provider、设备网络或宿主生产 credential store。
+SDK 原生 Previewer/Hypium 当前运行 `agent_connectors` 50/50。T35 新增 3 项覆盖具体 Provider 链经唯一 Facade 生成 typed workflow、解析一次 credential、发起一次 gateway HTTP、等待授权后完成一次 MCP Tool，以及恢复工厂和网络前 fail-closed。无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T35 主机门使用内存 credential/timer/HTTP/MCP fixture；T36 已另行取得 signed API 26 的真实 Windows 网关、上游 Provider、设备网络、唯一 Facade 和一次 MCP Tool 闭环证据。宿主生产 credential store、真实取消/timeout 与 S6 12×2 system Bench 仍未验证。
 
 2026-10-13 的只读查询确认已安装 `aigw.exe`，配置中已有一个完整且已选中的 Profile，并提供默认 alias `aigw/default`。
 

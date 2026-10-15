@@ -57,15 +57,8 @@ class GatewayChatMessagePayload {
   content: string = '';
 }
 
-class GatewayJsonSchemaPayload {
-  name: string = 'harmony_agent_response';
-  strict: boolean = true;
-  schema: Object = new Object();
-}
-
 class GatewayResponseFormatPayload {
-  type: string = 'json_schema';
-  json_schema: GatewayJsonSchemaPayload = new GatewayJsonSchemaPayload();
+  type: string = 'json_object';
 }
 
 class GatewayChatRequestPayload {
@@ -354,9 +347,9 @@ export class LocalAIGatewayModelTransport implements ModelTransportPort {
     }
     const structured: boolean = Object.keys(schemaRecord).length > 0;
     if (structured) {
-      const responseFormat: GatewayResponseFormatPayload = new GatewayResponseFormatPayload();
-      responseFormat.json_schema.schema = schemaRecord;
-      payload.response_format = responseFormat;
+      // Chat Completions exposes portable JSON-object mode. The complete schema remains
+      // authoritative in the planner validator after the response is parsed.
+      payload.response_format = new GatewayResponseFormatPayload();
     }
     const body: string = JSON.stringify(payload);
     if (new util.TextEncoder('utf-8').encodeInto(body).byteLength > this.profile.maxRequestBytes) {

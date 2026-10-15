@@ -106,7 +106,7 @@ function gatewayConfig(gatewayPort: number): LocalAIGatewayMcpRuntimeConfig {
   result.plannerConfig = new ProviderSemanticPlannerConfig();
   result.plannerConfig.promptVersion = 'typed-workflow-v1';
   result.plannerConfig.estimatedInputTokens = 1000;
-  result.plannerConfig.maxOutputTokens = 512;
+  result.plannerConfig.maxOutputTokens = 8192;
   result.plannerConfig.temperature = 0;
   result.plannerConfig.timeoutMs = 60000;
   result.plannerConfig.clarificationTtlMs = 60000;
@@ -115,7 +115,7 @@ function gatewayConfig(gatewayPort: number): LocalAIGatewayMcpRuntimeConfig {
   result.transportProfile.baseUrl = `http://127.0.0.1:${gatewayPort}/v1`;
   result.transportProfile.modelVersion = 'device-facade-revision-12';
   result.transportProfile.maxInputTokens = 8192;
-  result.transportProfile.maxOutputTokens = 1024;
+  result.transportProfile.maxOutputTokens = 8192;
   result.transportProfile.qualityTier = 1;
   result.transportProfile.privacyClasses = [PrivacyClass.PUBLIC];
   result.transportProfile.available = true;
@@ -140,7 +140,7 @@ function submission(): TaskSubmission {
   const budget: ExecutionBudget = new ExecutionBudget();
   budget.maxWallTimeMs = 90000;
   budget.maxInputTokens = 4096;
-  budget.maxOutputTokens = 1024;
+  budget.maxOutputTokens = 8192;
   budget.maxMonetaryCostMicros = 10000000;
   budget.maxToolCalls = 2;
   budget.maxAgentActivations = 1;

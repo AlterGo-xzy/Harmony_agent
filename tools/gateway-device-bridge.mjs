@@ -68,6 +68,176 @@ function requestBuffer(url, options, body, responseLimit) {
   });
 }
 
+function nonNegativeInteger(value) {
+  return Number.isSafeInteger(value) && value >= 0;
+}
+
+function objectValue(value) {
+  return value !== null && !Array.isArray(value) && typeof value === 'object';
+}
+
+function nonEmptyString(value) {
+  return typeof value === 'string' && value.trim().length > 0;
+}
+
+function stringArrayShape(value) {
+  return Array.isArray(value) && value.every(nonEmptyString);
+}
+
+function knownValue(value, allowed) {
+  if (typeof value !== 'string') return 'missing';
+  return allowed.includes(value) ? value : 'other';
+}
+
+function unexpectedKeyCount(value, allowed) {
+  return objectValue(value) ? Object.keys(value).filter((key) => !allowed.includes(key)).length : 0;
+}
+
+function jsonObjectString(value) {
+  if (typeof value !== 'string') return false;
+  try {
+    return objectValue(JSON.parse(value));
+  } catch {
+    return false;
+  }
+}
+
+function summarizePlannerContent(content) {
+  const planner = {
+    status: knownValue(content.status, ['ready', 'clarificationRequired', 'rejected']),
+    topLevelUnexpectedKeyCount: unexpectedKeyCount(content,
+      ['status', 'workflow', 'clarification', 'rejectionCode']),
+    workflowObject: objectValue(content.workflow),
+    clarificationPresent: content.clarification !== undefined,
+    rejectionCodePresent: content.rejectionCode !== undefined,
+    workflowUnexpectedKeyCount: 0,
+    entryStepIdsArray: false,
+    entryStepIdsValidStrings: false,
+    entryStepIdCount: 0,
+    stepsArray: false,
+    stepCount: 0,
+    firstStepObject: false,
+    firstStepUnexpectedKeyCount: 0,
+    firstStepIdValid: false,
+    firstStepKind: 'missing',
+    firstStepGoalValid: false,
+    firstStepDependenciesValid: false,
+    firstStepDependencyCount: 0,
+    firstStepInputBindingsArray: false,
+    firstStepInputBindingCount: 0,
+    firstStepExpectedOutputSchemaJsonObject: false,
+    firstStepCapabilitiesValid: false,
+    firstStepCapabilityCount: 0,
+    firstStepSideEffect: 'missing',
+    firstStepRiskLevel: 'missing',
+    firstStepPermissionsValid: false,
+    firstStepPermissionCount: 0,
+    firstStepIdempotencyMode: 'missing',
+    firstStepTimeoutInteger: false,
+    firstStepTimeoutPositive: false,
+    firstStepRetryPolicyRefValid: false,
+    firstStepVerificationPolicyRefValid: false,
+    entryContainsFirstStep: false
+  };
+  const workflow = content.workflow;
+  if (!objectValue(workflow)) return planner;
+  planner.workflowUnexpectedKeyCount = unexpectedKeyCount(workflow, ['entryStepIds', 'steps']);
+  planner.entryStepIdsArray = Array.isArray(workflow.entryStepIds);
+  planner.entryStepIdsValidStrings = stringArrayShape(workflow.entryStepIds);
+  planner.entryStepIdCount = planner.entryStepIdsArray ? workflow.entryStepIds.length : 0;
+  planner.stepsArray = Array.isArray(workflow.steps);
+  planner.stepCount = planner.stepsArray ? workflow.steps.length : 0;
+  if (!planner.stepsArray || workflow.steps.length === 0 || !objectValue(workflow.steps[0])) return planner;
+  const step = workflow.steps[0];
+  planner.firstStepObject = true;
+  planner.firstStepUnexpectedKeyCount = unexpectedKeyCount(step, [
+    'stepId', 'kind', 'goal', 'dependencies', 'inputBindings', 'expectedOutputSchemaJson',
+    'capabilityRequirements', 'sideEffect', 'riskLevel', 'permissionRequirements',
+    'idempotencyMode', 'timeoutMs', 'retryPolicyRef', 'verificationPolicyRef'
+  ]);
+  planner.firstStepIdValid = nonEmptyString(step.stepId);
+  planner.firstStepKind = knownValue(step.kind, ['llm', 'tool', 'verify', 'join', 'userConfirmation']);
+  planner.firstStepGoalValid = nonEmptyString(step.goal);
+  planner.firstStepDependenciesValid = stringArrayShape(step.dependencies);
+  planner.firstStepDependencyCount = Array.isArray(step.dependencies) ? step.dependencies.length : 0;
+  planner.firstStepInputBindingsArray = Array.isArray(step.inputBindings);
+  planner.firstStepInputBindingCount = planner.firstStepInputBindingsArray ? step.inputBindings.length : 0;
+  planner.firstStepExpectedOutputSchemaJsonObject = jsonObjectString(step.expectedOutputSchemaJson);
+  planner.firstStepCapabilitiesValid = stringArrayShape(step.capabilityRequirements);
+  planner.firstStepCapabilityCount = Array.isArray(step.capabilityRequirements)
+    ? step.capabilityRequirements.length : 0;
+  planner.firstStepSideEffect = knownValue(step.sideEffect, ['none', 'reversible', 'irreversible']);
+  planner.firstStepRiskLevel = knownValue(step.riskLevel, ['low', 'medium', 'high', 'critical']);
+  planner.firstStepPermissionsValid = stringArrayShape(step.permissionRequirements);
+  planner.firstStepPermissionCount = Array.isArray(step.permissionRequirements)
+    ? step.permissionRequirements.length : 0;
+  planner.firstStepIdempotencyMode = knownValue(step.idempotencyMode, ['none', 'providerKey', 'reconcile']);
+  planner.firstStepTimeoutInteger = Number.isSafeInteger(step.timeoutMs);
+  planner.firstStepTimeoutPositive = planner.firstStepTimeoutInteger && step.timeoutMs > 0;
+  planner.firstStepRetryPolicyRefValid = nonEmptyString(step.retryPolicyRef);
+  planner.firstStepVerificationPolicyRefValid = nonEmptyString(step.verificationPolicyRef);
+  planner.entryContainsFirstStep = planner.firstStepIdValid && planner.entryStepIdsArray &&
+    workflow.entryStepIds.includes(step.stepId);
+  return planner;
+}
+
+function summarizeChatResponse(body) {
+  const summary = {
+    jsonObject: false,
+    choiceCount: 0,
+    messageObject: false,
+    contentType: 'missing',
+    contentLength: 0,
+    contentJsonObject: false,
+    plannerTopLevelShape: false,
+    planner: null,
+    finishReason: 'missing',
+    usageObject: false,
+    usageValid: false
+  };
+  try {
+    const root = JSON.parse(body.toString('utf8'));
+    if (root === null || Array.isArray(root) || typeof root !== 'object') return summary;
+    summary.jsonObject = true;
+    const choices = root.choices;
+    summary.choiceCount = Array.isArray(choices) ? choices.length : 0;
+    if (!Array.isArray(choices) || choices.length !== 1 || choices[0] === null ||
+        Array.isArray(choices[0]) || typeof choices[0] !== 'object') return summary;
+    const choice = choices[0];
+    summary.finishReason = ['stop', 'length', 'content_filter'].includes(choice.finish_reason)
+      ? choice.finish_reason : (typeof choice.finish_reason === 'string' ? 'other' : 'missing');
+    const message = choice.message;
+    summary.messageObject = message !== null && !Array.isArray(message) && typeof message === 'object';
+    if (summary.messageObject) {
+      summary.contentType = Array.isArray(message.content) ? 'array' : typeof message.content;
+      if (typeof message.content === 'string') {
+        summary.contentLength = Buffer.byteLength(message.content, 'utf8');
+        try {
+          const content = JSON.parse(message.content);
+          summary.contentJsonObject = content !== null && !Array.isArray(content) && typeof content === 'object';
+          if (summary.contentJsonObject) {
+            summary.planner = summarizePlannerContent(content);
+            summary.plannerTopLevelShape = summary.planner.topLevelUnexpectedKeyCount === 0 &&
+              summary.planner.status !== 'missing' && summary.planner.status !== 'other';
+          }
+        } catch {
+          // The shape summary deliberately records no response text.
+        }
+      }
+    }
+    const usage = root.usage;
+    summary.usageObject = usage !== null && !Array.isArray(usage) && typeof usage === 'object';
+    if (summary.usageObject) {
+      summary.usageValid = nonNegativeInteger(usage.prompt_tokens) &&
+        nonNegativeInteger(usage.completion_tokens) && nonNegativeInteger(usage.total_tokens) &&
+        usage.total_tokens === usage.prompt_tokens + usage.completion_tokens;
+    }
+  } catch {
+    // Invalid JSON is represented only by jsonObject=false.
+  }
+  return summary;
+}
+
 export async function startGatewayDeviceBridge(options) {
   const gateway = normalizeGatewayBaseUrl(options.gatewayBaseUrl);
   if (typeof options.gatewayToken !== 'string' || options.gatewayToken.trim().length === 0) {
@@ -85,6 +255,7 @@ export async function startGatewayDeviceBridge(options) {
     chatCount: 0,
     rejectedCount: 0,
     upstreamStatusCounts: {},
+    chatResponseShape: null,
     gatewayCredentialRecorded: false,
     requestBodyRecorded: false,
     responseBodyRecorded: false
@@ -129,7 +300,10 @@ export async function startGatewayDeviceBridge(options) {
         timeout: timeoutMs
       }, body, responseLimit);
       if (ready) summary.readyCount++;
-      if (chat) summary.chatCount++;
+      if (chat) {
+        summary.chatCount++;
+        summary.chatResponseShape = summarizeChatResponse(upstream.body);
+      }
       const statusKey = String(upstream.statusCode);
       summary.upstreamStatusCounts[statusKey] = (summary.upstreamStatusCounts[statusKey] ?? 0) + 1;
       response.writeHead(upstream.statusCode, { 'content-type': upstream.contentType });

@@ -149,6 +149,10 @@ export default function localAIGatewayTransportTest(): void {
       expect(sent.body.includes('fixture-gateway-token')).assertFalse();
       expect(payload['model']).assertEqual('aigw/default');
       expect(payload['stream']).assertFalse();
+      const responseFormat: Record<string, Object> =
+        payload['response_format'] as Record<string, Object>;
+      expect(responseFormat['type']).assertEqual('json_object');
+      expect(Object.keys(responseFormat).length).assertEqual(1);
       expect(result.outputText).assertEqual('{"ok":true}');
       expect(result.outputJson).assertEqual('{"ok":true}');
       expect(result.usage.inputTokens).assertEqual(2);

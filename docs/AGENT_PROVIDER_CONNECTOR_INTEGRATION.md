@@ -38,4 +38,4 @@ Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow
 
 M07 的 15 项 contract test、Local AI Gateway transport 5 项、T33 Planner 6 项、T34 通用 composition 3 项和 T35 网关具体 composition 3 项，与 M06/M09-B MCP 用例合并运行时为 50/50。T35 的无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。
 
-这些主机门不证明真实 Provider Planner 请求、宿主生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T35 的真实 Facade Planner 系统证据。
+这些主机门本身不证明真实 Provider Planner 请求、宿主生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。T36 已另行取得 signed API 26 的单任务系统证据：真实 Provider Planner 生成一个 Tool workflow，经唯一 `AgentRuntimeFacade` 等待显式授权后调用一次 MCP `echo` 并完成；该证据不替代生产凭据存储、真实取消/timeout、第三方远端 MCP 或 12×2 S6 Bench。
