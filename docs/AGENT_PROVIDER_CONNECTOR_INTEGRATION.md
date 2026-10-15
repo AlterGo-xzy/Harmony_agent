@@ -1,6 +1,6 @@
 # Provider Connector 集成说明
 
-`@harmony_agent/agent-connectors` 0.4.0 在同一 HAR 中提供 M06 MCP adapter、M07 LLM/Remote API connector、Local AI Gateway 的具体 Model transport，以及把 `ModelProvider` 适配到既有 `SemanticPlannerPort` 的 `ProviderSemanticPlanner`。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。网关装配见 [LOCAL_AI_GATEWAY_INTEGRATION.md](LOCAL_AI_GATEWAY_INTEGRATION.md)。
+`@harmony_agent/agent-connectors` 0.6.0 在同一 HAR 中提供 M06 MCP adapter、M07 LLM/Remote API connector、Local AI Gateway transport、Provider Semantic Planner，以及通用和 Local AI Gateway 具体 production composition。它是 `agent_runtime` 的可注入依赖，不是新的任务控制入口；外部产品仍只通过 `AgentRuntimeFacade` 提交和控制任务。网关装配见 [LOCAL_AI_GATEWAY_INTEGRATION.md](LOCAL_AI_GATEWAY_INTEGRATION.md)。
 
 ## 组合边界
 
@@ -36,6 +36,6 @@ Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow
 
 ## 当前验收边界
 
-M07 的 15 项 contract test 使用 fake credential、timer 和 transport；Local AI Gateway transport 有 5 项主机协议 fixture；T33 Provider Semantic Planner 有 6 项；T34 production composition 增加 3 项。与 M06/M09-B MCP 用例合并运行时为 47/47。T34 的无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。
+M07 的 15 项 contract test、Local AI Gateway transport 5 项、T33 Planner 6 项、T34 通用 composition 3 项和 T35 网关具体 composition 3 项，与 M06/M09-B MCP 用例合并运行时为 50/50。T35 的无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。
 
-这些主机门不证明真实 Provider Planner 请求、生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T34 的真实 Provider Planner 系统证据。
+这些主机门不证明真实 Provider Planner 请求、宿主生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。已有 Local AI Gateway 和 MCP 设备证据仍按各自版本与验收范围独立记录，不能替代 T35 的真实 Facade Planner 系统证据。

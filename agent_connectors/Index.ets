@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.5.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.6.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -97,3 +97,11 @@ export {
   LocalAIGatewayModelTransport,
   createLocalAIGatewayModelProfile
 } from './src/main/ets/provider/LocalAIGatewayTransport';
+export {
+  LocalAIGatewayRuntimeCompositionErrorCode,
+  LocalAIGatewayRuntimeCompositionError,
+  LocalAIGatewayMcpRuntimeConfig,
+  LocalAIGatewayMcpRuntimePorts,
+  createLocalAIGatewayMcpProductionAgentRuntime,
+  createRecoveredLocalAIGatewayMcpProductionAgentRuntime
+} from './src/main/ets/provider/LocalAIGatewayProductionRuntime';

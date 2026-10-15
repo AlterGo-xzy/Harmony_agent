@@ -85,6 +85,13 @@ import {
   McpToolOutcomeSinkPort,
   McpRuntimeCompositionError,
   McpRuntimeCompositionErrorCode,
+  LocalAIGatewayHttpClientPort,
+  LocalAIGatewayHttpRequest,
+  LocalAIGatewayHttpResponse,
+  LocalAIGatewayMcpRuntimeConfig,
+  LocalAIGatewayMcpRuntimePorts,
+  LocalAIGatewayRuntimeCompositionError,
+  LocalAIGatewayRuntimeCompositionErrorCode,
   ModelInvocation,
   ModelProvider,
   ModelProviderProfile,
@@ -92,11 +99,18 @@ import {
   ProviderCancellationSignalPort,
   ProviderCapabilityKind,
   ProviderCatalog,
+  ProviderCredential,
+  ProviderCredentialPort,
   ProviderFinishReason,
+  ProviderOperationHandle,
   ProviderPriceSnapshot,
   ProviderSemanticPlannerConfig,
+  ProviderTimerHandlePort,
+  ProviderTimerPort,
   RegisteredModelProvider,
+  createLocalAIGatewayMcpProductionAgentRuntime,
   createProviderMcpProductionAgentRuntime,
+  createRecoveredLocalAIGatewayMcpProductionAgentRuntime,
   createRecoveredProviderMcpProductionAgentRuntime,
   createMcpProductionAgentRuntime,
   createRecoveredMcpProductionAgentRuntime,
@@ -345,12 +359,7 @@ class CompositionModelProvider implements ModelProvider {
     const price: ProviderPriceSnapshot = this.registered.priceSnapshot();
     const result: ModelProviderResult = new ModelProviderResult();
     result.requestId = request.context.requestId;
-    result.outputJson = '{"status":"ready","workflow":{"entryStepIds":["read-current"],"steps":[' +
-      '{"stepId":"read-current","kind":"tool","goal":"Read the current station measurement",' +
-      '"dependencies":[],"inputBindings":[],"expectedOutputSchemaJson":"{\\"type\\":\\"object\\"}",' +
-      '"capabilityRequirements":["weather","read-only"],"sideEffect":"none","riskLevel":"low",' +
-      '"permissionRequirements":[],"idempotencyMode":"none","timeoutMs":3000,' +
-      '"retryPolicyRef":"no-tool-retry","verificationPolicyRef":"mcp-result-contract"}]}}';
+    result.outputJson = compositionReadyOutput();
     result.finishReason = ProviderFinishReason.STOP;
     result.modelId = profile.registryModelId;
     result.modelVersion = profile.modelVersion;
@@ -362,6 +371,75 @@ class CompositionModelProvider implements ModelProvider {
     result.usage.providerReportedCostMicros = 143;
     result.usage.settledCostMicros = 143;
     return result;
+  }
+}
+
+function compositionReadyOutput(): string {
+  return '{"status":"ready","workflow":{"entryStepIds":["read-current"],"steps":[' +
+    '{"stepId":"read-current","kind":"tool","goal":"Read the current station measurement",' +
+    '"dependencies":[],"inputBindings":[],"expectedOutputSchemaJson":"{\\"type\\":\\"object\\"}",' +
+    '"capabilityRequirements":["weather","read-only"],"sideEffect":"none","riskLevel":"low",' +
+    '"permissionRequirements":[],"idempotencyMode":"none","timeoutMs":3000,' +
+    '"retryPolicyRef":"no-tool-retry","verificationPolicyRef":"mcp-result-contract"}]}}';
+}
+
+class CompositionGatewayOperation implements ProviderOperationHandle<LocalAIGatewayHttpResponse> {
+  readonly result: Promise<LocalAIGatewayHttpResponse>;
+  cancelCount: number = 0;
+
+  constructor(response: LocalAIGatewayHttpResponse) {
+    this.result = Promise.resolve(response);
+  }
+
+  cancel(): void {
+    this.cancelCount++;
+  }
+}
+
+class CompositionGatewayHttpClient implements LocalAIGatewayHttpClientPort {
+  calls: number = 0;
+  lastRequest?: LocalAIGatewayHttpRequest;
+
+  start(request: LocalAIGatewayHttpRequest): ProviderOperationHandle<LocalAIGatewayHttpResponse> {
+    this.calls++;
+    this.lastRequest = request;
+    const response: LocalAIGatewayHttpResponse = new LocalAIGatewayHttpResponse();
+    response.statusCode = 200;
+    response.body = '{"choices":[{"message":{"content":' + JSON.stringify(compositionReadyOutput()) +
+      '},"finish_reason":"stop"}],"usage":{"prompt_tokens":100,"completion_tokens":20,' +
+      '"total_tokens":120}}';
+    return new CompositionGatewayOperation(response);
+  }
+}
+
+class CompositionCredentialPort implements ProviderCredentialPort {
+  calls: number = 0;
+
+  resolve(providerId: string, scope: string): Promise<ProviderCredential> {
+    this.calls++;
+    if (providerId !== 'local-ai-gateway' || scope !== 'gateway.invoke') {
+      return Promise.reject(new Error('unexpected credential scope'));
+    }
+    const credential: ProviderCredential = new ProviderCredential();
+    credential.headers['Authorization'] = 'Bearer test-only-credential';
+    return Promise.resolve(credential);
+  }
+}
+
+class CompositionTimerHandle implements ProviderTimerHandlePort {
+  cancelCount: number = 0;
+
+  cancel(): void {
+    this.cancelCount++;
+  }
+}
+
+class CompositionTimer implements ProviderTimerPort {
+  schedules: number = 0;
+
+  schedule(_delayMs: number, _action: () => void): ProviderTimerHandlePort {
+    this.schedules++;
+    return new CompositionTimerHandle();
   }
 }
 
@@ -407,6 +485,42 @@ function compositionPlannerConfig(): ProviderSemanticPlannerConfig {
   result.clarificationTtlMs = 60000;
   result.maxSteps = 8;
   result.maxPromptCharacters = 20000;
+  return result;
+}
+
+function localGatewayCompositionConfig(): LocalAIGatewayMcpRuntimeConfig {
+  const result: LocalAIGatewayMcpRuntimeConfig = new LocalAIGatewayMcpRuntimeConfig();
+  result.runtimeConfig = compositionConfig();
+  result.plannerConfig = compositionPlannerConfig();
+  result.transportProfile.modelVersion = 'gateway-profile-revision-t35';
+  result.transportProfile.maxInputTokens = 8192;
+  result.transportProfile.maxOutputTokens = 1024;
+  result.transportProfile.qualityTier = 2;
+  result.transportProfile.privacyClasses = [PrivacyClass.PERSONAL];
+  result.transportProfile.available = true;
+  result.priceSnapshot.snapshotId = 'gateway-price-t35';
+  result.priceSnapshot.providerId = result.transportProfile.providerId;
+  result.priceSnapshot.capabilityId = result.transportProfile.publicModelAlias;
+  result.priceSnapshot.capabilityVersion = result.transportProfile.modelVersion;
+  result.priceSnapshot.region = result.transportProfile.region;
+  result.priceSnapshot.currency = 'USD';
+  result.priceSnapshot.inputMicrosPerMillionTokens = 1000000;
+  result.priceSnapshot.outputMicrosPerMillionTokens = 2000000;
+  result.priceSnapshot.fixedCostMicros = 3;
+  result.priceSnapshot.effectiveAt = '2026-10-15T00:00:00.000Z';
+  result.priceSnapshot.snapshotDigest = 'gateway-price-digest-t35';
+  return result;
+}
+
+function localGatewayCompositionPorts(registry: ToolRegistry, fixture: FixtureAssembly,
+  credentials: ProviderCredentialPort, client: LocalAIGatewayHttpClientPort,
+  recovery: boolean = false): LocalAIGatewayMcpRuntimePorts {
+  const result: LocalAIGatewayMcpRuntimePorts = new LocalAIGatewayMcpRuntimePorts();
+  result.runtimePorts = providerCompositionPorts(registry, fixture.digest, recovery);
+  result.digest = fixture.digest;
+  result.credentials = credentials;
+  result.timer = new CompositionTimer();
+  result.httpClient = client;
   return result;
 }
 
@@ -1035,6 +1149,112 @@ export default function mcpAgentAdapterTest(): void {
       expect(registryWithPlanner.snapshot().snapshotVersion).assertEqual(0);
       expect(registryWithoutClock.snapshot().snapshotVersion).assertEqual(0);
       expect(registryWithoutIds.snapshot().snapshotVersion).assertEqual(0);
+    });
+
+    it('composesConcreteLocalGatewayChainIntoSoleFacade', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const credentials: CompositionCredentialPort = new CompositionCredentialPort();
+      const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
+      const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
+        localGatewayCompositionConfig(), localGatewayCompositionPorts(registry, fixture, credentials, client),
+        fixture.adapter, registry);
+
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(credentials.calls).assertEqual(1);
+      expect(client.calls).assertEqual(1);
+      expect(client.lastRequest?.endpoint).assertEqual('http://127.0.0.1:4000/v1/chat/completions');
+      expect(client.lastRequest?.body.includes('test-only-credential')).assertFalse();
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      const observer: CompositionObserver = new CompositionObserver();
+      const subscriptionRequest: SubscriptionRequest = new SubscriptionRequest();
+      subscriptionRequest.subscriptionId = 'subscription:local-gateway-composition';
+      subscriptionRequest.taskId = handle.taskId;
+      const subscription: AgentSubscription = await runtime.subscribe(subscriptionRequest, observer);
+      const decision: AuthorizationDecision = new AuthorizationDecision();
+      decision.commandId = 'authorize:local-gateway-composition';
+      decision.policyRequestId = observer.policies[0].requestId;
+      decision.userId = 'user-1';
+      decision.taskId = handle.taskId;
+      decision.decision = AuthorizationDecisionType.APPROVED;
+      decision.decidedAt = '1970-01-01T00:00:01.000Z';
+      decision.decidedAtMs = 1000;
+      await runtime.provideAuthorization(decision);
+      let snapshot: AgentTaskSnapshot = await runtime.getTaskSnapshot(handle.taskId);
+      for (let i: number = 0; i < 20 && snapshot.status !== AgentTaskStatus.COMPLETED; i++) {
+        await Promise.resolve();
+        snapshot = await runtime.getTaskSnapshot(handle.taskId);
+      }
+
+      expect(snapshot.status).assertEqual(AgentTaskStatus.COMPLETED);
+      expect(fixture.client.callCount).assertEqual(1);
+      subscription.close();
+    });
+
+    it('composesConcreteLocalGatewayChainForRecoveredFacade', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const credentials: CompositionCredentialPort = new CompositionCredentialPort();
+      const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
+      const runtime: AgentRuntimeFacade = await createRecoveredLocalAIGatewayMcpProductionAgentRuntime(
+        localGatewayCompositionConfig(), localGatewayCompositionPorts(registry, fixture, credentials, client, true),
+        fixture.adapter, registry);
+
+      expect(registry.activeEntries().length).assertEqual(1);
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+      expect(credentials.calls).assertEqual(1);
+      expect(client.calls).assertEqual(1);
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('rejectsMissingLocalGatewayPortsAndMismatchedPriceBeforeNetwork', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const credentials: CompositionCredentialPort = new CompositionCredentialPort();
+      const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
+      const missingDigestRegistry: ToolRegistry = new ToolRegistry();
+      const missingDigest: LocalAIGatewayMcpRuntimePorts =
+        localGatewayCompositionPorts(missingDigestRegistry, fixture, credentials, client);
+      missingDigest.digest = undefined;
+      let digestCode: LocalAIGatewayRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createLocalAIGatewayMcpProductionAgentRuntime(localGatewayCompositionConfig(), missingDigest,
+          fixture.adapter, missingDigestRegistry);
+      } catch (error) {
+        if (error instanceof LocalAIGatewayRuntimeCompositionError) digestCode = error.code;
+      }
+      expect(digestCode).assertEqual(LocalAIGatewayRuntimeCompositionErrorCode.DIGEST_REQUIRED);
+
+      const missingCredentialsRegistry: ToolRegistry = new ToolRegistry();
+      const missingCredentials: LocalAIGatewayMcpRuntimePorts =
+        localGatewayCompositionPorts(missingCredentialsRegistry, fixture, credentials, client);
+      missingCredentials.credentials = undefined;
+      let credentialCode: LocalAIGatewayRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createLocalAIGatewayMcpProductionAgentRuntime(localGatewayCompositionConfig(), missingCredentials,
+          fixture.adapter, missingCredentialsRegistry);
+      } catch (error) {
+        if (error instanceof LocalAIGatewayRuntimeCompositionError) credentialCode = error.code;
+      }
+      expect(credentialCode).assertEqual(LocalAIGatewayRuntimeCompositionErrorCode.CREDENTIALS_REQUIRED);
+
+      const invalidPriceRegistry: ToolRegistry = new ToolRegistry();
+      const invalidPrice: LocalAIGatewayMcpRuntimeConfig = localGatewayCompositionConfig();
+      invalidPrice.priceSnapshot.providerId = 'wrong-provider';
+      let priceCode: LocalAIGatewayRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createLocalAIGatewayMcpProductionAgentRuntime(invalidPrice,
+          localGatewayCompositionPorts(invalidPriceRegistry, fixture, credentials, client),
+          fixture.adapter, invalidPriceRegistry);
+      } catch (error) {
+        if (error instanceof LocalAIGatewayRuntimeCompositionError) priceCode = error.code;
+      }
+      expect(priceCode).assertEqual(LocalAIGatewayRuntimeCompositionErrorCode.MODEL_REGISTRATION_REJECTED);
+      expect(credentials.calls).assertEqual(0);
+      expect(client.calls).assertEqual(0);
+      expect(fixture.client.callCount).assertEqual(0);
     });
   });
 }

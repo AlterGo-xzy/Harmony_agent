@@ -1,6 +1,6 @@
 # Local AI Gateway 集成说明
 
-`@harmony_agent/agent-connectors` 0.3.0 提供 `LocalAIGatewayModelTransport`，把 M07 的通用 `ModelTransportPort` 映射到 Local AI Gateway 的 OpenAI-compatible `POST /v1/chat/completions`。该适配只承担 Provider 网络协议，不创建、提交或控制任务；外部调用方仍只能通过 `AgentRuntimeFacade` 控制 Agent。
+`@harmony_agent/agent-connectors` 0.6.0 提供 `LocalAIGatewayModelTransport` 和具体 production composition 工厂。transport 把 M07 `ModelTransportPort` 映射到 OpenAI-compatible `POST /v1/chat/completions`；工厂把 catalog、credential/timer runner、Generic Provider、Semantic Planner 与 MCP production runtime 组装起来。它不增加任务控制接口，外部调用方仍只能通过 `AgentRuntimeFacade` 控制 Agent。
 
 ## 已核对的网关契约
 
@@ -10,7 +10,7 @@
 
 ## 宿主装配
 
-宿主先创建 transport profile，并把它和同一时点冻结的价格快照注册进 `ProviderCatalog`：
+宿主创建 transport profile、同一时点冻结的价格快照、Runtime config/ports，并注入 digest 与 credential port：
 
 ```ets
 const gateway: LocalAIGatewayTransportProfile = new LocalAIGatewayTransportProfile();
@@ -21,21 +21,22 @@ gateway.qualityTier = 1;
 gateway.privacyClasses = [PrivacyClass.PUBLIC, PrivacyClass.PERSONAL];
 gateway.available = readyAtSnapshotTime;
 
-const modelProfile: ModelProviderProfile = createLocalAIGatewayModelProfile(gateway);
-const catalog: ProviderCatalog = new ProviderCatalog(digestPort);
-if (!catalog.registerModel(modelProfile, priceSnapshot)) {
-  throw new Error('Local AI Gateway model snapshot is invalid');
-}
-const registered: RegisteredModelProvider =
-  catalog.getModel(gateway.registryModelId) as RegisteredModelProvider;
-const provider: GenericModelProvider = new GenericModelProvider(
-  registered,
-  new LocalAIGatewayModelTransport(gateway, new ArkTsLocalAIGatewayHttpClient()),
-  new ProviderOperationRunner(credentialPort, new SystemProviderTimer())
-);
+const config: LocalAIGatewayMcpRuntimeConfig = new LocalAIGatewayMcpRuntimeConfig();
+config.runtimeConfig = runtimeConfig;
+config.plannerConfig = plannerConfig;
+config.transportProfile = gateway;
+config.priceSnapshot = priceSnapshot;
+
+const ports: LocalAIGatewayMcpRuntimePorts = new LocalAIGatewayMcpRuntimePorts();
+ports.runtimePorts = runtimePorts;
+ports.digest = digestPort;
+ports.credentials = credentialPort;
+
+const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
+  config, ports, mcpAdapter, toolRegistry);
 ```
 
-`priceSnapshot.providerId` 必须等于 `local-ai-gateway`，`capabilityId` 必须等于 `aigw/default`，`capabilityVersion` 与 `gateway.modelVersion` 相同，region 与 `local-windows` 相同。价格应反映活动网关 Profile 实际路由的上游成本；不能用测试用零价格代替生产快照。
+工厂会完成 `ProviderCatalog` 注册，默认构造 `ArkTsLocalAIGatewayHttpClient` 与 `SystemProviderTimer`；测试可通过 ports 注入替代实现。`priceSnapshot.providerId` 必须等于 `local-ai-gateway`，`capabilityId` 必须等于 `aigw/default`，version/region 必须匹配 gateway profile。价格应反映活动 Profile 实际路由的上游成本；不能用测试用零价格代替生产快照。
 
 Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModelProvider` 在 transport 边界把它转换为 Provider alias `aigw/default`，冻结 model version、region、price snapshot，并统一结算 usage/cost。JSON object schema 会映射为 `response_format.json_schema`；空 object schema 不发送 `response_format`。当前实现使用单次非流式响应，收到完整结果后向 observer 发送一个规范化 chunk。
 
@@ -53,7 +54,7 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 ## 当前证据边界
 
-SDK 原生 Previewer/Hypium 已运行 `agent_connectors` 33/33，其中新增 5 项覆盖 profile/loopback 校验、chat 请求与结构化响应、两种认证方式及脱敏、HTTP 状态映射、usage 完整性和取消委托。Release HAR 为 42,015 bytes、SHA-256 `F2C510AA59377A466D59CDC7B890668DDC15A2AE3FCA7F61720A0A872C66A051`。该门使用内存 HTTP fixture，证明协议映射和安全边界，不证明 Windows 网关进程、活动 Profile、真实上游 Provider、设备网络或生产 credential store。
+SDK 原生 Previewer/Hypium 当前运行 `agent_connectors` 50/50。T35 新增 3 项覆盖具体 Provider 链经唯一 Facade 生成 typed workflow、解析一次 credential、发起一次 gateway HTTP、等待授权后完成一次 MCP Tool，以及恢复工厂和网络前 fail-closed。无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T35 使用内存 credential/timer/HTTP/MCP fixture，不证明 Windows 网关进程、真实上游 Provider、设备网络或宿主生产 credential store。
 
 2026-10-13 的只读查询确认已安装 `aigw.exe`，配置中已有一个完整且已选中的 Profile，并提供默认 alias `aigw/default`。
 
