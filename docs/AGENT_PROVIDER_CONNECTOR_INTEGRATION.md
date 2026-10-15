@@ -36,6 +36,8 @@ Provider 只能返回受约束的 JSON 草图。Adapter 会重新生成 workflow
 
 ## 当前验收边界
 
-M07 的 15 项 contract test、Local AI Gateway transport 5 项、T33 Planner 6 项、T34 通用 composition 3 项和 T35 网关具体 composition 3 项，与 M06/M09-B MCP 用例合并运行时为 50/50。T35 的无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。
+M07 的 15 项 contract test、Local AI Gateway transport 5 项、T33 Planner 6 项、T34 通用 composition 3 项、T35 网关具体 composition 3 项和 T37 协作选择 composition 2 项，与 M06/M09-B MCP 用例合并运行时为 52/52。T37 的 Release HAR 为 58,288 bytes、SHA-256 `BAFCEE611C9349B570E30B6FF57BA365AA59E77953B57D15BF5EDEC26F5F7073`，包内版本 0.7.0、`debug=false`。
+
+T37 要求通用与 Local AI Gateway 工厂保留宿主显式提供的 `CollaborationSelectorPort`，仅在缺失时使用 Strong Single fallback。Multi 选择仍由 Runtime 激活预算约束；预算不足时在 planner、credential、Provider 网络和 MCP 前失败，且终态恢复检查点保持有效。该接线不提供角色拓扑或第二任务控制入口。
 
 这些主机门本身不证明真实 Provider Planner 请求、宿主生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。T36 已另行取得 signed API 26 的单任务系统证据：真实 Provider Planner 生成一个 Tool workflow，经唯一 `AgentRuntimeFacade` 等待显式授权后调用一次 MCP `echo` 并完成；该证据不替代生产凭据存储、真实取消/timeout、第三方远端 MCP 或 12×2 S6 Bench。

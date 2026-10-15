@@ -2,8 +2,8 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T36 已完成各自记录的任务门；T26/T28/T36 已完成签名 API 26 验收；S6 真实双 arm Bench 仍开放**
-日期：2026-10-15
+状态：**In progress / T01–T37 已完成各自记录的任务门；T26/T28/T36 已完成签名 API 26 验收；S6 真实双 arm Bench 仍开放**
+日期：2026-10-16
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
 ## 1. 结论
@@ -58,7 +58,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
 - `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 的 signed `LocalAIGatewayFacadeDevice` 又把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环，并在 API 26 实际通过 1/1；验收后 bundle、两个反向映射、bridge、fixture 和网关均已清理。
-- `agent_connectors/` 0.6.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、通用 Planner composition 与 T35 Local AI Gateway 具体 production composition 的本地主机/HAR 门。T35 在 Facade 前完成网关 model/price 注册并构造 transport、credential/timer runner、Generic Provider 和 Planner；宿主仍注入 digest/credential port，外部只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 50/50；当前无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T36 已补齐单任务真实 Provider Planner → Facade → MCP 的 signed API 26 证据；它不等于 S6 的十二类任务双 arm system Bench。
+- `agent_connectors/` 0.7.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、具体 production composition 与 T37 协作选择接线的本地主机/HAR 门。composition 保留宿主显式注入的 `CollaborationSelectorPort`，缺失时回退 Strong Single；外部仍只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 52/52；Release HAR 为 58,288 bytes、SHA-256 `BAFCEE611C9349B570E30B6FF57BA365AA59E77953B57D15BF5EDEC26F5F7073`。T36 的单任务真实 Provider Planner → Facade → MCP signed API 26 证据继续有效；T37 没有运行真实 Provider 或设备，也不等于 S6 的十二类任务双 arm system Bench。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
 - 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。宿主生产 credential store、真实取消/timeout、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition。产品 Entry HAP 属于外部调用方范围。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。

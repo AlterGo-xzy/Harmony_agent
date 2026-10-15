@@ -840,6 +840,9 @@ export class RuntimeCoordinator {
     }
     record.frame = this.analyzer.analyze(record.envelope);
     record.collaborationMode = this.collaboration.select(copyFrame(record.frame));
+    record.planningRequest.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope));
+    record.planningRequest.frame = copyFrame(record.frame);
+    record.planningRequest.collaborationMode = record.collaborationMode;
     if (record.collaborationMode === CollaborationMode.MULTI &&
       record.envelope.executionBudget.maxAgentActivations < 2) {
       this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
@@ -847,9 +850,6 @@ export class RuntimeCoordinator {
       return;
     }
     record.usage.agentActivations = record.collaborationMode === CollaborationMode.MULTI ? 2 : 1;
-    record.planningRequest.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope));
-    record.planningRequest.frame = copyFrame(record.frame);
-    record.planningRequest.collaborationMode = record.collaborationMode;
     const isolated: PlanningRequest = this.copyPlanningRequest(record.planningRequest);
     let result: PlanningResult;
     try {

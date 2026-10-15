@@ -417,6 +417,26 @@ export default function runtimeCoordinatorTest(): void {
       expect(conflict).assertTrue();
     });
 
+    it('persistsValidFailureWhenMultiSelectionExceedsActivationBudget', 0, async () => {
+      const fixture: FixtureRuntime = new FixtureRuntime();
+      fixture.collaboration.mode = CollaborationMode.MULTI;
+      const request: TaskSubmission = submission('request-multi-budget');
+      request.requestedBudget.maxAgentActivations = 1;
+
+      const accepted = await fixture.coordinator.acceptTask(request);
+      const checkpoint: RuntimeTaskRecoveryCheckpoint =
+        fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+
+      expect(fixture.coordinator.getSnapshot(accepted.handle.taskId).status)
+        .assertEqual(AgentTaskStatus.FAILED);
+      expect(fixture.coordinator.getSnapshot(accepted.handle.taskId).resultJson)
+        .assertEqual('{"reason":"agentActivationBudgetExhausted"}');
+      expect(fixture.planner.calls).assertEqual(0);
+      expect(checkpoint.collaborationMode).assertEqual(CollaborationMode.MULTI);
+      expect(checkpoint.planningRequest.collaborationMode).assertEqual(CollaborationMode.MULTI);
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertTrue();
+    });
+
     it('dispatchesOnlyValidatedWorkflowStepsAndCompletes', 0, async () => {
       const fixture: FixtureRuntime = new FixtureRuntime();
       const accepted = await fixture.coordinator.acceptTask(submission('request-2'));

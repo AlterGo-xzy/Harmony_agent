@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-15。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.3.0 已完成主机/HAR 门、S6 fixture baseline 和真实 system run 的 fail-closed 证据合同，真实双 arm Provider/system Bench 仍未运行。
+最后更新：2026-10-16。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T37 已完成协作选择器 production composition 的主机/HAR 前置门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.3.0 已完成主机/HAR 门、S6 fixture baseline 和真实 system run 的 fail-closed 证据合同，真实双 arm Provider/system Bench 仍未运行。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -35,9 +35,9 @@
 |---|---:|---|---|
 | `agent_contracts` | 14/14 | DTO、codec、shape validation | 跨版本生产兼容性 |
 | `agent_core` | 21/21 | DAG、Scheduler、Recovery、Budget；完整预算总账原子 hydration | 真实 Planner/Provider/Tool 与设备运行 |
-| `agent_runtime` | 63/63 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；异步 Planner/Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换与 fail-closed | 真实语义 Planner/Provider/Tool；T26 已证明签名设备进程退出/重启恢复，T32 本身未运行设备 |
+| `agent_runtime` | 64/64 | Policy、Headless Fake、M03 编排、M04 Registry/Router、M09-B Production Facade；异步 Planner/Promise durable gate、同实例 FIFO、启动恢复、authority hydration、event replay、active operation 对账转换、Multi 激活预算终态检查点与 fail-closed | 真实语义 Planner/Provider/Tool；T26 已证明签名设备进程退出/重启恢复，T37 本身未运行设备 |
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
-| `agent_connectors` | 50/50 + bridge 3/3 + signed Provider device 2/2 + signed Planner/Facade/MCP device 1/1 + unsigned MCP device 1/1 | M06/M07、M09-B Facade、T33 Planner、T34 通用 composition 与 T35 Local AI Gateway 具体 composition；signed `LocalAIGatewayDevice` 2/2、signed `LocalAIGatewayFacadeDevice` 1/1、unsigned `McpFacadeDevice` 1/1；设备门均完成卸载与转发/进程清理 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、第三方远端 MCP 兼容性和 S6 12×2 system run 未覆盖 |
+| `agent_connectors` | 52/52 + bridge 3/3 + signed Provider device 2/2 + signed Planner/Facade/MCP device 1/1 + unsigned MCP device 1/1 | M06/M07、M09-B Facade、T33 Planner、T34/T35 composition 与 T37 协作选择接线；signed `LocalAIGatewayDevice` 2/2、signed `LocalAIGatewayFacadeDevice` 1/1、unsigned `McpFacadeDevice` 1/1；设备门均完成卸载与转发/进程清理 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、第三方远端 MCP 兼容性和 S6 12×2 system run 未覆盖 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
 | `agent_testkit` | 20/20 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.3.0 新增真实 system run 的 source/environment/Provider/Facade/usage/digest 和 12×2 完整性 fail-closed 校验；Release HAR 与确定性 fixture 报告漂移检查通过 | validator 只验证脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
@@ -64,6 +64,8 @@ T32 将 runtime 增至 63/63：`SemanticPlannerPort` 的 plan/resume/replan 统�
 T33 将 connector 增至 44/44：`ProviderSemanticPlanner` 实现异步 `SemanticPlannerPort`，以冻结的 Provider/model/version/region/price 生成结构化请求，在调用前执行 privacy、输入/输出 token、金额与 prompt 大小预检；模型输出必须解析为互斥的 ready/clarification/rejected 状态，typed workflow 还需通过字段、拓扑、DAG、副作用/幂等与 Tool capability 校验。Runtime 时钟和 ID port 决定 workflow/clarification 身份，trace 不含 prompt/output 正文。无签名隔离 Release HAR 为 99,486 bytes、SHA-256 `6330B38ADC471A67697BFF2643BB3829A8C5CE6E06682E4DFBAC876236D1CCB9`。本门使用 fake Provider，未运行真实 Provider、HAP 或设备，也未完成生产 composition 和 S6 system run。
 
 T36 已以 signed 主/ohosTest HAP 在 API 26 运行 `LocalAIGatewayFacadeDevice` 1/1：真实上游 Provider 返回一个合法 Tool workflow，唯一 `AgentRuntimeFacade` 先进入 `WAITING_AUTHORIZATION`，显式测试授权后经真实 MCP HTTP fixture 执行一次 `echo` 并完成。桥接只记录 1 次上游 200 和脱敏结构/usage 摘要，不记录 credential、请求或响应正文。finally 已卸载 `com.harmony.agent`、移除两个反向映射并停止 bridge、fixture 与网关；按名称及全量 bundle 清单和 HDC 映射复核均通过。证据位于 `artifacts/t36-local-ai-gateway-facade-device/20261015-231255-8192-token-signed-build/` 与 `20261015-231641-device/`。该单任务证据不替代生产 credential store、真实取消/timeout 或 S6 12×2 Bench。
+
+T37 将 connector 主机套件增至 52/52、runtime 增至 64/64。显式 Multi `CollaborationSelectorPort` 可穿过具体 Provider/MCP composition；缺失时仍使用 Strong Single。`maxAgentActivations=1` 的 Multi 请求会在 planner、credential、Provider 网络和 MCP 前失败，并产生 validator-valid 的终态恢复检查点。Release HAR 为 58,288 bytes、SHA-256 `BAFCEE611C9349B570E30B6FF57BA365AA59E77953B57D15BF5EDEC26F5F7073`。本门没有真实 Provider、HAP、签名或设备证据，不关闭 S6。
 
 M05-A 主机用例覆盖 task CAS/copy、opaque Runtime checkpoint 与任务枚举、checkpoint/authority 单 CAS 发布、operation/reservation/完整 budget scope 图原子 prepare、version 3 Policy/Grant 绑定、全部 reservation 与 scope 防御性读取、稳定 ID 冲突、lease/fencing、三类崩溃语义、UNKNOWN 对账、实际预算/receipt 和 scope 聚合结算、trace retention、schema/migration/corruption，以及 durable CAS 失败不发布、两个 session 单胜者和 reopen 前未知状态固化。
 

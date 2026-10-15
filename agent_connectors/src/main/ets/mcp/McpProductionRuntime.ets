@@ -1,5 +1,6 @@
 import {
   AgentRuntimeFacade,
+  CollaborationSelectorPort,
   ProductionAgentRuntimeConfig,
   ProductionAgentRuntimePorts,
   ProductionRuntimeAdapterFactoryPort,
@@ -59,6 +60,7 @@ function withProviderPlanner(source: ProductionAgentRuntimePorts, registered: Re
   value.planner = observer === undefined ?
     new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids) :
     new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids, observer);
+  value.collaboration = source.collaboration;
   value.toolPreparer = source.toolPreparer;
   value.persistence = source.persistence;
   value.recovery = source.recovery;
@@ -104,7 +106,9 @@ function copyPorts(source: ProductionAgentRuntimePorts, adapter: McpAgentAdapter
   value.clock = source.clock;
   value.ids = source.ids;
   value.planner = source.planner;
-  value.collaboration = new SingleAgentCollaborationSelector();
+  const collaboration: CollaborationSelectorPort = source.collaboration === undefined ?
+    new SingleAgentCollaborationSelector() : source.collaboration;
+  value.collaboration = collaboration;
   value.toolPreparer = source.toolPreparer;
   value.adapterFactory = new McpProductionAdapterFactory(adapter);
   value.persistence = source.persistence;

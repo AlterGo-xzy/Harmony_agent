@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.6.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.7.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,

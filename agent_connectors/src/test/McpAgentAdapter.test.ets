@@ -17,6 +17,7 @@ import {
   ReconciliationReport,
   RiskLevel,
   SideEffect,
+  TaskFrame,
   TaskHandle,
   TaskSubmission,
   TaskEnvelope,
@@ -31,6 +32,7 @@ import {
   AgentRuntimeFacade,
   AgentRuntimeObserver,
   AgentSubscription,
+  CollaborationSelectorPort,
   DispatchPersistenceContext,
   ModelRegistryEntry,
   PlanningRequest,
@@ -575,6 +577,15 @@ class CompositionPlanner implements SemanticPlannerPort {
   }
 }
 
+class FixedMultiCollaborationSelector implements CollaborationSelectorPort {
+  calls: number = 0;
+
+  select(_frame: TaskFrame): CollaborationMode {
+    this.calls++;
+    return CollaborationMode.MULTI;
+  }
+}
+
 class CompositionToolPreparer implements ToolInvocationPreparerPort {
   private readonly registry: ToolRegistry;
   private readonly digest: ConnectorDigestPort;
@@ -723,14 +734,14 @@ function compositionConfig(): ProductionAgentRuntimeConfig {
   return config;
 }
 
-function compositionSubmission(): TaskSubmission {
+function compositionSubmission(maxAgentActivations: number = 1): TaskSubmission {
   const budget: ExecutionBudget = new ExecutionBudget();
   budget.maxWallTimeMs = 60000;
   budget.maxInputTokens = 1000;
   budget.maxOutputTokens = 1000;
   budget.maxMonetaryCostMicros = 1000;
   budget.maxToolCalls = 2;
-  budget.maxAgentActivations = 1;
+  budget.maxAgentActivations = maxAgentActivations;
   budget.maxRetries = 0;
   budget.maxReplans = 0;
   const value: TaskSubmission = new TaskSubmission();
@@ -1190,6 +1201,50 @@ export default function mcpAgentAdapterTest(): void {
       expect(snapshot.status).assertEqual(AgentTaskStatus.COMPLETED);
       expect(fixture.client.callCount).assertEqual(1);
       subscription.close();
+    });
+
+    it('preservesExplicitCollaborationSelectorThroughConcreteGatewayComposition', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const credentials: CompositionCredentialPort = new CompositionCredentialPort();
+      const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
+      const ports: LocalAIGatewayMcpRuntimePorts =
+        localGatewayCompositionPorts(registry, fixture, credentials, client);
+      const collaboration: FixedMultiCollaborationSelector = new FixedMultiCollaborationSelector();
+      ports.runtimePorts.collaboration = collaboration;
+      const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
+        localGatewayCompositionConfig(), ports, fixture.adapter, registry);
+
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission(2));
+
+      expect(collaboration.calls).assertEqual(1);
+      expect(credentials.calls).assertEqual(1);
+      expect(client.calls).assertEqual(1);
+      expect(client.lastRequest?.body.includes('collaborationMode=multi')).assertTrue();
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status)
+        .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
+    it('failsMultiCollaborationBeforeCredentialOrNetworkWhenActivationBudgetIsOne', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const credentials: CompositionCredentialPort = new CompositionCredentialPort();
+      const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
+      const ports: LocalAIGatewayMcpRuntimePorts =
+        localGatewayCompositionPorts(registry, fixture, credentials, client);
+      const collaboration: FixedMultiCollaborationSelector = new FixedMultiCollaborationSelector();
+      ports.runtimePorts.collaboration = collaboration;
+      const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
+        localGatewayCompositionConfig(), ports, fixture.adapter, registry);
+
+      const handle: TaskHandle = await runtime.submitTask(compositionSubmission());
+
+      expect(collaboration.calls).assertEqual(1);
+      expect((await runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.FAILED);
+      expect(credentials.calls).assertEqual(0);
+      expect(client.calls).assertEqual(0);
+      expect(fixture.client.callCount).assertEqual(0);
     });
 
     it('composesConcreteLocalGatewayChainForRecoveredFacade', 0, async () => {
