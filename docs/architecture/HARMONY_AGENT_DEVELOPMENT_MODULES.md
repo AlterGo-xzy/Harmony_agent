@@ -348,7 +348,7 @@ M00 完成后可以设计 Provider 端口和独立 fake/contract test；真实 R
 - 取消和 timeout 会释放网络资源；
 - 凭据只在 connector 边界注入。
 
-当前实施状态（T10/T28/T29/T33/T34/T35，本地主机、HAR 与已记录设备门已通过）：`@harmony_agent/agent-connectors` 0.6.0 已提供 Provider-neutral contracts、Local AI Gateway transport、MCP Production Facade、Provider-backed Planner 及其通用和网关具体 composition。T35 工厂注册冻结的 model/region/version/price，内部构造 transport、credential/timer runner、Generic Provider 与 Planner，再复用 catalog-before-Facade 边界。合并 connector 主机套件 50/50；当前无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。既有网关 signed `LocalAIGatewayDevice` 2/2 与 MCP Facade 1/1 设备证据继续按各自范围有效；T35 使用内存 fixture，宿主生产 credential store、真实 Provider Planner/system run、HAP 和设备门仍待后续。
+当前实施状态（T10/T28/T29/T33/T34/T35 与 T36 准备门）：`@harmony_agent/agent-connectors` 0.6.0 已提供 Provider-neutral contracts、Local AI Gateway transport、MCP Production Facade、Provider-backed Planner 及其通用和网关具体 composition。T35 工厂注册冻结的 model/region/version/price，内部构造 transport、credential/timer runner、Generic Provider 与 Planner，再复用 catalog-before-Facade 边界。合并 connector 主机套件 50/50；当前无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T36 已编译真实网关 Planner → Facade → 显式授权 → MCP 测试链及清理脚本，unsigned 主/ohosTest HAP 构建通过；当前没有 HDC 目标，尚未签名、安装或执行该设备用例。既有网关 signed `LocalAIGatewayDevice` 2/2 与 MCP Facade 1/1 设备证据继续按各自范围有效。
 
 ### M08：Native Kit Tools
 
@@ -429,7 +429,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 
 当前实施状态（T34，本地主机与 HAR 门已通过）：`@harmony_agent/agent-connectors` 0.5.0 新增 Provider Planner 的 MCP production 新建/恢复工厂。工厂不导出内部协调器或第二控制入口，只返回既有 `AgentRuntimeFacade`；它在目录发现前校验 Planner 所有权及 Runtime clock/ID，并复用 T29 catalog-before-Facade 与 completion sink 边界。新增 3 项后 connector 为 47/47；无签名隔离 Release HAR 为 56,551 bytes、SHA-256 `05AE633E28D6326F9B07124911B3FC7F84C7DF3A9A20450613F434DF1AB0831C`。真实 Provider、生产凭据、HAP、签名和设备均未执行。
 
-当前实施状态（T35，本地主机与 HAR 门已通过）：`@harmony_agent/agent-connectors` 0.6.0 新增 Local AI Gateway 具体 production 新建/恢复工厂。它要求宿主注入 digest 与 credential port，默认可使用 ArkTS HTTP client/System timer，在暴露唯一 Facade 前完成 model/price 注册并组装 Generic Provider 与 Planner。新增 3 项验证完整 gateway-to-Facade 链、恢复工厂和网络前 fail-closed；connector 为 50/50，Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。本门未读取真实凭据、调用真实网关/Provider 或执行 HAP/设备操作。
+当前实施状态（T35 主机/HAR 门已通过，T36 设备门准备完成）：`@harmony_agent/agent-connectors` 0.6.0 新增 Local AI Gateway 具体 production 新建/恢复工厂。它要求宿主注入 digest 与 credential port，默认可使用 ArkTS HTTP client/System timer，在暴露唯一 Facade 前完成 model/price 注册并组装 Generic Provider 与 Planner。新增 3 项验证完整 gateway-to-Facade 链、恢复工厂和网络前 fail-closed；connector 为 50/50，Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。T36 无页面测试已把该工厂接入真实网关桥与真实 MCP fixture，并完成 unsigned 编译；尚无设备运行证据，不把编译结果记为真实 Provider/Facade 闭环通过。
 
 ### M10：TestKit、故障注入与 harmony_agent Bench
 
@@ -453,7 +453,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与真实报告 validator。Hypium 20/20、Release HAR 和 fixture digest 漂移检查已通过；TestKit 不提交、控制或恢复任务。T35 已提供具体 Local AI Gateway production composition，但当前组合用例仍使用内存 credential/HTTP fixture，Bench fixture 仍使用零成本 Provider 和虚拟零时钟；真实 Provider/system Bench 仍是 S6 的剩余验收门。
+当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与真实报告 validator。Hypium 20/20、Release HAR 和 fixture digest 漂移检查已通过；TestKit 不提交、控制或恢复任务。T35 已提供具体 Local AI Gateway production composition，T36 只准备单次 Planner → MCP 设备验收，并非 12×2 Bench；Bench fixture 仍使用零成本 Provider 和虚拟零时钟，真实双 arm Provider/system Bench 仍是 S6 的剩余验收门。
 
 ### M11：Artifact、Parity 与策略发布链
 

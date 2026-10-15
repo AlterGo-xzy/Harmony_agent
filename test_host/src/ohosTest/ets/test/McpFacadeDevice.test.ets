@@ -79,19 +79,19 @@ function fixtureUrl(): string {
   return literalValue === undefined ? '' : literalValue;
 }
 
-class DeviceDigest implements ConnectorDigestPort {
+export class DeviceDigest implements ConnectorDigestPort {
   digest(value: string): string {
     return 'device-digest:' + value;
   }
 }
 
-class DeviceConnectorClock implements ConnectorClockPort {
+export class DeviceConnectorClock implements ConnectorClockPort {
   nowIso(): string {
     return new Date().toISOString();
   }
 }
 
-class DeviceGrantVerifier implements McpGrantVerifierPort {
+export class DeviceGrantVerifier implements McpGrantVerifierPort {
   verify(invocation: ToolInvocation): McpGrantVerification {
     const result: McpGrantVerification = new McpGrantVerification();
     result.allowed = invocation.authorizationGrantId.trim().length > 0;
@@ -100,13 +100,13 @@ class DeviceGrantVerifier implements McpGrantVerifierPort {
   }
 }
 
-class DeviceRuntimeClock implements RuntimeClockPort {
+export class DeviceRuntimeClock implements RuntimeClockPort {
   nowMs(): number {
     return Date.now();
   }
 }
 
-class DeviceIds implements RuntimeIdGeneratorPort {
+export class DeviceIds implements RuntimeIdGeneratorPort {
   private next: number = 0;
 
   nextId(kind: string, requestId: string): string {
@@ -167,7 +167,7 @@ class DevicePlanner implements SemanticPlannerPort {
   }
 }
 
-class DeviceToolPreparer implements ToolInvocationPreparerPort {
+export class DeviceToolPreparer implements ToolInvocationPreparerPort {
   private readonly registry: ToolRegistry;
   private readonly digest: ConnectorDigestPort;
 
@@ -224,7 +224,7 @@ function saved(): Promise<RuntimePersistenceResult> {
   return Promise.resolve(result);
 }
 
-class DevicePersistence implements ProductionRuntimePersistencePort {
+export class DevicePersistence implements ProductionRuntimePersistencePort {
   saveCheckpoint(_checkpoint: RuntimeTaskRecoveryCheckpoint, _expectedPreviousVersion: number,
     _authority: RuntimeDurableAuthorityPayload, _nowMs: number): Promise<RuntimePersistenceResult> {
     return saved();
@@ -260,7 +260,7 @@ class DevicePersistence implements ProductionRuntimePersistencePort {
   }
 }
 
-class DeviceObserver implements AgentRuntimeObserver {
+export class DeviceObserver implements AgentRuntimeObserver {
   policies: PolicyRequest[] = [];
 
   onEvent(_event: AgentRuntimeEvent): void {
@@ -297,13 +297,13 @@ function submission(): TaskSubmission {
   return value;
 }
 
-function stats(result: McpReadResourceResult): number {
+export function stats(result: McpReadResourceResult): number {
   const resource: Record<string, Object> = result.contents[0].resource as Record<string, Object>;
   const value: Record<string, Object> = JSON.parse(String(resource['text'])) as Record<string, Object>;
   return Number(value['toolCalls']);
 }
 
-async function waitForCompletion(runtime: AgentRuntimeFacade, taskId: string): Promise<AgentTaskSnapshot> {
+export async function waitForCompletion(runtime: AgentRuntimeFacade, taskId: string): Promise<AgentTaskSnapshot> {
   let snapshot: AgentTaskSnapshot = await runtime.getTaskSnapshot(taskId);
   for (let i: number = 0; i < 100 && snapshot.status !== AgentTaskStatus.COMPLETED; i++) {
     await new Promise<void>((resolve: () => void): void => {

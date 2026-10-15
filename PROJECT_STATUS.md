@@ -2,7 +2,7 @@
 
 更新时间：2026-10-15（Asia/Shanghai）
 
-## Agent Runtime T01–T35 与 M10 Bench Pilot（T26/T28 已完成签名设备验收）
+## Agent Runtime T01–T35、T36 设备验收准备与 M10 Bench Pilot（T26/T28 已完成签名设备验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -96,6 +96,8 @@ T34（M07/M09-B Provider Planner production composition）本地主机与 HAR �
 
 T35（M07/M09-B Local AI Gateway concrete production composition）本地主机与 HAR 门已完成：`@harmony_agent/agent-connectors` 升级为 0.6.0，新增 `LocalAIGatewayMcpRuntimeConfig/Ports` 以及新建/恢复工厂。工厂在 Facade 暴露前校验 digest/credential port，注册网关 model/region/version/price snapshot，内部构造 `LocalAIGatewayModelTransport → ProviderOperationRunner → GenericModelProvider → ProviderSemanticPlanner`，再复用 T34 的 MCP catalog 与唯一 `AgentRuntimeFacade` 边界；未注入 HTTP client/timer 时使用 ArkTS client 与系统 timer。新增 3 项覆盖完整 typed workflow → credential 解析 → gateway HTTP → 授权 → 一次 MCP completion、恢复工厂，以及缺 port/价格错配在网络前 fail-closed。connector 主机 Hypium 实测 `Tests run: 50, Failure: 0, Error: 0, Pass: 50, Ignore: 0`；无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`，包内版本 0.6.0、`debug=false`，两个具体工厂声明均存在。本门只使用内存 credential/timer/HTTP/MCP fixture，没有读取生产凭据、调用真实网关/Provider、构建 HAP、签名、安装、卸载或运行设备。证据位于 `artifacts/t35-local-ai-gateway-production-composition/20261015-143851/`。
 
+T36（真实 Local AI Gateway Planner → Facade → MCP 设备闭环）已完成源码与 unsigned 构建准备，设备运行门仍待执行：无页面 `LocalAIGatewayFacadeDevice` 使用 T35 具体 production factory，经真实 ArkTS HTTP client 调用网关 Provider 生成 typed workflow，要求 Facade 先进入 `WAITING_AUTHORIZATION`，再由显式测试决定放行一次真实 MCP `echo`，最后要求任务完成且 fixture 工具调用严格增加 1。凭据只在 invocation 时由端口返回；测试和桥接摘要不记录网关 credential、请求正文或 Provider 响应正文。新增脚本以两个独占 HDC 反向端口组合短生命周期网关 bridge 与 MCP fixture，拒绝覆盖既有 bundle、test module 或端口，并只清理自身创建的进程、映射与安装。正确依赖图的隔离 unsigned 构建通过：ohosTest 99/99 tasks、主 HAP 89/89 tasks，日志均明确 `No signingConfig found`；主 HAP 为 8,907 bytes、SHA-256 `82A46351F8A02EB3BA466BB534BE699DD7900D88D26F4473842F8E3A3D24DEE5`，ohosTest HAP 为 3,038,572 bytes、SHA-256 `6094DDA7B70C22B3B3365703B77D6E4DA841B9617D2B9CF9819667F9B7CDD649`，四个关键测试源与工作区逐一哈希一致。2026-10-15 只读 HDC 预检返回 `[Empty]`，未取得设备版本或包状态；本阶段未签名、安装、卸载、创建 HDC 映射、启动 fixture 或调用真实 Provider，T36 尚未关闭。证据位于 `artifacts/t36-local-ai-gateway-facade-device/20261015-144722-unsigned-build/`。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -110,7 +112,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T35 已关闭各自记录的任务门。T35 已把 Local AI Gateway 的 catalog、transport、credential/timer runner、Generic Provider、Semantic Planner 和 MCP production Facade 串成具体新建/恢复工厂，仍只返回唯一 `AgentRuntimeFacade`。该门使用内存 fixture；宿主生产 credential store、真实网关 Planner 请求与 S6 system run 仍未执行。T30 已在 API 26 上通过真实 HTTP transport、显式授权、一次 MCP Tool 调用与异步 completion 完成 S2 受控只读设备闭环，并完成 bundle、转发和 fixture 清理。该设备门使用 unsigned 测试包及确定性本机 fixture；发布签名、生产 credential store 和第三方远端 MCP 兼容性仍需分别验证。T28 已完成 Local AI Gateway 主机协议适配、严格固定内容断言、signed HAP 验证与安装，以及 API 26 真实设备 Provider 调用；`LocalAIGatewayDevice` 2/2 通过并完成 bundle、转发和网关清理，signed 设备门已关闭。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter。M10 TestKit 0.3.0 已完成基础、可重复 fixture baseline 和真实报告 fail-closed 证据合同；真实 Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T35 已关闭各自记录的任务门。T36 已完成真实 Provider Planner → 唯一 Facade → 显式授权 → MCP 工具的无页面设备用例、清理脚本和 unsigned 编译，但当前没有 HDC 目标，尚无签名、安装或设备运行证据，因此未关闭。T35 已把 Local AI Gateway 的 catalog、transport、credential/timer runner、Generic Provider、Semantic Planner 和 MCP production Facade 串成具体新建/恢复工厂，仍只返回唯一 `AgentRuntimeFacade`。T30 已在 API 26 上通过真实 HTTP transport、显式授权、一次 MCP Tool 调用与异步 completion 完成 S2 受控只读设备闭环，并完成 bundle、转发和 fixture 清理。T28 已完成 Local AI Gateway 主机协议适配、严格固定内容断言、signed HAP 验证与安装，以及 API 26 真实设备 Provider 调用；`LocalAIGatewayDevice` 2/2 通过并完成 bundle、转发和网关清理，signed 设备门已关闭。T26 已用真实 API 26 RDB、存活 seed 进程、明确 force-stop 边界和新进程 recover 证明 active operation 保守转入对账，恢复过程不重放 Adapter。M10 TestKit 0.3.0 已完成基础、可重复 fixture baseline 和真实报告 fail-closed 证据合同；真实双 arm Provider/system Bench 尚未运行，因此 S6 尚未关闭。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

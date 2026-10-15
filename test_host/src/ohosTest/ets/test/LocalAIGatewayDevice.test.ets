@@ -76,7 +76,7 @@ function bridgeCredential(): ProviderCredential {
 export default function localAIGatewayDeviceTest(): void {
   describe('LocalAIGatewayDevice', () => {
     it('loadsConnectorHar', 0, () => {
-      expect(AGENT_CONNECTORS_VERSION).assertEqual('0.3.0');
+      expect(AGENT_CONNECTORS_VERSION).assertEqual('0.6.0');
     });
 
     it('callsOfficialProviderThroughLoopbackBridge', 0, async () => {
