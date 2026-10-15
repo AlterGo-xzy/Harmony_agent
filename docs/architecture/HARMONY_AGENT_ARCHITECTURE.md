@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T35 已完成各自记录的实现门；T36 已完成 unsigned 设备验收准备；T26/T28 已完成签名 API 26 验收**
+状态：**In progress / T01–T35 已完成各自记录的实现门；T36 已完成 signed 构建校验，设备运行受既有宿主签名身份阻塞；T26/T28 已完成签名 API 26 验收**
 日期：2026-10-15
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
@@ -57,10 +57,10 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - 公共 MCP 能力以 `{ serverId, kind, name }` 标识，避免跨 Server 同名冲突。
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
-- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 又加入 `LocalAIGatewayFacadeDevice`，用于把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环；源码与 unsigned 构建已通过，设备当前未连接，运行门未关闭。
+- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 又加入 `LocalAIGatewayFacadeDevice`，用于把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环；源码、unsigned 构建、signed HAP 构建及签名校验已通过。设备已连接，但保留既有主模块时，新 ohosTest HAP 因签名身份不一致未能安装，测试与 Provider 请求均未开始，运行门未关闭。
 - `agent_connectors/` 0.6.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、通用 Planner composition 与 T35 Local AI Gateway 具体 production composition 的本地主机/HAR 门。T35 在 Facade 前完成网关 model/price 注册并构造 transport、credential/timer runner、Generic Provider 和 Planner；宿主仍注入 digest/credential port，外部只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 50/50；当前无签名隔离 Release HAR 为 58,431 bytes、SHA-256 `39C615A446F83D44231369B01EAF0543033264295F26703185DECB18B5F266CD`。既有严格网关主机断言与 API 26 `LocalAIGatewayDevice` 2/2 继续按各自范围有效；T35 本身使用内存 fixture，尚未执行真实 Provider Planner/system run 或设备运行。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并已编译真实 Facade Planner → MCP 设备用例；宿主生产 credential store 和真实设备运行仍未验证。需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition。既有 Local AI Gateway signed 设备 transport 证据已通过并清理；产品 Entry HAP 属于外部调用方范围。
+- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并已编译和签名验证真实 Facade Planner → MCP 设备用例；宿主生产 credential store 与该用例的真实设备运行仍未验证。T36 当前需要替换设备上签名身份不同的既有测试宿主，或使用与其相同身份签名的 ohosTest HAP，才能继续安装和运行。需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.13.0 与 Storage 0.8.0 已接通异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition。既有 Local AI Gateway signed 设备 transport 证据已通过并清理；产品 Entry HAP 属于外部调用方范围。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
