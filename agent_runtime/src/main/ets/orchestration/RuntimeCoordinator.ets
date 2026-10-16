@@ -45,6 +45,8 @@ import { AgentRuntimeErrorCode } from '../api/RuntimeApi';
 import { PolicyGateway } from '../policy/PolicyGateway';
 import { PolicyDecisionResult } from '../policy/PolicyTypes';
 import {
+  CollaborationPlan,
+  CollaborationRoleAssignment,
   CoordinatorCommandResult,
   DispatchPersistenceContext,
   OrchestrationAcceptance,
@@ -60,6 +62,7 @@ import {
   StepDispatchRequest
 } from './OrchestrationTypes';
 import {
+  CollaborationPlanSelectorPort,
   CollaborationSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
@@ -73,6 +76,7 @@ import { SessionController } from './SessionController';
 import { TaskAnalyzer } from './TaskAnalyzer';
 import { WorkflowReplanController } from './WorkflowReplanController';
 import { RuntimeCheckpointValidator } from './RuntimeCheckpointValidator';
+import { CollaborationPlanValidator } from './CollaborationPlanValidator';
 import {
   RuntimeDurableAuthorityPayload,
   RuntimeRecoveryAuthority,
@@ -225,6 +229,7 @@ export class RuntimeCoordinator {
   private ids: RuntimeIdGeneratorPort;
   private planner: SemanticPlannerPort;
   private collaboration: CollaborationSelectorPort;
+  private collaborationPlan?: CollaborationPlanSelectorPort;
   private toolPreparer: ToolInvocationPreparerPort;
   private dispatcher: StepDispatchPort;
   private stateObserver: RuntimeStateObserverPort;
@@ -238,7 +243,8 @@ export class RuntimeCoordinator {
   constructor(config: RuntimeCoordinatorConfig, clock: RuntimeClockPort, ids: RuntimeIdGeneratorPort,
     planner: SemanticPlannerPort, collaboration: CollaborationSelectorPort,
     toolPreparer: ToolInvocationPreparerPort, dispatcher: StepDispatchPort,
-    stateObserver: RuntimeStateObserverPort = new NoopRuntimeStateObserver()) {
+    stateObserver: RuntimeStateObserverPort = new NoopRuntimeStateObserver(),
+    collaborationPlan?: CollaborationPlanSelectorPort) {
     if (config.policyVersion.length === 0 || !Number.isSafeInteger(config.grantTtlMs) || config.grantTtlMs <= 0) {
       throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT,
         'invalid RuntimeCoordinator configuration');
@@ -247,6 +253,7 @@ export class RuntimeCoordinator {
     this.ids = ids;
     this.planner = planner;
     this.collaboration = collaboration;
+    this.collaborationPlan = collaborationPlan;
     this.toolPreparer = toolPreparer;
     this.dispatcher = dispatcher;
     this.stateObserver = stateObserver;
@@ -839,9 +846,31 @@ export class RuntimeCoordinator {
       return;
     }
     record.frame = this.analyzer.analyze(record.envelope);
-    record.collaborationMode = this.collaboration.select(copyFrame(record.frame));
     record.planningRequest.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope));
     record.planningRequest.frame = copyFrame(record.frame);
+    record.planningRequest.collaborationPlan = undefined;
+    const planSelector: CollaborationPlanSelectorPort | undefined = this.collaborationPlan;
+    if (planSelector === undefined) {
+      record.collaborationMode = this.collaboration.select(copyFrame(record.frame));
+    } else {
+      let selectedPlan: CollaborationPlan;
+      try {
+        selectedPlan = planSelector.selectPlan(copyFrame(record.frame),
+          record.envelope.executionBudget.maxAgentActivations);
+      } catch (error) {
+        this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+          '{"reason":"collaborationPlanSelectionFailed"}');
+        return;
+      }
+      if (!CollaborationPlanValidator.validate(selectedPlan, record.frame,
+        record.envelope.executionBudget.maxAgentActivations).valid) {
+        this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+          '{"reason":"collaborationPlanInvalid"}');
+        return;
+      }
+      record.collaborationMode = selectedPlan.mode;
+      record.planningRequest.collaborationPlan = this.copyCollaborationPlan(selectedPlan);
+    }
     record.planningRequest.collaborationMode = record.collaborationMode;
     if (record.collaborationMode === CollaborationMode.MULTI &&
       record.envelope.executionBudget.maxAgentActivations < 2) {
@@ -849,7 +878,14 @@ export class RuntimeCoordinator {
         '{"reason":"agentActivationBudgetExhausted"}');
       return;
     }
-    record.usage.agentActivations = record.collaborationMode === CollaborationMode.MULTI ? 2 : 1;
+    if (record.collaborationMode === CollaborationMode.MULTI &&
+      record.planningRequest.collaborationPlan === undefined) {
+      this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+        '{"reason":"collaborationPlanRequired"}');
+      return;
+    }
+    const collaborationPlan: CollaborationPlan | undefined = record.planningRequest.collaborationPlan;
+    record.usage.agentActivations = collaborationPlan === undefined ? 1 : collaborationPlan.assignments.length;
     const isolated: PlanningRequest = this.copyPlanningRequest(record.planningRequest);
     let result: PlanningResult;
     try {
@@ -1200,10 +1236,30 @@ export class RuntimeCoordinator {
     result.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(value.envelope));
     result.frame = copyFrame(value.frame);
     result.collaborationMode = value.collaborationMode;
+    if (value.collaborationPlan !== undefined) {
+      result.collaborationPlan = this.copyCollaborationPlan(value.collaborationPlan);
+    }
     if (value.previousWorkflow !== undefined) {
       result.previousWorkflow = ContractCodec.parseWorkflowGraph(ContractCodec.stringify(value.previousWorkflow));
     }
     result.affectedStepIds = value.affectedStepIds.slice();
     return result;
+  }
+
+  private copyCollaborationPlan(source: CollaborationPlan): CollaborationPlan {
+    const value: CollaborationPlan = new CollaborationPlan();
+    value.planVersion = source.planVersion;
+    value.taskId = source.taskId;
+    value.mode = source.mode;
+    value.roleRegistryDigest = source.roleRegistryDigest;
+    value.decisionDigest = source.decisionDigest;
+    for (let i: number = 0; i < source.assignments.length; i++) {
+      const assignment: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+      assignment.roleId = source.assignments[i].roleId;
+      assignment.roleVersion = source.assignments[i].roleVersion;
+      assignment.roleRegistryDigest = source.assignments[i].roleRegistryDigest;
+      value.assignments.push(assignment);
+    }
+    return value;
   }
 }

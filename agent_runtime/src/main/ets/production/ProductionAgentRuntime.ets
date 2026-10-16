@@ -46,6 +46,7 @@ import {
 } from '../orchestration/RuntimeCheckpointValidator';
 import { RuntimeDurableAuthorityPayload } from '../orchestration/RecoveryAuthorityTypes';
 import {
+  CollaborationPlanSelectorPort,
   CollaborationSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
@@ -409,6 +410,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
     const ids: RuntimeIdGeneratorPort = ports.ids as RuntimeIdGeneratorPort;
     const planner: SemanticPlannerPort = ports.planner as SemanticPlannerPort;
     const collaboration: CollaborationSelectorPort = ports.collaboration as CollaborationSelectorPort;
+    const collaborationPlan: CollaborationPlanSelectorPort | undefined = ports.collaborationPlan;
     const toolPreparer: ToolInvocationPreparerPort = ports.toolPreparer as ToolInvocationPreparerPort;
     const adapterFactory: ProductionRuntimeAdapterFactoryPort =
       ports.adapterFactory as ProductionRuntimeAdapterFactoryPort;
@@ -425,7 +427,8 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       collaboration,
       toolPreparer,
       deferred,
-      this
+      this,
+      collaborationPlan
     );
     this.outcomeSink = new ProductionOutcomeSink(this.pendingDispatches);
     this.outcomeSink.bind(this);

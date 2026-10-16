@@ -4,6 +4,7 @@ import {
 } from '@harmony_agent/agent-contracts';
 import {
   CollaborationSelectorPort,
+  CollaborationPlanSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   SemanticPlannerPort,
@@ -19,8 +20,8 @@ import {
   RuntimeRecoveryAuthority
 } from '../orchestration/RecoveryAuthorityTypes';
 
-/** 2.4 adds atomic active-operation recovery normalization. */
-export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.4';
+/** 2.5 adds an optional versioned collaboration-plan selector. */
+export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.5';
 
 export enum RuntimePersistenceCode {
   SAVED = 'SAVED',
@@ -100,6 +101,7 @@ export class ProductionAgentRuntimePorts {
   ids?: RuntimeIdGeneratorPort;
   planner?: SemanticPlannerPort;
   collaboration?: CollaborationSelectorPort;
+  collaborationPlan?: CollaborationPlanSelectorPort;
   toolPreparer?: ToolInvocationPreparerPort;
   adapterFactory?: ProductionRuntimeAdapterFactoryPort;
   persistence?: ProductionRuntimePersistencePort;

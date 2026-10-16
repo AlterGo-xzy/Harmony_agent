@@ -17,6 +17,7 @@ import {
 import { StepExecutionResult, WorkflowRuntimeSnapshot } from '@harmony_agent/agent-core';
 
 export const RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION: string = '1.1';
+export const COLLABORATION_PLAN_VERSION: string = '1.0';
 
 export enum PlanningStatus {
   READY = 'ready',
@@ -24,10 +25,31 @@ export enum PlanningStatus {
   REJECTED = 'rejected'
 }
 
+/** Stable Role Registry identity selected for one planned Agent activation. */
+export class CollaborationRoleAssignment {
+  roleId: string = '';
+  roleVersion: string = '';
+  roleRegistryDigest: string = '';
+}
+
+/**
+ * Versioned, persistence-safe collaboration decision. It contains identities
+ * and digests only; prompts, model output and credentials are excluded.
+ */
+export class CollaborationPlan {
+  planVersion: string = COLLABORATION_PLAN_VERSION;
+  taskId: string = '';
+  mode: CollaborationMode = CollaborationMode.SINGLE;
+  roleRegistryDigest: string = '';
+  decisionDigest: string = '';
+  assignments: CollaborationRoleAssignment[] = [];
+}
+
 export class PlanningRequest {
   envelope: TaskEnvelope = new TaskEnvelope();
   frame: TaskFrame = new TaskFrame();
   collaborationMode: CollaborationMode = CollaborationMode.SINGLE;
+  collaborationPlan?: CollaborationPlan;
   previousWorkflow?: WorkflowGraph;
   affectedStepIds: string[] = [];
 }

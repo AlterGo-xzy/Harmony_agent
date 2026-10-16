@@ -1,6 +1,7 @@
 import {
   AgentRuntimeEvent,
   AgentTaskStatus,
+  CollaborationMode,
   ContractCodec,
   ContractValidator,
   ToolInvocation
@@ -10,6 +11,7 @@ import {
   RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION,
   RuntimeTaskRecoveryCheckpoint
 } from './OrchestrationTypes';
+import { CollaborationPlanValidator } from './CollaborationPlanValidator';
 import { normalizeTaskSubmission } from './SessionNormalization';
 
 export class RuntimeCheckpointValidationResult {
@@ -32,6 +34,14 @@ function json(value: string): boolean {
   } catch (error) {
     return false;
   }
+}
+
+function permitsMissingMultiPlan(value: RuntimeTaskRecoveryCheckpoint): boolean {
+  if (value.snapshot.status !== AgentTaskStatus.FAILED) return false;
+  return value.snapshot.resultJson === '{"reason":"agentActivationBudgetExhausted"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanRequired"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanSelectionFailed"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanInvalid"}';
 }
 
 /** Strict structural and binding validation before a checkpoint is trusted. */
@@ -134,6 +144,16 @@ export class RuntimeCheckpointValidator {
       value.planningRequest.frame.taskId !== value.envelope.taskId ||
       value.planningRequest.collaborationMode !== value.collaborationMode) {
       result.issues.push('planningRequest binding mismatch');
+    }
+    if (value.planningRequest.collaborationPlan !== undefined) {
+      const planValidation = CollaborationPlanValidator.validate(value.planningRequest.collaborationPlan,
+        value.frame, value.envelope.executionBudget.maxAgentActivations);
+      if (!planValidation.valid ||
+        value.planningRequest.collaborationPlan.mode !== value.collaborationMode) {
+        result.issues.push('collaborationPlan is invalid or not bound to collaborationMode');
+      }
+    } else if (value.collaborationMode === CollaborationMode.MULTI && !permitsMissingMultiPlan(value)) {
+      result.issues.push('multi collaboration requires a collaborationPlan');
     }
     const previous = value.planningRequest.previousWorkflow;
     if (previous !== undefined && (previous.taskId !== value.envelope.taskId ||

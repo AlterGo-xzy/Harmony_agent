@@ -1,4 +1,4 @@
-export const AGENT_RUNTIME_VERSION: string = '0.13.0';
+export const AGENT_RUNTIME_VERSION: string = '0.14.0';
 export {
   ShutdownMode,
   AgentRuntimeErrorCode,
@@ -31,6 +31,9 @@ export {
   createRecoveredProductionAgentRuntime
 } from './src/main/ets/production/ProductionAgentRuntime';
 export {
+  COLLABORATION_PLAN_VERSION,
+  CollaborationRoleAssignment,
+  CollaborationPlan,
   PlanningStatus,
   PlanningRequest,
   PlanningResult,
@@ -48,11 +51,17 @@ export {
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   CollaborationSelectorPort,
+  CollaborationPlanSelectorPort,
+  CollaborationPlanDigestPort,
   SemanticPlannerPort,
   ToolInvocationPreparerPort,
   StepDispatchPort,
   SingleAgentCollaborationSelector
 } from './src/main/ets/orchestration/RuntimePorts';
+export {
+  CollaborationPlanValidationResult,
+  CollaborationPlanValidator
+} from './src/main/ets/orchestration/CollaborationPlanValidator';
 export { WorkflowReplanController } from './src/main/ets/orchestration/WorkflowReplanController';
 export {
   RuntimeCheckpointValidationResult,

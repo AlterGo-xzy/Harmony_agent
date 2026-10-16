@@ -2,7 +2,7 @@
 
 更新时间：2026-10-16（Asia/Shanghai）
 
-## Agent Runtime T01–T38 与 M10 Bench Pilot（T26/T28/T36 已完成签名 API 26 验收）
+## Agent Runtime T01–T39 与 M10 Bench Pilot（T26/T28/T36 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -102,6 +102,8 @@ T37（S6 协作选择 production composition 前置门）本地主机与 HAR 门
 
 T38（M10/S6 逐 Agent 真实证据合同）本地主机与 HAR 门已完成：`@harmony_agent/agent-testkit` 升级为 0.4.0，System Benchmark run schema 升级为 2。每个样本必须固定 Role Registry 与 Collaboration decision 摘要，并覆盖数据集中该 case 声明的 expected evidence kind；每次 Agent 激活必须携带唯一 activation/role 身份、正数 Provider 请求数及互不重复的请求/轨迹摘要，汇总 Provider 请求数必须等于逐 Agent 总和。Strong Single 只能有一条 Agent 证据，Multi 至少两条不同角色证据；旧 schema 1 fail-closed。无签名隔离工程主机 Hypium 实测 `Tests run: 23, Failure: 0, Error: 0, Pass: 23, Ignore: 0`；Release HAR 为 29,403 bytes、SHA-256 `810BBF1D19F5419A1F3CA60BDB6F7AE305F591F9D5D0C005C9B3BBC23E9CF92E`，包内版本 0.4.0、`debug=false`、compatible SDK 26。证据位于 `artifacts/t38-s6-agent-evidence-contract/20261016-0030/`。本门没有真实 Provider 请求、HAP、签名或设备运行，也没有实现多 Agent 编排；它阻止以模式标志或激活计数冒充真实 Multi 证据，S6 仍开放。
 
+T39（M03/M04/S6 版本化协作计划门）本地主机与 HAR 门已完成：`@harmony_agent/agent-runtime` 升级为 0.14.0、production composition 升级为 2.5，新增 schema 1.0 `CollaborationPlan`、逐角色 Registry identity、完整 SHA-256 Role Registry/decision 摘要、`CollaborationPlanSelectorPort` 与 fail-closed validator。现有确定性 Collaboration Router 可通过宿主注入的 cryptographic digest port 从 active Role Registry 角色直接生成计划，不接受未注册角色；显式计划成为 Planner 请求和 checkpoint 1.1 的深拷贝恢复状态。旧 Single checkpoint 继续兼容，MULTI 若只有模式标签、角色重复、摘要非法或超过激活预算，会在 Planner、credential、Provider 网络与 MCP 前失败。MCP/Provider/Local AI Gateway composition 会保留显式计划选择器；外部仍只获得 `AgentRuntimeFacade`。主机实测 runtime 68/68、connector 52/52；Release Runtime HAR 为 100,808 bytes、SHA-256 `678998BFCC96C6FDA7E8109DF3C4B246C9B74ED717FF898AAA3C5D38A4C8CC1E`，包内版本 0.14.0、`debug=false`、compatible SDK 26。证据位于 `artifacts/t39-collaboration-plan/20261016-1328/`。本门没有真实 Provider 请求、HAP、签名、安装或设备运行，也没有逐角色 Provider 调用、Agent 间消息或结果汇合；S6 仍开放。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -116,7 +118,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T38 已关闭各自记录的任务门。T37 已打通可注入协作选择器到具体 Provider/MCP production composition 的前置接线；T38 又把真实 Multi 证据收紧为至少两个不同角色的独立 Provider 请求与轨迹，不能仅凭模式标志或激活计数通过。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。宿主生产 credential store、真实取消/timeout、第三方远端 MCP 兼容性、真正的多 Agent 编排，以及十二类任务 × Strong Single/Multi 的真实双 arm Provider/system Bench 尚未完成，因此 S6 仍开放。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T39 已关闭各自记录的任务门。T39 已把 T37 的模式选择接线收紧为版本化、可校验、可恢复的角色计划；T38 的真实 Multi 证据仍要求至少两个不同角色的独立 Provider 请求与轨迹，不能仅凭模式标志、计划或激活计数通过。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。宿主生产 credential store、真实取消/timeout、第三方远端 MCP 兼容性、逐角色 Provider 编排与结果汇合，以及十二类任务 × Strong Single/Multi 的真实双 arm Provider/system Bench 尚未完成，因此 S6 仍开放。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

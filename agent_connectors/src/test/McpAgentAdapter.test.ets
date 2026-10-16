@@ -32,6 +32,9 @@ import {
   AgentRuntimeFacade,
   AgentRuntimeObserver,
   AgentSubscription,
+  CollaborationPlan,
+  CollaborationPlanSelectorPort,
+  CollaborationRoleAssignment,
   CollaborationSelectorPort,
   DispatchPersistenceContext,
   ModelRegistryEntry,
@@ -583,6 +586,30 @@ class FixedMultiCollaborationSelector implements CollaborationSelectorPort {
   select(_frame: TaskFrame): CollaborationMode {
     this.calls++;
     return CollaborationMode.MULTI;
+  }
+}
+
+class FixedMultiCollaborationPlanSelector implements CollaborationPlanSelectorPort {
+  calls: number = 0;
+
+  selectPlan(frame: TaskFrame, _maxAgentActivations: number): CollaborationPlan {
+    this.calls++;
+    const value: CollaborationPlan = new CollaborationPlan();
+    value.taskId = frame.taskId;
+    value.mode = CollaborationMode.MULTI;
+    value.roleRegistryDigest = 'sha256:' + 'a'.repeat(64);
+    value.decisionDigest = 'sha256:' + 'b'.repeat(64);
+    value.assignments.push(this.assignment('planner', 'c'));
+    value.assignments.push(this.assignment('verifier', 'd'));
+    return value;
+  }
+
+  private assignment(roleId: string, digestCharacter: string): CollaborationRoleAssignment {
+    const value: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+    value.roleId = roleId;
+    value.roleVersion = '1';
+    value.roleRegistryDigest = 'sha256:' + digestCharacter.repeat(64);
+    return value;
   }
 }
 
@@ -1203,15 +1230,15 @@ export default function mcpAgentAdapterTest(): void {
       subscription.close();
     });
 
-    it('preservesExplicitCollaborationSelectorThroughConcreteGatewayComposition', 0, async () => {
+    it('preservesExplicitCollaborationPlanThroughConcreteGatewayComposition', 0, async () => {
       const fixture: FixtureAssembly = new FixtureAssembly();
       const registry: ToolRegistry = new ToolRegistry();
       const credentials: CompositionCredentialPort = new CompositionCredentialPort();
       const client: CompositionGatewayHttpClient = new CompositionGatewayHttpClient();
       const ports: LocalAIGatewayMcpRuntimePorts =
         localGatewayCompositionPorts(registry, fixture, credentials, client);
-      const collaboration: FixedMultiCollaborationSelector = new FixedMultiCollaborationSelector();
-      ports.runtimePorts.collaboration = collaboration;
+      const collaboration: FixedMultiCollaborationPlanSelector = new FixedMultiCollaborationPlanSelector();
+      ports.runtimePorts.collaborationPlan = collaboration;
       const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
         localGatewayCompositionConfig(), ports, fixture.adapter, registry);
 

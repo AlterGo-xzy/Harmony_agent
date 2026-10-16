@@ -15,6 +15,7 @@ import {
   ReconciliationStatus,
   RiskLevel,
   SideEffect,
+  TaskFrame,
   TaskSubmission,
   ToolInvocation,
   WorkflowGraph,
@@ -34,6 +35,8 @@ import {
   WorkflowStepState
 } from '@harmony_agent/agent-core';
 import {
+  CollaborationPlan,
+  CollaborationRoleAssignment,
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
@@ -44,7 +47,9 @@ import {
   StepDispatchRequest
 } from '../main/ets/orchestration/OrchestrationTypes';
 import {
+  CollaborationPlanSelectorPort,
   CollaborationSelectorPort,
+  NoopRuntimeStateObserver,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   SemanticPlannerPort,
@@ -94,6 +99,39 @@ class FixtureCollaboration implements CollaborationSelectorPort {
 
   select(): CollaborationMode {
     return this.mode;
+  }
+}
+
+function digest(character: string): string {
+  return 'sha256:' + character.repeat(64);
+}
+
+class FixtureCollaborationPlan implements CollaborationPlanSelectorPort {
+  mode: CollaborationMode = CollaborationMode.MULTI;
+  duplicateRole: boolean = false;
+  invalidDigest: boolean = false;
+  lastPlan?: CollaborationPlan;
+
+  selectPlan(frame: TaskFrame, maxAgentActivations: number): CollaborationPlan {
+    const value: CollaborationPlan = new CollaborationPlan();
+    value.taskId = frame.taskId;
+    value.mode = this.mode;
+    value.roleRegistryDigest = this.invalidDigest ? 'sha256:invalid' : digest('a');
+    value.decisionDigest = digest('b');
+    value.assignments.push(this.assignment('planner', digest('c')));
+    if (this.mode === CollaborationMode.MULTI && maxAgentActivations >= 2) {
+      value.assignments.push(this.assignment(this.duplicateRole ? 'planner' : 'verifier', digest('d')));
+    }
+    this.lastPlan = value;
+    return value;
+  }
+
+  private assignment(roleId: string, roleDigest: string): CollaborationRoleAssignment {
+    const value: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+    value.roleId = roleId;
+    value.roleVersion = '1';
+    value.roleRegistryDigest = roleDigest;
+    return value;
   }
 }
 
@@ -269,15 +307,18 @@ class FixtureRuntime {
   collaboration: FixtureCollaboration = new FixtureCollaboration();
   dispatcher: FixtureDispatcher = new FixtureDispatcher();
   toolPreparer: FixtureToolPreparer = new FixtureToolPreparer();
+  collaborationPlan?: FixtureCollaborationPlan;
   coordinator: RuntimeCoordinator;
 
-  constructor(kind: FixturePlanKind = FixturePlanKind.BASIC) {
+  constructor(kind: FixturePlanKind = FixturePlanKind.BASIC, withCollaborationPlan: boolean = false) {
     this.planner.kind = kind;
     const config: RuntimeCoordinatorConfig = new RuntimeCoordinatorConfig();
     config.policyVersion = 'policy-v1';
     config.grantTtlMs = 30000;
+    if (withCollaborationPlan) this.collaborationPlan = new FixtureCollaborationPlan();
     this.coordinator = new RuntimeCoordinator(config, this.clock, new FixtureIds(), this.planner,
-      this.collaboration, this.toolPreparer, this.dispatcher);
+      this.collaboration, this.toolPreparer, this.dispatcher, new NoopRuntimeStateObserver(),
+      this.collaborationPlan);
   }
 }
 
@@ -435,6 +476,59 @@ export default function runtimeCoordinatorTest(): void {
       expect(checkpoint.collaborationMode).assertEqual(CollaborationMode.MULTI);
       expect(checkpoint.planningRequest.collaborationMode).assertEqual(CollaborationMode.MULTI);
       expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertTrue();
+    });
+
+    it('rejectsModeOnlyMultiBeforePlannerAndPersistsValidFailure', 0, async () => {
+      const fixture: FixtureRuntime = new FixtureRuntime();
+      fixture.collaboration.mode = CollaborationMode.MULTI;
+
+      const accepted = await fixture.coordinator.acceptTask(submission('request-multi-without-plan'));
+      const checkpoint: RuntimeTaskRecoveryCheckpoint =
+        fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+
+      expect(fixture.planner.calls).assertEqual(0);
+      expect(checkpoint.snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(checkpoint.snapshot.resultJson).assertEqual('{"reason":"collaborationPlanRequired"}');
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertTrue();
+    });
+
+    it('bindsAndCopiesValidMultiRolePlanIntoPlannerCheckpoint', 0, async () => {
+      const fixture: FixtureRuntime = new FixtureRuntime(FixturePlanKind.BASIC, true);
+
+      const accepted = await fixture.coordinator.acceptTask(submission('request-multi-plan'));
+      const checkpoint: RuntimeTaskRecoveryCheckpoint =
+        fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+
+      expect(fixture.planner.calls).assertEqual(1);
+      expect(fixture.planner.lastRequest?.collaborationMode).assertEqual(CollaborationMode.MULTI);
+      expect(fixture.planner.lastRequest?.collaborationPlan?.assignments.length).assertEqual(2);
+      expect(checkpoint.usage.agentActivations).assertEqual(2);
+      expect(checkpoint.planningRequest.collaborationPlan?.assignments[1].roleId).assertEqual('verifier');
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertTrue();
+      const selected: CollaborationPlan | undefined = fixture.collaborationPlan?.lastPlan;
+      if (selected !== undefined) selected.assignments[1].roleId = 'mutated';
+      expect(checkpoint.planningRequest.collaborationPlan?.assignments[1].roleId).assertEqual('verifier');
+      const restored: FixtureRuntime = new FixtureRuntime(FixturePlanKind.BASIC, true);
+      expect(restored.coordinator.restoreCheckpoint(checkpoint).accepted).assertTrue();
+      const restoredCheckpoint: RuntimeTaskRecoveryCheckpoint =
+        restored.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+      expect(restoredCheckpoint.planningRequest.collaborationPlan?.decisionDigest).assertEqual(digest('b'));
+      if (checkpoint.planningRequest.collaborationPlan !== undefined) {
+        checkpoint.planningRequest.collaborationPlan.assignments[1].roleId = 'planner';
+      }
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertFalse();
+    });
+
+    it('rejectsInvalidRolePlanBeforePlanner', 0, async () => {
+      const fixture: FixtureRuntime = new FixtureRuntime(FixturePlanKind.BASIC, true);
+      const selector: FixtureCollaborationPlan = fixture.collaborationPlan as FixtureCollaborationPlan;
+      selector.duplicateRole = true;
+
+      const accepted = await fixture.coordinator.acceptTask(submission('request-invalid-plan'));
+
+      expect(fixture.planner.calls).assertEqual(0);
+      expect(accepted.snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(accepted.snapshot.resultJson).assertEqual('{"reason":"collaborationPlanInvalid"}');
     });
 
     it('dispatchesOnlyValidatedWorkflowStepsAndCompletes', 0, async () => {
