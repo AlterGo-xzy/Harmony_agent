@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-16。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T37 已完成协作选择器 production composition 的主机/HAR 前置门；T38 TestKit 0.4.0 已完成逐 Agent Provider/角色/轨迹与 case evidence 的 schema 2 fail-closed 合同；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；真实双 arm Provider/system Bench 仍未运行。
+最后更新：2026-10-16。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41 TestKit 0.5.0 已完成 schema 2 记录追加与完整封存门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；真实双 arm Provider/system Bench 仍未运行。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -39,7 +39,7 @@
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
 | `agent_connectors` | 55/55 + bridge 3/3 + signed Provider device 2/2 + signed Planner/Facade/MCP device 1/1 + unsigned MCP device 1/1 | M06/M07、M09-B Facade、T33 Planner、T34/T35 composition、T37/T39 协作接线与 T40 逐角色 Provider 规划；signed `LocalAIGatewayDevice` 2/2、signed `LocalAIGatewayFacadeDevice` 1/1、unsigned `McpFacadeDevice` 1/1 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、第三方远端 MCP 兼容性和 S6 12×2 system run 未覆盖 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
-| `agent_testkit` | 23/23 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.4.0 schema 2 要求逐 Agent activation/role、Provider 请求与唯一轨迹摘要、Role Registry/Collaboration decision 摘要、case expected evidence 和 12×2 完整性 | validator 只验证脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实多 Agent 编排、Provider/system Bench、真实性能与设备行为尚未执行 |
+| `agent_testkit` | 26/26 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.5.0 schema 2 要求逐 Agent activation/role、Provider 请求与唯一轨迹摘要、Role Registry/Collaboration decision 摘要、case expected evidence，并在追加前拒绝非法记录、仅封存完整 12×2 run | recorder/validator 只处理脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实 Provider/system Bench、真实性能与设备行为尚未执行 |
 
 M03 用例覆盖提交去重与冻结时间语义、validated workflow dispatch、澄清与授权分离、内部 grant 后才允许工具 dispatch、暂停/恢复、未知副作用对账、取消后延迟对账、迟到 completion 拒绝、单调 sequence/version，以及 partial replan 保护成功和未知结果。该结果来自 `agent_runtime@default test` 的主机侧 Hypium 运行；HAR 构建不等于 HAP、安装或设备验收。
 
@@ -70,6 +70,8 @@ T37 将 connector 主机套件增至 52/52、runtime 增至 64/64。显式 Multi
 T39 将 runtime 增至 68/68，connector 保持 52/52。Runtime 0.14.0/composition 2.5 新增 schema 1.0 `CollaborationPlan` 和严格 validator；计划携带 task/mode、完整 Role Registry/decision SHA-256 摘要与互异 role identity，并作为 Planner 请求及 checkpoint 1.1 的深拷贝状态参与恢复。确定性 Collaboration Router 使用宿主 digest port 从 active Role Registry 选择并固化角色；旧 Single checkpoint 继续兼容，模式标签式 Multi、角色重复、非法摘要或预算越界会在 Planner/credential/network/MCP 前失败。Release Runtime HAR 为 100,808 bytes、SHA-256 `678998BFCC96C6FDA7E8109DF3C4B246C9B74ED717FF898AAA3C5D38A4C8CC1E`；包内版本 0.14.0、`debug=false`、compatible SDK 26。该门没有真实 Provider、HAP 或设备证据，不关闭 S6。
 
 T40 将 connector 增至 55/55。`CollaborativeProviderSemanticPlanner` 对计划内每个角色发起独立 Provider 请求，首角色生成 workflow，后续角色走已有 replan validator 修订前序 typed workflow；trace 记录唯一 activation/request、role identity、decision digest 与 usage。计划外角色、无计划 Multi，以及按激活数累计后的 token/cost/Agent 预算越界均在 credential/network 前 fail-closed。具体 Local AI Gateway composition 的两角色用例实际观察到 2 次 credential 解析与 2 次 HTTP 请求，并在第二角色完成后进入同一 Facade 的授权等待。Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`，包内版本 0.8.0、`debug=false`、compatible SDK 26。该门只使用 fake Provider/HTTP/MCP fixture，没有 HAP、签名、设备或真实 Provider 证据，不关闭 S6。
+
+T41 将 TestKit 增至 26/26。`SystemBenchmarkRunRecorder` 不持有 Runtime、Provider、Tool、授权或任务控制 port，只接收独立 harness 已产生的脱敏记录；未知 case、重复 case/arm、跨 execution、重复 task 和 schema 2 单记录失败均在追加前拒绝。完整 24 条记录通过既有 validator 后才返回防御性封存副本。无签名隔离脚本可重复完成测试与 Release HAR 构建，不修改根签名配置。Release HAR 为 33,038 bytes、SHA-256 `EB01D259349A40BCC94823DCEB44E817F3294ECA186792337207387A83B713FB`，包内版本 0.5.0、`debug=false`、compatible SDK 26。本门没有真实 Provider 请求或运行 12×2 workload，不关闭 S6。
 
 M05-A 主机用例覆盖 task CAS/copy、opaque Runtime checkpoint 与任务枚举、checkpoint/authority 单 CAS 发布、operation/reservation/完整 budget scope 图原子 prepare、version 3 Policy/Grant 绑定、全部 reservation 与 scope 防御性读取、稳定 ID 冲突、lease/fencing、三类崩溃语义、UNKNOWN 对账、实际预算/receipt 和 scope 聚合结算、trace retention、schema/migration/corruption，以及 durable CAS 失败不发布、两个 session 单胜者和 reopen 前未知状态固化。
 

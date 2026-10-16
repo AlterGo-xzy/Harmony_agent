@@ -24,12 +24,15 @@ import {
   IntegrationFixtureKind,
   SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION,
   SystemBenchmarkAgentEvidence,
+  SystemBenchmarkAppendResult,
   SystemBenchmarkEnvironment,
   SystemBenchmarkEvidence,
   SystemBenchmarkMeasurementMode,
   SystemBenchmarkRecord,
   SystemBenchmarkRun,
+  SystemBenchmarkRunRecorder,
   SystemBenchmarkRunValidator,
+  SystemBenchmarkSealResult,
   ToolScaleCase,
   ToolScaleCaseValidator
 } from '../../Index';
@@ -179,7 +182,7 @@ function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
 export default function agentTestKitTest(): void {
   describe('AgentTestKit', () => {
     it('exportsVersionedPublicContract', 0, () => {
-      expect(AGENT_TESTKIT_VERSION).assertEqual('0.4.0');
+      expect(AGENT_TESTKIT_VERSION).assertEqual('0.5.0');
       expect(AGENT_TESTKIT_SCHEMA_VERSION).assertEqual('1');
       expect(SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION).assertEqual('2');
     });
@@ -464,6 +467,72 @@ export default function agentTestKitTest(): void {
       expect(issues.includes('roleRegistryDigest')).assertTrue();
       expect(issues.includes('collaborationDecisionDigest')).assertTrue();
       expect(issues.includes('missing expected evidence kind')).assertTrue();
+    });
+
+    it('recordsAndDefensivelySealsACompleteSystemRun', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const header: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      const records: SystemBenchmarkRecord[] = header.records.slice();
+      header.records = [];
+      const recorder: SystemBenchmarkRunRecorder =
+        new SystemBenchmarkRunRecorder(valueManifest, dataset, header);
+      valueManifest.modelId = 'mutated-after-construction';
+      dataset.cases[0].caseId = 'mutated-after-construction';
+
+      for (let i: number = 0; i < records.length; i++) {
+        expect(recorder.append(records[i]).accepted).assertTrue();
+      }
+      records[0].sample.inputTokens = 999999;
+      expect(recorder.recordCount()).assertEqual(24);
+      const sealed: SystemBenchmarkSealResult = recorder.seal();
+      expect(sealed.valid).assertTrue();
+      expect(sealed.run?.records.length).assertEqual(24);
+      expect(sealed.run?.records[0].sample.inputTokens).assertEqual(1100);
+      if (sealed.run !== undefined) sealed.run.records[0].sample.inputTokens = 1;
+      expect(recorder.seal().run?.records[0].sample.inputTokens).assertEqual(1100);
+      expect(recorder.append(records[0]).accepted).assertFalse();
+    });
+
+    it('rejectsUnknownAndDuplicateRecordsWithoutPublishingThem', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const header: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      const records: SystemBenchmarkRecord[] = header.records.slice();
+      header.records = [];
+      const recorder: SystemBenchmarkRunRecorder =
+        new SystemBenchmarkRunRecorder(valueManifest, dataset, header);
+
+      expect(recorder.append(records[0]).accepted).assertTrue();
+      const duplicate: SystemBenchmarkAppendResult = recorder.append(records[0]);
+      expect(duplicate.accepted).assertFalse();
+      expect(duplicate.issues.join('|').includes('unique')).assertTrue();
+      const unknown: SystemBenchmarkRecord = records[2];
+      unknown.sample.caseId = 'case-outside-frozen-dataset';
+      unknown.evidence.taskId = 'task-outside-frozen-dataset';
+      expect(recorder.append(unknown).accepted).assertFalse();
+      const malformed: SystemBenchmarkRecord = records[4];
+      malformed.evidence.eventTraceDigest = '';
+      expect(recorder.append(malformed).accepted).assertFalse();
+      malformed.evidence.eventTraceDigest = fullDigest('2');
+      expect(recorder.append(malformed).accepted).assertTrue();
+      expect(recorder.recordCount()).assertEqual(2);
+    });
+
+    it('failsClosedWhenSealingAnIncompleteSystemRun', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const header: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      const first: SystemBenchmarkRecord = header.records[0];
+      header.records = [];
+      const recorder: SystemBenchmarkRunRecorder =
+        new SystemBenchmarkRunRecorder(valueManifest, dataset, header);
+      expect(recorder.append(first).accepted).assertTrue();
+
+      const sealed: SystemBenchmarkSealResult = recorder.seal();
+      expect(sealed.valid).assertFalse();
+      expect(sealed.run === undefined).assertTrue();
+      expect(sealed.issues.join('|').includes('every dataset case')).assertTrue();
     });
   });
 }

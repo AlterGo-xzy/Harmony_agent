@@ -1,4 +1,4 @@
-export const AGENT_TESTKIT_VERSION: string = '0.4.0';
+export const AGENT_TESTKIT_VERSION: string = '0.5.0';
 export const AGENT_TESTKIT_SCHEMA_VERSION: string = '1';
 
 export class TestKitValidationResult {

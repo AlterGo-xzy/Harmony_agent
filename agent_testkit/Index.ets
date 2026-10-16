@@ -48,3 +48,8 @@ export {
   SystemBenchmarkRun,
   SystemBenchmarkRunValidator
 } from './src/main/ets/testkit/SystemBench';
+export {
+  SystemBenchmarkAppendResult,
+  SystemBenchmarkSealResult,
+  SystemBenchmarkRunRecorder
+} from './src/main/ets/testkit/SystemBenchRecorder';

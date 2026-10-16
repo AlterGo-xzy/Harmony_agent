@@ -171,7 +171,7 @@ export class SystemBenchmarkRunValidator {
     const taskIds: string[] = [];
     for (let index: number = 0; index < run.records.length; index++) {
       const record: SystemBenchmarkRecord = run.records[index];
-      SystemBenchmarkRunValidator.validateRecord(record, index, manifest, dataset, run, evaluator,
+      SystemBenchmarkRunValidator.validateRecordInternal(record, index, manifest, dataset, run, evaluator,
         recordKeys, taskIds, result);
     }
     for (let caseIndex: number = 0; caseIndex < dataset.cases.length; caseIndex++) {
@@ -180,6 +180,20 @@ export class SystemBenchmarkRunValidator {
         if (!containsText(recordKeys, key)) result.addIssue('missing record for ' + key.replace('\n', '/'));
       }
     }
+    return result;
+  }
+
+  static validateRecord(manifest: BenchmarkManifest, dataset: BenchmarkDataset, run: SystemBenchmarkRun,
+    record: SystemBenchmarkRecord): TestKitValidationResult {
+    const result: TestKitValidationResult = new TestKitValidationResult();
+    const manifestValidation: TestKitValidationResult = BenchmarkManifestValidator.validate(manifest);
+    const datasetValidation: TestKitValidationResult = BenchmarkDatasetValidator.validate(dataset);
+    appendIssues(result, 'manifest: ', manifestValidation.issues);
+    appendIssues(result, 'dataset: ', datasetValidation.issues);
+    if (!manifestValidation.valid || !datasetValidation.valid) return result;
+    const evaluator: BenchmarkEvaluator = new BenchmarkEvaluator(manifest);
+    SystemBenchmarkRunValidator.validateRecordInternal(record, 0, manifest, dataset, run, evaluator,
+      [], [], result);
     return result;
   }
 
@@ -232,7 +246,7 @@ export class SystemBenchmarkRunValidator {
     }
   }
 
-  private static validateRecord(record: SystemBenchmarkRecord, index: number, manifest: BenchmarkManifest,
+  private static validateRecordInternal(record: SystemBenchmarkRecord, index: number, manifest: BenchmarkManifest,
     dataset: BenchmarkDataset, run: SystemBenchmarkRun, evaluator: BenchmarkEvaluator, recordKeys: string[],
     taskIds: string[], result: TestKitValidationResult): void {
     const prefix: string = 'records[' + index.toString() + '] ';

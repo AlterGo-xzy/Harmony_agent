@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T40 已完成各自记录的任务门；T26/T28/T36 已完成签名 API 26 验收；S6 真实双 arm Bench 仍开放**
+状态：**In progress / T01–T41 已完成各自记录的任务门；T26/T28/T36 已完成签名 API 26 验收；S6 真实双 arm Bench 仍开放**
 日期：2026-10-16
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
@@ -758,7 +758,7 @@ external_consumer (out of scope)
 
 验收：baseline 可重复，模型、价格、region、schema 与日期全部冻结到报告。
 
-当前进度：TestKit 0.4.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并把真实 System Bench 证据合同升级为 schema 2。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；主机 Hypium 23/23 和 Release HAR 已通过。该 validator 不执行 workload；当前 fixture 报告仍使用虚拟零时钟并标记为不可做性能比较，真实多 Agent 编排与 Strong Single/Multi system run 仍是关闭本阶段的剩余门。
+当前进度：TestKit 0.5.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。主机 Hypium 26/26 和 Release HAR 已通过。Recorder/validator 均不执行 workload；当前 fixture 报告仍使用虚拟零时钟并标记为不可做性能比较，真实 Strong Single/Multi Provider/system run 仍是关闭本阶段的剩余门。
 
 ### Phase 3：MTRouter
 
