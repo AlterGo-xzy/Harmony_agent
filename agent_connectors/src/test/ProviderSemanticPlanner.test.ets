@@ -8,6 +8,8 @@ import {
   WorkflowGraph
 } from '@harmony_agent/agent-contracts';
 import {
+  CollaborationPlan,
+  CollaborationRoleAssignment,
   ModelRegistryEntry,
   PlanningRequest,
   PlanningResult,
@@ -17,6 +19,7 @@ import {
 } from '@harmony_agent/agent-runtime';
 import {
   ConnectorDigestPort,
+  CollaborativeProviderSemanticPlanner,
   ModelInvocation,
   ModelProvider,
   ModelProviderProfile,
@@ -25,6 +28,7 @@ import {
   ProviderCapabilityKind,
   ProviderCatalog,
   ProviderFinishReason,
+  ProviderPlanningPhase,
   ProviderPlannerTrace,
   ProviderPriceSnapshot,
   ProviderSemanticPlanner,
@@ -77,6 +81,7 @@ class FixturePlannerProvider implements ModelProvider {
   readonly registered: RegisteredModelProvider;
   calls: number = 0;
   lastRequest?: ModelInvocation;
+  requests: ModelInvocation[] = [];
   outputJson: string = readyOutput();
   finishReason: ProviderFinishReason = ProviderFinishReason.STOP;
   fail: boolean = false;
@@ -98,6 +103,7 @@ class FixturePlannerProvider implements ModelProvider {
     _cancellation: ProviderCancellationSignalPort): Promise<ModelProviderResult> {
     this.calls++;
     this.lastRequest = request;
+    this.requests.push(request);
     if (this.fail) throw new Error('provider unavailable');
     const profile: ModelProviderProfile = this.registered.profileSnapshot();
     const price: ProviderPriceSnapshot = this.registered.priceSnapshot();
@@ -200,6 +206,33 @@ function planningRequest(): PlanningRequest {
   result.frame = frame;
   result.collaborationMode = CollaborationMode.SINGLE;
   return result;
+}
+
+function fullDigest(character: string): string {
+  return 'sha256:' + character.repeat(64);
+}
+
+function multiPlanningRequest(): PlanningRequest {
+  const request: PlanningRequest = planningRequest();
+  request.collaborationMode = CollaborationMode.MULTI;
+  request.envelope.executionBudget.maxOutputTokens = 2048;
+  const plan: CollaborationPlan = new CollaborationPlan();
+  plan.taskId = request.envelope.taskId;
+  plan.mode = CollaborationMode.MULTI;
+  plan.roleRegistryDigest = fullDigest('a');
+  plan.decisionDigest = fullDigest('b');
+  const plannerRole: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+  plannerRole.roleId = 'planner';
+  plannerRole.roleVersion = '1';
+  plannerRole.roleRegistryDigest = fullDigest('c');
+  plan.assignments.push(plannerRole);
+  const verifierRole: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+  verifierRole.roleId = 'verifier';
+  verifierRole.roleVersion = '1';
+  verifierRole.roleRegistryDigest = fullDigest('d');
+  plan.assignments.push(verifierRole);
+  request.collaborationPlan = plan;
+  return request;
 }
 
 function readyOutput(): string {
@@ -379,6 +412,58 @@ export default function providerSemanticPlannerTest(): void {
       const result: PlanningResult = await invalidIds.plan(planningRequest());
       expect(result.rejectionCode).assertEqual('PLANNER_RUNTIME_ID_INVALID');
       expect(idProvider.calls).assertEqual(0);
+    });
+
+    it('executesOneAuditableProviderRequestPerRegisteredRole', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const observer: FixturePlannerObserver = new FixturePlannerObserver();
+      const collaborative: CollaborativeProviderSemanticPlanner =
+        new CollaborativeProviderSemanticPlanner(planner(provider, observer));
+
+      const result: PlanningResult = await collaborative.plan(multiPlanningRequest());
+
+      expect(result.status).assertEqual(PlanningStatus.READY);
+      expect(provider.calls).assertEqual(2);
+      expect(observer.traces.length).assertEqual(2);
+      expect(observer.traces[0].roleId).assertEqual('planner');
+      expect(observer.traces[1].roleId).assertEqual('verifier');
+      expect(observer.traces[0].phase).assertEqual(ProviderPlanningPhase.PLAN);
+      expect(observer.traces[1].phase).assertEqual(ProviderPlanningPhase.REPLAN);
+      expect(observer.traces[0].agentActivationId === observer.traces[1].agentActivationId).assertFalse();
+      expect(observer.traces[0].collaborationDecisionDigest).assertEqual(fullDigest('b'));
+      expect(provider.requests[0].messages[1].content.includes('"roleId":"planner"')).assertTrue();
+      expect(provider.requests[1].messages[1].content.includes('"roleId":"verifier"')).assertTrue();
+      expect(provider.requests[1].messages[1].content.includes('phase=replan')).assertTrue();
+      expect(provider.requests[1].messages[1].content.includes('previousWorkflow')).assertTrue();
+    });
+
+    it('rejectsAggregateCollaborationBudgetBeforeProviderCalls', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const collaborative: CollaborativeProviderSemanticPlanner =
+        new CollaborativeProviderSemanticPlanner(planner(provider));
+      const request: PlanningRequest = multiPlanningRequest();
+      request.envelope.executionBudget.maxOutputTokens = 512;
+
+      const result: PlanningResult = await collaborative.plan(request);
+
+      expect(result.status).assertEqual(PlanningStatus.REJECTED);
+      expect(result.rejectionCode).assertEqual('COLLABORATION_OUTPUT_BUDGET_EXCEEDED');
+      expect(provider.calls).assertEqual(0);
+    });
+
+    it('rejectsRoleOutsideBoundCollaborationPlanBeforeProviderCalls', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const request: PlanningRequest = multiPlanningRequest();
+      const unregistered: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+      unregistered.roleId = 'unregistered';
+      unregistered.roleVersion = '1';
+      unregistered.roleRegistryDigest = fullDigest('e');
+
+      const result: PlanningResult = await planner(provider).planForRole(request, unregistered);
+
+      expect(result.status).assertEqual(PlanningStatus.REJECTED);
+      expect(result.rejectionCode).assertEqual('PLANNER_ROLE_BINDING_INVALID');
+      expect(provider.calls).assertEqual(0);
     });
   });
 }

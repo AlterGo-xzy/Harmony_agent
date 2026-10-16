@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.7.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.8.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -87,6 +87,8 @@ export {
   ProviderSemanticPlannerObserverPort,
   ProviderSemanticPlanner
 } from './src/main/ets/provider/ProviderSemanticPlanner';
+export { CollaborativeProviderSemanticPlanner } from
+  './src/main/ets/provider/CollaborativeProviderSemanticPlanner';
 export {
   LocalAIGatewayTransportProfile,
   LocalAIGatewayTransportProfileValidator,

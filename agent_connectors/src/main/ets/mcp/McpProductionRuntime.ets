@@ -23,6 +23,8 @@ import {
   ProviderSemanticPlannerConfig,
   ProviderSemanticPlannerObserverPort
 } from '../provider/ProviderSemanticPlanner';
+import { CollaborativeProviderSemanticPlanner } from
+  '../provider/CollaborativeProviderSemanticPlanner';
 
 function ignoreCompletionRejection(_error: Error): void {
   // ProductionAgentRuntime records its own persistence fault before rejecting the completion Promise.
@@ -57,9 +59,11 @@ function withProviderPlanner(source: ProductionAgentRuntimePorts, registered: Re
   const value: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
   value.clock = source.clock;
   value.ids = source.ids;
-  value.planner = observer === undefined ?
+  const providerPlanner: ProviderSemanticPlanner = observer === undefined ?
     new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids) :
     new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids, observer);
+  value.planner = source.collaborationPlan === undefined ? providerPlanner :
+    new CollaborativeProviderSemanticPlanner(providerPlanner);
   value.collaboration = source.collaboration;
   value.collaborationPlan = source.collaborationPlan;
   value.toolPreparer = source.toolPreparer;

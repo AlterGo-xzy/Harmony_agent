@@ -1230,7 +1230,7 @@ export default function mcpAgentAdapterTest(): void {
       subscription.close();
     });
 
-    it('preservesExplicitCollaborationPlanThroughConcreteGatewayComposition', 0, async () => {
+    it('executesEachPlannedRoleThroughConcreteGatewayComposition', 0, async () => {
       const fixture: FixtureAssembly = new FixtureAssembly();
       const registry: ToolRegistry = new ToolRegistry();
       const credentials: CompositionCredentialPort = new CompositionCredentialPort();
@@ -1242,12 +1242,16 @@ export default function mcpAgentAdapterTest(): void {
       const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
         localGatewayCompositionConfig(), ports, fixture.adapter, registry);
 
-      const handle: TaskHandle = await runtime.submitTask(compositionSubmission(2));
+      const multiSubmission: TaskSubmission = compositionSubmission(2);
+      multiSubmission.requestedBudget.maxMonetaryCostMicros = 2000;
+      const handle: TaskHandle = await runtime.submitTask(multiSubmission);
 
       expect(collaboration.calls).assertEqual(1);
-      expect(credentials.calls).assertEqual(1);
-      expect(client.calls).assertEqual(1);
+      expect(credentials.calls).assertEqual(2);
+      expect(client.calls).assertEqual(2);
       expect(client.lastRequest?.body.includes('collaborationMode=multi')).assertTrue();
+      expect(client.lastRequest?.body.includes('activeRole')).assertTrue();
+      expect(client.lastRequest?.body.includes('verifier')).assertTrue();
       expect((await runtime.getTaskSnapshot(handle.taskId)).status)
         .assertEqual(AgentTaskStatus.WAITING_AUTHORIZATION);
       expect(fixture.client.callCount).assertEqual(0);

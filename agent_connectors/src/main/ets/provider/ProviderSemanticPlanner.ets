@@ -11,6 +11,8 @@ import {
   WorkflowStepKind
 } from '@harmony_agent/agent-contracts';
 import {
+  CollaborationRoleAssignment,
+  CollaborationPlanValidator,
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
@@ -78,6 +80,11 @@ export class ProviderPlannerTrace {
   phase: ProviderPlanningPhase = ProviderPlanningPhase.PLAN;
   taskId: string = '';
   providerRequestId: string = '';
+  agentActivationId: string = '';
+  roleId: string = '';
+  roleVersion: string = '';
+  roleRegistryDigest: string = '';
+  collaborationDecisionDigest: string = '';
   providerId: string = '';
   modelId: string = '';
   modelVersion: string = '';
@@ -241,11 +248,26 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     return await this.invoke(ProviderPlanningPhase.PLAN, request);
   }
 
+  async planForRole(request: PlanningRequest,
+    role: CollaborationRoleAssignment): Promise<PlanningResult> {
+    if (!this.validRoleBinding(request, role)) return this.rejected('PLANNER_ROLE_BINDING_INVALID');
+    return await this.invoke(ProviderPlanningPhase.PLAN, request, undefined, role);
+  }
+
   async resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult> {
     if (response.taskId !== request.envelope.taskId || !jsonText(response.answerJson)) {
       return this.rejected('PLANNER_CLARIFICATION_RESPONSE_INVALID');
     }
     return await this.invoke(ProviderPlanningPhase.RESUME, request, response);
+  }
+
+  async resumeForRole(request: PlanningRequest, response: ClarificationResponse,
+    role: CollaborationRoleAssignment): Promise<PlanningResult> {
+    if (!this.validRoleBinding(request, role)) return this.rejected('PLANNER_ROLE_BINDING_INVALID');
+    if (response.taskId !== request.envelope.taskId || !jsonText(response.answerJson)) {
+      return this.rejected('PLANNER_CLARIFICATION_RESPONSE_INVALID');
+    }
+    return await this.invoke(ProviderPlanningPhase.RESUME, request, response, role);
   }
 
   async replan(request: PlanningRequest): Promise<PlanningResult> {
@@ -255,8 +277,51 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     return await this.invoke(ProviderPlanningPhase.REPLAN, request);
   }
 
+  async replanForRole(request: PlanningRequest,
+    role: CollaborationRoleAssignment): Promise<PlanningResult> {
+    if (!this.validRoleBinding(request, role)) return this.rejected('PLANNER_ROLE_BINDING_INVALID');
+    if (request.previousWorkflow === undefined || request.affectedStepIds.length === 0) {
+      return this.rejected('PLANNER_REPLAN_CONTEXT_REQUIRED');
+    }
+    return await this.invoke(ProviderPlanningPhase.REPLAN, request, undefined, role);
+  }
+
+  collaborativeBudgetRejectionCode(request: PlanningRequest, activations: number): string {
+    if (!Number.isSafeInteger(activations) || activations <= 0 ||
+      activations > request.envelope.executionBudget.maxAgentActivations) {
+      return 'COLLABORATION_AGENT_BUDGET_EXCEEDED';
+    }
+    const inputTokens: number = this.config.estimatedInputTokens * activations;
+    if (!Number.isSafeInteger(inputTokens) || inputTokens > request.envelope.executionBudget.maxInputTokens) {
+      return 'COLLABORATION_INPUT_BUDGET_EXCEEDED';
+    }
+    const outputTokens: number = this.config.maxOutputTokens * activations;
+    if (!Number.isSafeInteger(outputTokens) || outputTokens > request.envelope.executionBudget.maxOutputTokens) {
+      return 'COLLABORATION_OUTPUT_BUDGET_EXCEEDED';
+    }
+    const costMicros: number = this.estimatedCostMicros(this.config.maxOutputTokens) * activations;
+    if (!Number.isSafeInteger(costMicros) ||
+      costMicros > request.envelope.executionBudget.maxMonetaryCostMicros) {
+      return 'COLLABORATION_COST_BUDGET_EXCEEDED';
+    }
+    return '';
+  }
+
+  private validRoleBinding(request: PlanningRequest, role: CollaborationRoleAssignment): boolean {
+    const plan = request.collaborationPlan;
+    if (plan === undefined || !CollaborationPlanValidator.validate(plan, request.frame,
+      request.envelope.executionBudget.maxAgentActivations).valid) return false;
+    for (let i: number = 0; i < plan.assignments.length; i++) {
+      const candidate: CollaborationRoleAssignment = plan.assignments[i];
+      if (candidate.roleId === role.roleId && candidate.roleVersion === role.roleVersion &&
+        candidate.roleRegistryDigest === role.roleRegistryDigest) return true;
+    }
+    return false;
+  }
+
   private async invoke(phase: ProviderPlanningPhase, request: PlanningRequest,
-    response?: ClarificationResponse): Promise<PlanningResult> {
+    response?: ClarificationResponse,
+    role?: CollaborationRoleAssignment): Promise<PlanningResult> {
     if (this.profile.privacyClasses.indexOf(request.envelope.privacyClass) < 0) {
       return this.rejected('PLANNER_PRIVACY_NOT_SUPPORTED');
     }
@@ -272,7 +337,7 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     if (this.estimatedCostMicros(outputTokens) > monetaryLimit) {
       return this.rejected('PLANNER_COST_BUDGET_EXCEEDED');
     }
-    const prompt: string = this.prompt(phase, request, response);
+    const prompt: string = this.prompt(phase, request, response, role);
     if (prompt.length > this.config.maxPromptCharacters) {
       return this.rejected('PLANNER_PROMPT_TOO_LARGE');
     }
@@ -280,10 +345,15 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     if (!validText(invocation.context.requestId) || !validText(invocation.context.operationId)) {
       return this.rejected('PLANNER_RUNTIME_ID_INVALID');
     }
+    const activationId: string = role === undefined ? '' :
+      this.ids.nextId('agentActivation', request.envelope.requestId);
+    if (role !== undefined && !validText(activationId)) {
+      return this.rejected('PLANNER_AGENT_ACTIVATION_ID_INVALID');
+    }
     const generated: ModelProviderResult = await this.provider.generate(invocation,
       new ProviderCancellationSource());
     const result: PlanningResult = this.parseResult(phase, request, invocation, generated);
-    this.observe(phase, request.envelope.taskId, generated, result);
+    this.observe(phase, request, generated, result, role, activationId);
     return result;
   }
 
@@ -316,9 +386,10 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
   }
 
   private prompt(phase: ProviderPlanningPhase, request: PlanningRequest,
-    response?: ClarificationResponse): string {
+    response?: ClarificationResponse, role?: CollaborationRoleAssignment): string {
     let value: string = 'phase=' + phase + '\ncollaborationMode=' + request.collaborationMode +
       '\nplanningRequest=' + JSON.stringify(request);
+    if (role !== undefined) value += '\nactiveRole=' + JSON.stringify(role);
     if (response !== undefined) value += '\nclarificationResponse=' + JSON.stringify(response);
     value += '\nFor ready status, workflow must contain only entryStepIds and steps. ' +
       'Each step must contain stepId, kind, goal, dependencies, inputBindings, expectedOutputSchemaJson, ' +
@@ -613,12 +684,21 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
       outputTokens * this.price.outputMicrosPerMillionTokens) / 1000000) + this.price.fixedCostMicros;
   }
 
-  private observe(phase: ProviderPlanningPhase, taskId: string, generated: ModelProviderResult,
-    result: PlanningResult): void {
+  private observe(phase: ProviderPlanningPhase, request: PlanningRequest, generated: ModelProviderResult,
+    result: PlanningResult, role?: CollaborationRoleAssignment, activationId: string = ''): void {
     const trace: ProviderPlannerTrace = new ProviderPlannerTrace();
     trace.phase = phase;
-    trace.taskId = taskId;
+    trace.taskId = request.envelope.taskId;
     trace.providerRequestId = generated.requestId;
+    trace.agentActivationId = activationId;
+    if (role !== undefined) {
+      trace.roleId = role.roleId;
+      trace.roleVersion = role.roleVersion;
+      trace.roleRegistryDigest = role.roleRegistryDigest;
+      if (request.collaborationPlan !== undefined) {
+        trace.collaborationDecisionDigest = request.collaborationPlan.decisionDigest;
+      }
+    }
     trace.providerId = this.profile.providerId;
     trace.modelId = generated.modelId;
     trace.modelVersion = generated.modelVersion;
