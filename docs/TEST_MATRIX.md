@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-16。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T37 已完成协作选择器 production composition 的主机/HAR 前置门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；M10 TestKit 0.3.0 已完成主机/HAR 门、S6 fixture baseline 和真实 system run 的 fail-closed 证据合同，真实双 arm Provider/system Bench 仍未运行。
+最后更新：2026-10-16。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T37 已完成协作选择器 production composition 的主机/HAR 前置门；T38 TestKit 0.4.0 已完成逐 Agent Provider/角色/轨迹与 case evidence 的 schema 2 fail-closed 合同；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；真实双 arm Provider/system Bench 仍未运行。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -39,7 +39,7 @@
 | `agent_storage` | 47/47 | M05-A/M05-B durable recovery；checkpoint/authority、operation/budget、lease/fencing 与恢复 checkpoint 单 CAS 发布；0.8.0 RDB composition 已通过签名 API 26 跨进程恢复验收 | T26 seed 就绪/PID、force-stop、recover 1/1、Adapter 零重放及卸载核对已通过；宿主加密仍未证明 |
 | `agent_connectors` | 52/52 + bridge 3/3 + signed Provider device 2/2 + signed Planner/Facade/MCP device 1/1 + unsigned MCP device 1/1 | M06/M07、M09-B Facade、T33 Planner、T34/T35 composition 与 T37 协作选择接线；signed `LocalAIGatewayDevice` 2/2、signed `LocalAIGatewayFacadeDevice` 1/1、unsigned `McpFacadeDevice` 1/1；设备门均完成卸载与转发/进程清理 | 生产 credential store、真实取消/timeout、发布签名下的 MCP 门、第三方远端 MCP 兼容性和 S6 12×2 system run 未覆盖 |
 | `native_tools` | 12/12 | API 26 battery descriptor、capability probe、M02 grant 复核、参数/identity fail-closed、后台限制、取消、异常、结果归一化和 M03 dispatch 接线 | 签名 `BatteryStatusDevice` 1/1，完成安装、真实系统读取、卸载与 bundle 不存在核对；需要权限的 Kit 尚未选定 |
-| `agent_testkit` | 20/20 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.3.0 新增真实 system run 的 source/environment/Provider/Facade/usage/digest 和 12×2 完整性 fail-closed 校验；Release HAR 与确定性 fixture 报告漂移检查通过 | validator 只验证脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实 Provider/system Bench、真实性能与设备行为尚未执行 |
+| `agent_testkit` | 23/23 | 十二类确定性故障决策、十个共用 fixtures、benchmark pinning、公平 arm 校验、十二种 pilot task、32/128/512 工具规模校验、overall/按 arm 指标；0.4.0 schema 2 要求逐 Agent activation/role、Provider 请求与唯一轨迹摘要、Role Registry/Collaboration decision 摘要、case expected evidence 和 12×2 完整性 | validator 只验证脱敏证据；fixture 仍使用零成本 Provider 和虚拟零时钟，真实多 Agent 编排、Provider/system Bench、真实性能与设备行为尚未执行 |
 
 M03 用例覆盖提交去重与冻结时间语义、validated workflow dispatch、澄清与授权分离、内部 grant 后才允许工具 dispatch、暂停/恢复、未知副作用对账、取消后延迟对账、迟到 completion 拒绝、单调 sequence/version，以及 partial replan 保护成功和未知结果。该结果来自 `agent_runtime@default test` 的主机侧 Hypium 运行；HAR 构建不等于 HAP、安装或设备验收。
 

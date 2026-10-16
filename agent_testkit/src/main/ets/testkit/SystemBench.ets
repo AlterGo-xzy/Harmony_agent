@@ -12,11 +12,12 @@ import {
   BenchmarkTaskCase
 } from './BenchPilot';
 import {
-  AGENT_TESTKIT_SCHEMA_VERSION,
   isNonEmptyText,
   isPositiveInteger,
   TestKitValidationResult
 } from './Common';
+
+export const SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION: string = '2';
 
 export enum SystemBenchmarkMeasurementMode {
   REAL_PROVIDER_RUNTIME = 'realProviderRuntime'
@@ -34,6 +35,16 @@ export class SystemBenchmarkEnvironment {
   environmentDigest: string = '';
 }
 
+export class SystemBenchmarkAgentEvidence {
+  activationId: string = '';
+  roleId: string = '';
+  roleVersion: string = '';
+  providerRequestCount: number = 0;
+  providerRequestIdsDigest: string = '';
+  traceDigest: string = '';
+  resultDigest: string = '';
+}
+
 export class SystemBenchmarkEvidence {
   taskId: string = '';
   taskSnapshotDigest: string = '';
@@ -41,6 +52,10 @@ export class SystemBenchmarkEvidence {
   providerUsageDigest: string = '';
   resultDigest: string = '';
   qualityEvidenceDigest: string = '';
+  roleRegistryDigest: string = '';
+  collaborationDecisionDigest: string = '';
+  evidenceKinds: string[] = [];
+  agentEvidence: SystemBenchmarkAgentEvidence[] = [];
   usedAgentRuntimeFacade: boolean = false;
   providerRequestCount: number = 0;
 }
@@ -51,7 +66,7 @@ export class SystemBenchmarkRecord {
 }
 
 export class SystemBenchmarkRun {
-  schemaVersion: string = AGENT_TESTKIT_SCHEMA_VERSION;
+  schemaVersion: string = SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION;
   executionId: string = '';
   measurementMode: SystemBenchmarkMeasurementMode = SystemBenchmarkMeasurementMode.REAL_PROVIDER_RUNTIME;
   startedAt: string = '';
@@ -129,7 +144,7 @@ export class SystemBenchmarkRunValidator {
     appendIssues(result, 'manifest: ', manifestValidation.issues);
     appendIssues(result, 'dataset: ', datasetValidation.issues);
 
-    if (run.schemaVersion !== AGENT_TESTKIT_SCHEMA_VERSION) result.addIssue('unsupported schemaVersion');
+    if (run.schemaVersion !== SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION) result.addIssue('unsupported schemaVersion');
     if (!isNonEmptyText(run.executionId)) result.addIssue('executionId is required');
     if (run.measurementMode !== SystemBenchmarkMeasurementMode.REAL_PROVIDER_RUNTIME) {
       result.addIssue('measurementMode must be realProviderRuntime');
@@ -224,7 +239,8 @@ export class SystemBenchmarkRunValidator {
     const sample: BenchmarkSample = record.sample;
     const evidence: SystemBenchmarkEvidence = record.evidence;
     const arm: BenchmarkArm | undefined = armById(manifest, sample.armId);
-    if (caseById(dataset, sample.caseId) === undefined) result.addIssue(prefix + 'caseId is not in the dataset');
+    const taskCase: BenchmarkTaskCase | undefined = caseById(dataset, sample.caseId);
+    if (taskCase === undefined) result.addIssue(prefix + 'caseId is not in the dataset');
     if (sample.runId !== run.executionId) result.addIssue(prefix + 'runId must match executionId');
     const recordResult = evaluator.record(sample);
     appendIssues(result, prefix, recordResult.issues);
@@ -250,11 +266,94 @@ export class SystemBenchmarkRunValidator {
     if (!isSha256Digest(evidence.providerUsageDigest)) result.addIssue(prefix + 'providerUsageDigest is invalid');
     if (!isSha256Digest(evidence.resultDigest)) result.addIssue(prefix + 'resultDigest is invalid');
     if (!isSha256Digest(evidence.qualityEvidenceDigest)) result.addIssue(prefix + 'qualityEvidenceDigest is invalid');
+    if (!isSha256Digest(evidence.roleRegistryDigest)) result.addIssue(prefix + 'roleRegistryDigest is invalid');
+    if (!isSha256Digest(evidence.collaborationDecisionDigest)) {
+      result.addIssue(prefix + 'collaborationDecisionDigest is invalid');
+    }
+    SystemBenchmarkRunValidator.validateEvidenceKinds(evidence, taskCase, prefix, result);
+    SystemBenchmarkRunValidator.validateAgentEvidence(evidence, sample, arm, prefix, result);
     if (arm !== undefined && arm.kind === BenchmarkArmKind.STRONG_SINGLE_AGENT && sample.agentActivations !== 1) {
       result.addIssue(prefix + 'strong-single arm must record exactly one agent activation');
     }
     if (arm !== undefined && arm.kind === BenchmarkArmKind.MULTI_AGENT && sample.agentActivations < 2) {
       result.addIssue(prefix + 'multi-agent arm must record at least two agent activations');
+    }
+  }
+
+  private static validateEvidenceKinds(evidence: SystemBenchmarkEvidence, taskCase: BenchmarkTaskCase | undefined,
+    prefix: string, result: TestKitValidationResult): void {
+    const seen: string[] = [];
+    for (let index: number = 0; index < evidence.evidenceKinds.length; index++) {
+      const kind: string = evidence.evidenceKinds[index];
+      if (!isNonEmptyText(kind)) {
+        result.addIssue(prefix + 'evidenceKinds must not contain empty values');
+      } else if (containsText(seen, kind)) {
+        result.addIssue(prefix + 'evidenceKinds must be unique');
+      } else {
+        seen.push(kind);
+      }
+    }
+    if (taskCase === undefined) return;
+    for (let index: number = 0; index < taskCase.expectedEvidence.length; index++) {
+      if (!containsText(seen, taskCase.expectedEvidence[index])) {
+        result.addIssue(prefix + 'missing expected evidence kind ' + taskCase.expectedEvidence[index]);
+      }
+    }
+  }
+
+  private static validateAgentEvidence(evidence: SystemBenchmarkEvidence, sample: BenchmarkSample,
+    arm: BenchmarkArm | undefined, prefix: string, result: TestKitValidationResult): void {
+    const activationIds: string[] = [];
+    const roleIdentities: string[] = [];
+    const requestDigests: string[] = [];
+    const traceDigests: string[] = [];
+    let providerRequests: number = 0;
+    for (let index: number = 0; index < evidence.agentEvidence.length; index++) {
+      const value: SystemBenchmarkAgentEvidence = evidence.agentEvidence[index];
+      const agentPrefix: string = prefix + 'agentEvidence[' + index.toString() + '] ';
+      if (!isNonEmptyText(value.activationId) || containsText(activationIds, value.activationId)) {
+        result.addIssue(agentPrefix + 'activationId must be present and unique');
+      } else {
+        activationIds.push(value.activationId);
+      }
+      const roleIdentity: string = value.roleId + '\n' + value.roleVersion;
+      if (!isNonEmptyText(value.roleId) || !isNonEmptyText(value.roleVersion) ||
+        containsText(roleIdentities, roleIdentity)) {
+        result.addIssue(agentPrefix + 'role identity must be present and unique');
+      } else {
+        roleIdentities.push(roleIdentity);
+      }
+      if (!isPositiveInteger(value.providerRequestCount)) {
+        result.addIssue(agentPrefix + 'providerRequestCount must be positive');
+      } else {
+        providerRequests += value.providerRequestCount;
+      }
+      if (!isSha256Digest(value.providerRequestIdsDigest) ||
+        containsText(requestDigests, value.providerRequestIdsDigest)) {
+        result.addIssue(agentPrefix + 'providerRequestIdsDigest must be valid and unique');
+      } else {
+        requestDigests.push(value.providerRequestIdsDigest);
+      }
+      if (!isSha256Digest(value.traceDigest) || containsText(traceDigests, value.traceDigest)) {
+        result.addIssue(agentPrefix + 'traceDigest must be valid and unique');
+      } else {
+        traceDigests.push(value.traceDigest);
+      }
+      if (!isSha256Digest(value.resultDigest)) result.addIssue(agentPrefix + 'resultDigest is invalid');
+    }
+    if (evidence.agentEvidence.length !== sample.agentActivations) {
+      result.addIssue(prefix + 'agentEvidence count must match agentActivations');
+    }
+    if (providerRequests !== evidence.providerRequestCount) {
+      result.addIssue(prefix + 'providerRequestCount must equal the per-agent request total');
+    }
+    if (arm !== undefined && arm.kind === BenchmarkArmKind.STRONG_SINGLE_AGENT &&
+      evidence.agentEvidence.length !== 1) {
+      result.addIssue(prefix + 'strong-single arm must contain one agent evidence record');
+    }
+    if (arm !== undefined && arm.kind === BenchmarkArmKind.MULTI_AGENT &&
+      evidence.agentEvidence.length < 2) {
+      result.addIssue(prefix + 'multi-agent arm must contain at least two distinct agent evidence records');
     }
   }
 }

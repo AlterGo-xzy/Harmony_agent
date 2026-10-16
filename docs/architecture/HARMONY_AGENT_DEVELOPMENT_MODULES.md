@@ -453,7 +453,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 0.3.0、S6 fixture baseline 与 T31 证据合同，本地主机与 HAR 门已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与真实报告 validator。Hypium 20/20、Release HAR 和 fixture digest 漂移检查已通过；TestKit 不提交、控制或恢复任务。T36 已通过单次 Planner → MCP signed 设备验收，但它不是 12×2 Bench；Bench fixture 仍使用零成本 Provider 和虚拟零时钟，真实双 arm Provider/system Bench 仍是 S6 的剩余验收门。
+当前实施状态（M10 TestKit 0.4.0、S6 fixture baseline 与 T38 schema 2 证据合同，本地主机与 HAR 门已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与真实报告 validator。schema 2 要求逐 Agent activation/role 身份、独立 Provider 请求与唯一轨迹摘要、Role Registry/Collaboration decision 摘要和 case expected evidence；Strong Single 一条、Multi 至少两条不同角色证据，旧 schema fail-closed。Hypium 23/23 与 Release HAR 已通过；TestKit 不提交、控制或恢复任务。T36 已通过单次 Planner → MCP signed 设备验收，但它不是 12×2 Bench；真实多 Agent 编排和双 arm Provider/system Bench 仍是 S6 的剩余验收门。
 
 ### M11：Artifact、Parity 与策略发布链
 

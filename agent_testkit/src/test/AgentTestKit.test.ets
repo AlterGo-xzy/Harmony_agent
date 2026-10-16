@@ -22,6 +22,8 @@ import {
   IntegrationFixtureCatalog,
   IntegrationFixtureDescriptor,
   IntegrationFixtureKind,
+  SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION,
+  SystemBenchmarkAgentEvidence,
   SystemBenchmarkEnvironment,
   SystemBenchmarkEvidence,
   SystemBenchmarkMeasurementMode,
@@ -98,7 +100,7 @@ function systemManifest(): BenchmarkManifest {
   return value;
 }
 
-function systemEvidence(taskId: string): SystemBenchmarkEvidence {
+function systemEvidence(taskId: string, expectedEvidence: string[], armKind: BenchmarkArmKind): SystemBenchmarkEvidence {
   const value: SystemBenchmarkEvidence = new SystemBenchmarkEvidence();
   value.taskId = taskId;
   value.taskSnapshotDigest = fullDigest('1');
@@ -106,8 +108,25 @@ function systemEvidence(taskId: string): SystemBenchmarkEvidence {
   value.providerUsageDigest = fullDigest('3');
   value.resultDigest = fullDigest('4');
   value.qualityEvidenceDigest = fullDigest('5');
+  value.roleRegistryDigest = fullDigest('a');
+  value.collaborationDecisionDigest = fullDigest('b');
+  value.evidenceKinds = expectedEvidence.slice();
   value.usedAgentRuntimeFacade = true;
-  value.providerRequestCount = 1;
+  const agentCount: number = armKind === BenchmarkArmKind.MULTI_AGENT ? 2 : 1;
+  const requestDigestCharacters: string[] = ['6', '7'];
+  const traceDigestCharacters: string[] = ['8', '9'];
+  for (let index: number = 0; index < agentCount; index++) {
+    const agent: SystemBenchmarkAgentEvidence = new SystemBenchmarkAgentEvidence();
+    agent.activationId = taskId + '-activation-' + index.toString();
+    agent.roleId = index === 0 ? 'planner' : 'verifier';
+    agent.roleVersion = '1';
+    agent.providerRequestCount = 1;
+    agent.providerRequestIdsDigest = fullDigest(requestDigestCharacters[index]);
+    agent.traceDigest = fullDigest(traceDigestCharacters[index]);
+    agent.resultDigest = fullDigest(index === 0 ? 'c' : 'd');
+    value.agentEvidence.push(agent);
+  }
+  value.providerRequestCount = agentCount;
   return value;
 }
 
@@ -139,7 +158,8 @@ function systemRun(valueManifest: BenchmarkManifest, dataset: BenchmarkDataset):
       record.sample = sample(dataset.cases[caseIndex].caseId, run.executionId, armValue.armId,
         100 + caseIndex + armIndex);
       record.sample.agentActivations = armValue.kind === BenchmarkArmKind.MULTI_AGENT ? 2 : 1;
-      record.evidence = systemEvidence('task-' + caseIndex.toString() + '-' + armIndex.toString());
+      record.evidence = systemEvidence('task-' + caseIndex.toString() + '-' + armIndex.toString(),
+        dataset.cases[caseIndex].expectedEvidence, armValue.kind);
       run.records.push(record);
     }
   }
@@ -159,8 +179,9 @@ function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
 export default function agentTestKitTest(): void {
   describe('AgentTestKit', () => {
     it('exportsVersionedPublicContract', 0, () => {
-      expect(AGENT_TESTKIT_VERSION).assertEqual('0.3.0');
+      expect(AGENT_TESTKIT_VERSION).assertEqual('0.4.0');
       expect(AGENT_TESTKIT_SCHEMA_VERSION).assertEqual('1');
+      expect(SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION).assertEqual('2');
     });
 
     it('coversEveryArchitectureFaultKind', 0, () => {
@@ -405,6 +426,44 @@ export default function agentTestKitTest(): void {
       expect(issues.includes('eventTraceDigest')).assertTrue();
       expect(issues.includes('provider token usage')).assertTrue();
       expect(issues.includes('real clock')).assertTrue();
+    });
+
+    it('rejectsMultiArmWithoutDistinctPerAgentProviderEvidence', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.records[1].evidence.agentEvidence.pop();
+      run.records[1].evidence.providerRequestCount = 1;
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      const issues: string = validation.issues.join('|');
+      expect(issues.includes('agentEvidence count must match agentActivations')).assertTrue();
+      expect(issues.includes('at least two distinct agent evidence records')).assertTrue();
+    });
+
+    it('rejectsLegacySystemBenchmarkEvidenceSchema', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.schemaVersion = '1';
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      expect(validation.issues.join('|').includes('unsupported schemaVersion')).assertTrue();
+    });
+
+    it('requiresPinnedCollaborationAndCaseSpecificEvidence', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const run: SystemBenchmarkRun = systemRun(valueManifest, dataset);
+      run.records[0].evidence.roleRegistryDigest = '';
+      run.records[0].evidence.collaborationDecisionDigest = '';
+      run.records[0].evidence.evidenceKinds = [];
+      const validation = SystemBenchmarkRunValidator.validate(valueManifest, dataset, run);
+      expect(validation.valid).assertFalse();
+      const issues: string = validation.issues.join('|');
+      expect(issues.includes('roleRegistryDigest')).assertTrue();
+      expect(issues.includes('collaborationDecisionDigest')).assertTrue();
+      expect(issues.includes('missing expected evidence kind')).assertTrue();
     });
   });
 }
