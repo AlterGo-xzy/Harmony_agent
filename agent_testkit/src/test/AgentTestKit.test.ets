@@ -23,10 +23,16 @@ import {
   IntegrationFixtureDescriptor,
   IntegrationFixtureKind,
   SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION,
+  SYSTEM_BENCHMARK_EXECUTION_PLAN_SCHEMA_VERSION,
+  SystemBenchmarkAdmissionSnapshot,
   SystemBenchmarkAgentEvidence,
   SystemBenchmarkAppendResult,
   SystemBenchmarkEnvironment,
   SystemBenchmarkEvidence,
+  SystemBenchmarkExecutionPlan,
+  SystemBenchmarkExecutionPreflightResult,
+  SystemBenchmarkExecutionPreflightValidator,
+  SystemBenchmarkExecutionPrice,
   SystemBenchmarkMeasurementMode,
   SystemBenchmarkRecord,
   SystemBenchmarkRun,
@@ -100,6 +106,67 @@ function systemManifest(): BenchmarkManifest {
   value.region = 'local-windows';
   value.priceSnapshotId = 'deepseek-price-2026-10-14';
   value.priceSnapshotDigest = fullDigest('b');
+  return value;
+}
+
+function executionPrice(valueManifest: BenchmarkManifest): SystemBenchmarkExecutionPrice {
+  const value: SystemBenchmarkExecutionPrice = new SystemBenchmarkExecutionPrice();
+  value.priceSnapshotId = valueManifest.priceSnapshotId;
+  value.priceSnapshotDigest = valueManifest.priceSnapshotDigest;
+  value.providerId = valueManifest.providerId;
+  value.modelId = valueManifest.modelId;
+  value.modelVersion = valueManifest.modelVersion;
+  value.region = valueManifest.region;
+  value.upstreamProviderId = 'deepseek';
+  value.upstreamModelId = 'deepseek-flash';
+  value.upstreamModelVersion = 'DeepSeek-V4.1-Flash';
+  value.upstreamRegion = 'global';
+  value.currency = 'USD_MICROS';
+  value.pricingTier = 'peak-cache-miss';
+  value.frozenAt = '2026-10-17T00:00:00+08:00';
+  value.sourceUrl = 'https://api-docs.deepseek.com/quick_start/pricing/';
+  value.inputMicrosPerMillionTokens = 300000;
+  value.outputMicrosPerMillionTokens = 1200000;
+  value.fixedCostMicros = 0;
+  return value;
+}
+
+function executionPlan(valueManifest: BenchmarkManifest): SystemBenchmarkExecutionPlan {
+  const value: SystemBenchmarkExecutionPlan = new SystemBenchmarkExecutionPlan();
+  value.benchmarkId = valueManifest.benchmarkId;
+  value.suiteVersion = valueManifest.suiteVersion;
+  value.datasetDigest = valueManifest.datasetDigest;
+  value.recordCount = 24;
+  value.maxClarificationRounds = 1;
+  value.strongSingleRequestLimit = 13;
+  value.multiAgentRequestLimit = 26;
+  value.providerRequestLimit = 39;
+  value.perRequestInputTokenLimit = 4096;
+  value.perRequestOutputTokenLimit = 8192;
+  value.price = executionPrice(valueManifest);
+  value.monetaryCostLimitMicros =
+    SystemBenchmarkExecutionPreflightValidator.calculatePerRequestCostMicros(value) * value.providerRequestLimit;
+  return value;
+}
+
+function admissionSnapshot(plan: SystemBenchmarkExecutionPlan): SystemBenchmarkAdmissionSnapshot {
+  const value: SystemBenchmarkAdmissionSnapshot = new SystemBenchmarkAdmissionSnapshot();
+  value.observedAt = '2026-10-17T10:00:00+08:00';
+  value.gatewayRunning = true;
+  value.activeProfileId = 'deepseek';
+  value.activeProfileDigest = fullDigest('e');
+  value.activeConfigurationRevision = 14;
+  value.providerId = plan.price.providerId;
+  value.modelId = plan.price.modelId;
+  value.modelVersion = plan.price.modelVersion;
+  value.region = plan.price.region;
+  value.upstreamProviderId = plan.price.upstreamProviderId;
+  value.upstreamModelId = plan.price.upstreamModelId;
+  value.upstreamModelVersion = plan.price.upstreamModelVersion;
+  value.upstreamRegion = plan.price.upstreamRegion;
+  value.priceSnapshotId = plan.price.priceSnapshotId;
+  value.priceSnapshotDigest = plan.price.priceSnapshotDigest;
+  value.executionAuthorizationRef = 'user-approved-bench-batch-20261017';
   return value;
 }
 
@@ -182,9 +249,10 @@ function rule(ruleId: string, occurrence: number, kind: FaultKind): FaultRule {
 export default function agentTestKitTest(): void {
   describe('AgentTestKit', () => {
     it('exportsVersionedPublicContract', 0, () => {
-      expect(AGENT_TESTKIT_VERSION).assertEqual('0.5.0');
+      expect(AGENT_TESTKIT_VERSION).assertEqual('0.6.0');
       expect(AGENT_TESTKIT_SCHEMA_VERSION).assertEqual('1');
       expect(SYSTEM_BENCHMARK_RUN_SCHEMA_VERSION).assertEqual('2');
+      expect(SYSTEM_BENCHMARK_EXECUTION_PLAN_SCHEMA_VERSION).assertEqual('1');
     });
 
     it('coversEveryArchitectureFaultKind', 0, () => {
@@ -533,6 +601,60 @@ export default function agentTestKitTest(): void {
       expect(sealed.valid).assertFalse();
       expect(sealed.run === undefined).assertTrue();
       expect(sealed.issues.join('|').includes('every dataset case')).assertTrue();
+    });
+
+    it('admitsOnlyThePinnedThirtyNineRequestCostEnvelope', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const plan: SystemBenchmarkExecutionPlan = executionPlan(valueManifest);
+      const admission: SystemBenchmarkAdmissionSnapshot = admissionSnapshot(plan);
+      const result: SystemBenchmarkExecutionPreflightResult =
+        SystemBenchmarkExecutionPreflightValidator.validate(valueManifest, dataset, plan, admission);
+      expect(result.ready).assertTrue();
+      expect(result.expectedRecordCount).assertEqual(24);
+      expect(result.expectedStrongSingleRequests).assertEqual(13);
+      expect(result.expectedMultiAgentRequests).assertEqual(26);
+      expect(result.expectedProviderRequestLimit).assertEqual(39);
+      expect(result.expectedMonetaryCostLimitMicros).assertEqual(431340);
+      expect(plan.monetaryCostLimitMicros).assertEqual(431340);
+    });
+
+    it('blocksBenchExecutionWithoutAnActiveProfileAndExplicitAuthorization', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const plan: SystemBenchmarkExecutionPlan = executionPlan(valueManifest);
+      const admission: SystemBenchmarkAdmissionSnapshot = admissionSnapshot(plan);
+      admission.gatewayRunning = false;
+      admission.activeProfileId = '';
+      admission.activeConfigurationRevision = 0;
+      admission.executionAuthorizationRef = '';
+      const result: SystemBenchmarkExecutionPreflightResult =
+        SystemBenchmarkExecutionPreflightValidator.validate(valueManifest, dataset, plan, admission);
+      expect(result.ready).assertFalse();
+      const issues: string = result.issues.join('|');
+      expect(issues.includes('gateway must be running')).assertTrue();
+      expect(issues.includes('active gateway profile')).assertTrue();
+      expect(issues.includes('configuration revision')).assertTrue();
+      expect(issues.includes('explicit execution authorization')).assertTrue();
+    });
+
+    it('rejectsRequestPriceAndUpstreamIdentityDriftBeforeExecution', 0, () => {
+      const valueManifest: BenchmarkManifest = systemManifest();
+      const dataset: BenchmarkDataset = HarmonyAgentBenchPilotCatalog.datasetV1();
+      const plan: SystemBenchmarkExecutionPlan = executionPlan(valueManifest);
+      const admission: SystemBenchmarkAdmissionSnapshot = admissionSnapshot(plan);
+      plan.providerRequestLimit = 40;
+      plan.perRequestOutputTokenLimit = Number.MAX_SAFE_INTEGER;
+      plan.price.outputMicrosPerMillionTokens = 600000;
+      admission.upstreamModelId = 'changed-upstream-model';
+      const result: SystemBenchmarkExecutionPreflightResult =
+        SystemBenchmarkExecutionPreflightValidator.validate(valueManifest, dataset, plan, admission);
+      expect(result.ready).assertFalse();
+      const issues: string = result.issues.join('|');
+      expect(issues.includes('providerRequestLimit')).assertTrue();
+      expect(issues.includes('safe integer bounds')).assertTrue();
+      expect(issues.includes('monetaryCostLimitMicros')).assertTrue();
+      expect(issues.includes('upstream identity')).assertTrue();
     });
   });
 }

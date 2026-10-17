@@ -53,3 +53,11 @@ export {
   SystemBenchmarkSealResult,
   SystemBenchmarkRunRecorder
 } from './src/main/ets/testkit/SystemBenchRecorder';
+export {
+  SYSTEM_BENCHMARK_EXECUTION_PLAN_SCHEMA_VERSION,
+  SystemBenchmarkExecutionPrice,
+  SystemBenchmarkExecutionPlan,
+  SystemBenchmarkAdmissionSnapshot,
+  SystemBenchmarkExecutionPreflightResult,
+  SystemBenchmarkExecutionPreflightValidator
+} from './src/main/ets/testkit/SystemBenchAdmission';

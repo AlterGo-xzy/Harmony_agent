@@ -758,7 +758,7 @@ external_consumer (out of scope)
 
 验收：baseline 可重复，模型、价格、region、schema 与日期全部冻结到报告。
 
-当前进度：TestKit 0.5.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。主机 Hypium 26/26 和 Release HAR 已通过。Recorder/validator 均不执行 workload；当前 fixture 报告仍使用虚拟零时钟并标记为不可做性能比较，真实 Strong Single/Multi Provider/system run 仍是关闭本阶段的剩余门。
+当前进度：TestKit 0.6.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。T42 又增加无任务控制权的执行前检：活动网关 Profile/revision、上游模型/价格、显式批量授权、最多一轮澄清、39 次 Provider 请求、每请求 4096/8192 Token 与 US$0.43134 最坏费用必须同时匹配才准入。主机 Hypium 29/29 与候选封顶 Node 检查已通过。Recorder/validator/preflight 均不执行 workload；当前网关 Profile 为空，真实 Strong Single/Multi Provider/system run 仍是关闭本阶段的剩余门。
 
 ### Phase 3：MTRouter
 
