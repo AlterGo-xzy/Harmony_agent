@@ -35,12 +35,34 @@ import { ModelProviderProfile, RegisteredModelProvider } from './ProviderCatalog
 import { ProviderCancellationSource } from './ProviderLifecycle';
 
 const PROVIDER_SEMANTIC_PLANNER_CONFIG_VERSION: string = '1.0';
+const PLANNER_STEP_SCHEMA: string = '{"type":"object","additionalProperties":false,' +
+  '"properties":{"stepId":{"type":"string"},"kind":{"type":"string"},"goal":{"type":"string"},' +
+  '"dependencies":{"type":"array","items":{"type":"string"}},' +
+  '"inputBindings":{"type":"array","items":{"type":"object","additionalProperties":false,' +
+  '"properties":{"name":{"type":"string"},"sourceStepId":{"type":"string"},' +
+  '"sourceOutputPath":{"type":"string"},"literalJson":{"type":"string"}},"required":["name"]}},' +
+  '"expectedOutputSchemaJson":{"type":"string"},' +
+  '"capabilityRequirements":{"type":"array","items":{"type":"string"}},' +
+  '"sideEffect":{"type":"string"},"riskLevel":{"type":"string"},' +
+  '"permissionRequirements":{"type":"array","items":{"type":"string"}},' +
+  '"idempotencyMode":{"type":"string"},"timeoutMs":{"type":"integer"},' +
+  '"retryPolicyRef":{"type":"string"},"verificationPolicyRef":{"type":"string"}},' +
+  '"required":["stepId","kind","goal","dependencies","inputBindings","expectedOutputSchemaJson",' +
+  '"capabilityRequirements","sideEffect","riskLevel","permissionRequirements","idempotencyMode",' +
+  '"timeoutMs","retryPolicyRef","verificationPolicyRef"]}';
 const PLANNER_OUTPUT_SCHEMA: string = '{"type":"object","additionalProperties":false,' +
   '"properties":{"status":{"type":"string","enum":["ready","clarificationRequired","rejected"]},' +
-  '"workflow":{"type":"object"},"clarification":{"type":"object"},' +
+  '"workflow":{"type":"object","additionalProperties":false,' +
+  '"properties":{"entryStepIds":{"type":"array","items":{"type":"string"}},' +
+  '"steps":{"type":"array","items":' + PLANNER_STEP_SCHEMA + '}},' +
+  '"required":["entryStepIds","steps"]},' +
+  '"clarification":{"type":"object","additionalProperties":false,' +
+  '"properties":{"questionCode":{"type":"string"},"prompt":{"type":"string"},' +
+  '"responseSchemaJson":{"type":"string"}},' +
+  '"required":["questionCode","prompt","responseSchemaJson"]},' +
   '"rejectionCode":{"type":"string"}},"required":["status"]}';
 const PLANNER_SYSTEM_PROMPT: string = 'You are the semantic planning component of a headless agent runtime. ' +
-  'Return only JSON matching the supplied schema. Produce a declarative typed workflow, a clarification request, ' +
+  'Return only JSON matching the responseContract in the user message. Produce a declarative typed workflow, a clarification request, ' +
   'or a stable rejection. Never claim that a tool ran, never request product UI actions, and never include secrets.';
 
 export enum ProviderPlanningPhase {
@@ -391,7 +413,10 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
       '\nplanningRequest=' + JSON.stringify(request);
     if (role !== undefined) value += '\nactiveRole=' + JSON.stringify(role);
     if (response !== undefined) value += '\nclarificationResponse=' + JSON.stringify(response);
-    value += '\nFor ready status, workflow must contain only entryStepIds and steps. ' +
+    value += '\nresponseContract=' + PLANNER_OUTPUT_SCHEMA +
+      '\nReturn exactly one JSON object and no prose or markdown. For ready status, workflow must contain only ' +
+      'entryStepIds and steps. The runtime assigns taskId, workflowId, workflowVersion, and createdAt; never return ' +
+      'those fields or any other unlisted field. ' +
       'Each step must contain stepId, kind, goal, dependencies, inputBindings, expectedOutputSchemaJson, ' +
       'capabilityRequirements, sideEffect, riskLevel, permissionRequirements, idempotencyMode, timeoutMs, ' +
       'retryPolicyRef, and verificationPolicyRef. For clarificationRequired, clarification must contain ' +

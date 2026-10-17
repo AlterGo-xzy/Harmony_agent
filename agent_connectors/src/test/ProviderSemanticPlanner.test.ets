@@ -274,6 +274,9 @@ export default function providerSemanticPlannerTest(): void {
       expect(provider.lastRequest?.context.priceSnapshotId).assertEqual('planner-price-v1');
       expect(provider.lastRequest?.maxOutputTokens).assertEqual(256);
       expect(provider.lastRequest?.responseSchemaJson.includes('clarificationRequired')).assertTrue();
+      expect(provider.lastRequest?.responseSchemaJson.includes('entryStepIds')).assertTrue();
+      expect(provider.lastRequest?.messages[1].content.includes('responseContract=')).assertTrue();
+      expect(provider.lastRequest?.messages[1].content.includes('never return those fields')).assertTrue();
       expect(observer.traces.length).assertEqual(1);
       expect(observer.traces[0].usage.totalTokens).assertEqual(120);
       const traceText: string = JSON.stringify(observer.traces[0]);
@@ -352,6 +355,10 @@ export default function providerSemanticPlannerTest(): void {
       const adapter: ProviderSemanticPlanner = planner(provider);
       provider.outputJson = '{"status":"ready","workflow":{},"unexpected":true}';
       expect((await adapter.plan(planningRequest())).rejectionCode).assertEqual('PLANNER_OUTPUT_INVALID');
+
+      provider.outputJson = readyOutput().replace('"entryStepIds"',
+        '"workflowId":"provider-controlled","entryStepIds"');
+      expect((await adapter.plan(planningRequest())).rejectionCode).assertEqual('PLANNER_WORKFLOW_INVALID');
 
       provider.outputJson = '{"status":"ready","workflow":{"entryStepIds":[],"steps":[' +
         '{"stepId":"step-1","kind":"llm","goal":"cycle","dependencies":["step-1"],' +

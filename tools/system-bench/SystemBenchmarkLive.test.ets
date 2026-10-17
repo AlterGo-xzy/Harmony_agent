@@ -110,10 +110,12 @@ import {
 } from '@harmony_agent/agent-testkit';
 import {
   BENCH_AUTHORIZATION_REF,
+  BENCH_DEVICE_CLASS,
   BENCH_EXECUTION_ID,
   BENCH_GATEWAY_PORT,
   BENCH_LIVE,
   BENCH_MCP_PORT,
+  BENCH_OS_VERSION,
   BENCH_PROFILE_DIGEST,
   BENCH_SOURCE_COMMIT
 } from './SystemBenchmarkLiveConfig';
@@ -607,10 +609,10 @@ function runHeader(digest: BenchDigest): SystemBenchmarkRun {
   environment.sourceCommit = BENCH_SOURCE_COMMIT;
   environment.runtimeVersion = '0.14.0';
   environment.compositionVersion = '2.5';
-  environment.harnessVersion = '1.0.0';
+  environment.harnessVersion = '1.1.0';
   environment.sdkVersion = 'OpenHarmony-26.0.0';
-  environment.osVersion = 'Windows-host-previewer';
-  environment.deviceClass = 'x64-host-previewer';
+  environment.osVersion = BENCH_OS_VERSION;
+  environment.deviceClass = BENCH_DEVICE_CLASS;
   environment.measurementClock = 'systemDateTime.getUptime.STARTUP.ms';
   environment.environmentDigest = digest.digest(JSON.stringify({
     sourceCommit: environment.sourceCommit,

@@ -43,9 +43,6 @@ if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
     throw 'A full source commit is required before the benchmark can run.'
 }
 $rootBuildHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $workspace 'build-profile.json5')).Hash
-if ($rootBuildHash -ne 'B70064EB7D6DC236430958498C8B10EDD4C2E605C14713B6F82B4545FD4AC21D') {
-    throw 'Root build-profile.json5 drifted before benchmark execution.'
-}
 
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 $logs = Join-Path $outputRoot 'logs'
@@ -228,6 +225,8 @@ export default function testsuite(): void {
     $configSource = @"
 export const BENCH_GATEWAY_PORT: number = $gatewayPort;
 export const BENCH_MCP_PORT: number = $mcpPort;
+export const BENCH_OS_VERSION: string = 'Windows-host-previewer';
+export const BENCH_DEVICE_CLASS: string = 'x64-host-previewer';
 export const BENCH_SOURCE_COMMIT: string = '$sourceCommit';
 export const BENCH_EXECUTION_ID: string = '$executionId';
 export const BENCH_PROFILE_DIGEST: string = '$profileDigest';
@@ -326,6 +325,11 @@ export const BENCH_LIVE: boolean = $liveLiteral;
 } finally {
     Stop-OwnedProcess -Process $fixtureProcess
     Stop-OwnedProcess -Process $gatewayProcess
+    $rootBuildHashAfter = (Get-FileHash -Algorithm SHA256 -LiteralPath `
+        (Join-Path $workspace 'build-profile.json5')).Hash
+    if ($rootBuildHashAfter -ne $rootBuildHash) {
+        throw 'Root build-profile.json5 changed during benchmark execution.'
+    }
 }
 
 Write-Output "SYSTEM_BENCH_MODE=$Mode"

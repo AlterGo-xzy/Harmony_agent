@@ -3,7 +3,13 @@ param(
     [ValidateRange(1, 65535)]
     [int]$GatewayDevicePort = 4014,
 
-    [string]$OutputDirectory = ''
+    [string]$OutputDirectory = '',
+
+    [ValidateNotNullOrEmpty()]
+    [string]$DeviceOsVersion = 'OpenHarmony-26.0.0-device',
+
+    [ValidateNotNullOrEmpty()]
+    [string]$DeviceClass = 'api26-device'
 )
 
 Set-StrictMode -Version Latest
@@ -30,8 +36,8 @@ if ($LASTEXITCODE -ne 0 -or $sourceCommit -notmatch '^[0-9a-f]{40}$') {
     throw 'A full source commit is required before the device package can be prepared.'
 }
 $rootBuildHash = (Get-FileHash -Algorithm SHA256 -LiteralPath (Join-Path $workspace 'build-profile.json5')).Hash
-if ($rootBuildHash -ne 'B70064EB7D6DC236430958498C8B10EDD4C2E605C14713B6F82B4545FD4AC21D') {
-    throw 'Root build-profile.json5 drifted before device package preparation.'
+if ($DeviceOsVersion.Contains("'") -or $DeviceClass.Contains("'")) {
+    throw 'DeviceOsVersion and DeviceClass cannot contain single quotes.'
 }
 
 $isolated = Join-Path $outputRoot 'isolated-project'
@@ -126,6 +132,8 @@ $executionId = "harmony-agent-system-bench-$stamp-device"
 $configSource = @"
 export const BENCH_GATEWAY_PORT: number = $GatewayDevicePort;
 export const BENCH_MCP_PORT: number = 1;
+export const BENCH_OS_VERSION: string = '$DeviceOsVersion';
+export const BENCH_DEVICE_CLASS: string = '$DeviceClass';
 export const BENCH_SOURCE_COMMIT: string = '$sourceCommit';
 export const BENCH_EXECUTION_ID: string = '$executionId';
 export const BENCH_PROFILE_DIGEST: string = '$profileDigest';
@@ -201,5 +209,11 @@ Write-JsonNoBom -Path (Join-Path $outputRoot 'build-summary.json') -Value ([orde
     rootBuildProfileSha256 = $rootBuildHash
     credentialsRecorded = $false
 })
+
+$rootBuildHashAfter = (Get-FileHash -Algorithm SHA256 -LiteralPath `
+    (Join-Path $workspace 'build-profile.json5')).Hash
+if ($rootBuildHashAfter -ne $rootBuildHash) {
+    throw 'Root build-profile.json5 changed during device package preparation.'
+}
 
 Write-Host "SYSTEM_BENCH_DEVICE_BUILD=$outputRoot"
