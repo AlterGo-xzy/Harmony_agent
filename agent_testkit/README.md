@@ -24,7 +24,7 @@ TestKit 不提交、控制或恢复任务，不签发授权，也不调用 Tool�
 
 当前报告是确定性 fixture baseline，使用虚拟零时钟且明确标记 `performanceComparable=false`。它不代表 harmony_agent Bench Pilot 已完成真实 model/provider 或系统链路对比，也不提供产品 UI、产品 HAP、设备能力或签名验收。
 
-`SystemBenchmarkRunValidator`、`SystemBenchmarkRunRecorder` 与执行前检均不提交或控制任务。真实 harness 必须继续通过唯一的 `AgentRuntimeFacade` 运行任务。T40 已具备按计划产生独立角色/Provider 轨迹的编排前提；0.6.0 又补齐 39 次请求、每请求 4096/8192 Token 和峰时缓存未命中 US$0.43134 的 fail-closed 封顶，但当前网关没有活动 Profile，也没有执行授权或真实 12×2 workload，不能据此关闭 S6。
+`SystemBenchmarkRunValidator`、`SystemBenchmarkRunRecorder` 与执行前检均不提交或控制任务。真实 harness 必须继续通过唯一的 `AgentRuntimeFacade` 运行任务。T40 已具备按计划产生独立角色/Provider 轨迹的编排前提；0.6.0 又补齐 39 次请求、每请求 4096/8192 Token 和峰时缓存未命中 US$0.43134 的 fail-closed 封顶。当前 revision 13 配置已有 active/complete 的 `deepseek` Profile，但 Runtime 未启动，也没有本轮批量执行授权或真实 12×2 workload，不能据此关闭 S6。
 
 ## 验证
 

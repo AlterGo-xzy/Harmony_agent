@@ -58,7 +58,7 @@ SDK 原生 Previewer/Hypium 当前运行 `agent_connectors` 55/55。T35 的 3 �
 
 2026-10-13 的只读查询确认已安装 `aigw.exe`，配置中已有一个完整且已选中的 Profile，并提供默认 alias `aigw/default`。
 
-2026-10-17 的 T42 只读复核覆盖当前安装状态，而不是沿用上述历史结论：已安装 CLI 版本为 0.1.1，`status --json` 返回 `running=false`，`profile list --json` 返回空列表。没有读取 Credential Manager、配置密文或上游凭据，也没有启动 Runtime 或发送 Provider 请求。T42 因此只完成执行准入合同与费用封顶；恢复一个活动 Profile 并重新冻结 revision/上游身份后，仍需另行取得最多 39 次请求、US$0.43134 最坏费用的批量执行授权。
+2026-10-17 的 T42 初次查询由普通沙箱进程执行，读到隔离的 revision 0/空 Profile 列表；该结果不代表 Windows 当前用户的网关配置。随后在实际当前用户上下文以同一安装版 CLI 做只读复核：`config validate --json` 返回 `valid=true`、revision 13；`profile list/show --json` 显示 `deepseek` 为 active/complete；Provider `official` 指向 `https://api.deepseek.com`；默认 alias `aigw/default` 映射上游模型 `deepseek-flash`；`config.json` SHA-256 为 `3E3FE8EE7F9E170C809E263B3191A28426C8DC9E41538AA27B820D5442DA9E95`。`status --json` 仍为 `running=false`，因此配置已就绪但 Runtime 当前未启动。复核没有读取 Credential Manager、配置密文或上游凭据，也没有启动 Runtime 或发送 Provider 请求。T42 已完成执行准入合同与费用封顶；实际执行前仍需取得最多 39 次请求、US$0.43134 最坏费用的明确批量授权，并在执行窗口启动 Runtime。
 
 仓库提供 `tools/test-local-ai-gateway.ps1` 作为受控真实 smoke probe。它只能由 `aigw run --client ...` 注入 loopback base URL 和当前用户 runtime token；脚本拒绝工作区外输出，不打印或持久化 token，也不保存原始 Provider 响应或错误 message，只记录 `/ready`、chat HTTP 状态、固定回复是否匹配、finish reason、token usage，以及失败时可选的 `error.code`/`error.type`。运行该 probe 会启动已安装网关并发起一次真实上游模型请求，必须单独授权；完成后的进程停止也必须包含在同一授权范围内。
 
