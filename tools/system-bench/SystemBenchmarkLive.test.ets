@@ -292,6 +292,27 @@ class BenchFixtureGatewayClient implements LocalAIGatewayHttpClientPort {
   }
 }
 
+class BenchBoundedGatewayClient implements LocalAIGatewayHttpClientPort {
+  readonly requestLimit: number;
+  requestCount: number = 0;
+  private readonly delegate: LocalAIGatewayHttpClientPort;
+
+  constructor(delegate: LocalAIGatewayHttpClientPort, requestLimit: number) {
+    if (!Number.isSafeInteger(requestLimit) || requestLimit <= 0) {
+      throw new Error('BENCH_PROVIDER_REQUEST_LIMIT_INVALID');
+    }
+    this.delegate = delegate;
+    this.requestLimit = requestLimit;
+  }
+
+  start(request: LocalAIGatewayHttpRequest): ProviderOperationHandle<LocalAIGatewayHttpResponse> {
+    if (this.requestCount >= this.requestLimit) throw new Error('BENCH_PROVIDER_REQUEST_LIMIT');
+    const operation: ProviderOperationHandle<LocalAIGatewayHttpResponse> = this.delegate.start(request);
+    this.requestCount++;
+    return operation;
+  }
+}
+
 class BenchPlannerObserver implements ProviderSemanticPlannerObserverPort {
   traces: ProviderPlannerTrace[] = [];
 
@@ -609,7 +630,7 @@ function runHeader(digest: BenchDigest): SystemBenchmarkRun {
   environment.sourceCommit = BENCH_SOURCE_COMMIT;
   environment.runtimeVersion = '0.14.0';
   environment.compositionVersion = '2.5';
-  environment.harnessVersion = '1.1.0';
+  environment.harnessVersion = '1.2.0';
   environment.sdkVersion = 'OpenHarmony-26.0.0';
   environment.osVersion = BENCH_OS_VERSION;
   environment.deviceClass = BENCH_DEVICE_CLASS;
@@ -672,14 +693,16 @@ function exactWorkflowInstruction(taskCase: BenchmarkTaskCase): string {
       'Use questionCode MISSING_RECORD_KEY and an object response schema requiring recordKey. ' +
       'After clarificationResponse is present, return exactly one TOOL step.';
   }
+  const noClarification: string = ' Do not return clarificationRequired; the task contains all required input.';
   if (taskCase.kind === BenchmarkTaskKind.MULTI_SOURCE_SYNTHESIS ||
     taskCase.kind === BenchmarkTaskKind.SEQUENTIAL_WORKFLOW) {
-    return ' Return exactly two TOOL steps. The second step must depend on the first step.';
+    return noClarification + ' Return exactly two TOOL steps. The second step must depend on the first step.';
   }
   if (taskCase.kind === BenchmarkTaskKind.PARALLEL_WORKFLOW) {
-    return ' Return exactly two independent TOOL steps and include both step IDs in entryStepIds.';
+    return noClarification +
+      ' Return exactly two independent TOOL steps and include both step IDs in entryStepIds.';
   }
-  return ' Return exactly one TOOL step.';
+  return noClarification + ' Return exactly one TOOL step.';
 }
 
 function submission(taskCase: BenchmarkTaskCase, arm: BenchmarkArm): TaskSubmission {
@@ -883,6 +906,17 @@ export default function systemBenchmarkLiveTest(): void {
       const digest: BenchDigest = new BenchDigest();
       expect(digest.digest('abc')).assertEqual(
         'sha256:ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad');
+      const limitProbe: BenchBoundedGatewayClient = new BenchBoundedGatewayClient(
+        new BenchFixtureGatewayClient(), 1);
+      limitProbe.start(new LocalAIGatewayHttpRequest());
+      let limitRejected: boolean = false;
+      try {
+        limitProbe.start(new LocalAIGatewayHttpRequest());
+      } catch (error) {
+        limitRejected = (error as Error).message === 'BENCH_PROVIDER_REQUEST_LIMIT';
+      }
+      expect(limitRejected).assertTrue();
+      expect(limitProbe.requestCount).assertEqual(1);
       const manifestValue: BenchmarkManifest = manifest();
       const dataset = HarmonyAgentBenchPilotCatalog.datasetV1();
       const executionPlan: SystemBenchmarkExecutionPlan = plan(manifestValue);
@@ -926,7 +960,11 @@ export default function systemBenchmarkLiveTest(): void {
         ports.digest = digest;
         ports.credentials = credentials;
         ports.timer = new SystemProviderTimer();
-        ports.httpClient = BENCH_LIVE ? new ArkTsLocalAIGatewayHttpClient() : new BenchFixtureGatewayClient();
+        const gatewayDelegate: LocalAIGatewayHttpClientPort = BENCH_LIVE ?
+          new ArkTsLocalAIGatewayHttpClient() : new BenchFixtureGatewayClient();
+        const gatewayClient: BenchBoundedGatewayClient = new BenchBoundedGatewayClient(
+          gatewayDelegate, executionPlan.providerRequestLimit);
+        ports.httpClient = gatewayClient;
         ports.plannerObserver = plannerObserver;
         const activeRuntime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
           gatewayConfig(), ports, adapter, registry);
@@ -985,7 +1023,7 @@ export default function systemBenchmarkLiveTest(): void {
           console.info('HARMONY_AGENT_BENCH_RUN_CHUNK=' + (chunkIndex + 1).toString() + '/' +
             chunkCount.toString() + ':' + reportJson.substring(start, start + chunkSize));
         }
-        expect(credentials.calls <= executionPlan.providerRequestLimit).assertTrue();
+        expect(gatewayClient.requestCount <= executionPlan.providerRequestLimit).assertTrue();
       } finally {
         if (runtime !== undefined) await runtime.shutdown(ShutdownMode.GRACEFUL);
       }
