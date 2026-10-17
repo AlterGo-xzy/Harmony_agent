@@ -122,6 +122,41 @@ export class ContractCodec {
   }
 
   static parseArtifactManifest(json: string): ArtifactManifest {
-    return JSON.parse(json) as ArtifactManifest;
+    const parsed: ArtifactManifest = JSON.parse(json) as ArtifactManifest;
+    const value: ArtifactManifest = new ArtifactManifest();
+    if (parsed.schemaVersion !== undefined) value.schemaVersion = parsed.schemaVersion;
+    if (parsed.contractType !== undefined) value.contractType = parsed.contractType;
+    if (parsed.artifactId !== undefined) value.artifactId = parsed.artifactId;
+    if (parsed.artifactKind !== undefined) value.artifactKind = parsed.artifactKind;
+    if (parsed.algorithm !== undefined) value.algorithm = parsed.algorithm;
+    if (parsed.artifactVersion !== undefined) value.artifactVersion = parsed.artifactVersion;
+    if (parsed.sourceCommit !== undefined) value.sourceCommit = parsed.sourceCommit;
+    if (parsed.sourceLicense !== undefined) value.sourceLicense = parsed.sourceLicense;
+    if (parsed.trainingDataLineage !== undefined) value.trainingDataLineage = parsed.trainingDataLineage;
+    if (parsed.modelAndProviderSnapshotJson !== undefined) {
+      value.modelAndProviderSnapshotJson = parsed.modelAndProviderSnapshotJson;
+    }
+    if (parsed.featureSchemaVersion !== undefined) value.featureSchemaVersion = parsed.featureSchemaVersion;
+    if (parsed.runtimeCompatibility !== undefined) value.runtimeCompatibility = parsed.runtimeCompatibility;
+    if (parsed.artifactDigest !== undefined) value.artifactDigest = parsed.artifactDigest;
+    if (parsed.checkpointDigest !== undefined) value.checkpointDigest = parsed.checkpointDigest;
+    if (parsed.paperReproductionResultsJson !== undefined) {
+      value.paperReproductionResultsJson = parsed.paperReproductionResultsJson;
+    }
+    if (parsed.portParityResultsJson !== undefined) value.portParityResultsJson = parsed.portParityResultsJson;
+    if (parsed.harmonyAgentBenchResultsJson !== undefined) {
+      value.harmonyAgentBenchResultsJson = parsed.harmonyAgentBenchResultsJson;
+    }
+    if (parsed.lifecycleStatus !== undefined) value.lifecycleStatus = parsed.lifecycleStatus;
+    if (parsed.approvalStatus !== undefined) value.approvalStatus = parsed.approvalStatus;
+    if (parsed.approvedBy !== undefined) value.approvedBy = parsed.approvedBy;
+    if (parsed.approvedAt !== undefined) value.approvedAt = parsed.approvedAt;
+    if (parsed.signedManifestDigest !== undefined) value.signedManifestDigest = parsed.signedManifestDigest;
+    if (parsed.signatureAlgorithm !== undefined) value.signatureAlgorithm = parsed.signatureAlgorithm;
+    if (parsed.signingKeyId !== undefined) value.signingKeyId = parsed.signingKeyId;
+    if (parsed.signatureBase64 !== undefined) value.signatureBase64 = parsed.signatureBase64;
+    if (parsed.signedAt !== undefined) value.signedAt = parsed.signedAt;
+    if (parsed.rollbackTargetDigest !== undefined) value.rollbackTargetDigest = parsed.rollbackTargetDigest;
+    return value;
   }
 }

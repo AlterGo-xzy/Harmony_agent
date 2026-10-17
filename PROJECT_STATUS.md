@@ -2,7 +2,7 @@
 
 更新时间：2026-10-17（Asia/Shanghai）
 
-## Agent Runtime T01–T43 与 M10 Bench Pilot（S6 已完成；T26/T28/T36/T43 已完成签名 API 26 验收）
+## Agent Runtime T01–T44 与 M11 策略供应链（S7 进行中；T26/T28/T36/T43 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -112,6 +112,8 @@ T42（M10/S6 真实 System Bench 执行准入门）本地主机与 HAR 门已完
 
 T43（M10/S6 真实 System Bench 设备批次）已关闭。前两次授权尝试分别因 Provider workflow 严格解析失败和 41/39 请求超限而不被接受，证据保留于 `artifacts/t43-system-bench-live/20261017-203000-device-live/` 与 `artifacts/t43-system-bench-live/20261017-210218-device-live-retry/`。提交 `fd35242` 随后增加委派前全局请求硬上限，并对完整输入禁止 Provider 自行要求澄清；纯 fixture 回归 1/1 通过，证据位于 `artifacts/t43-system-bench-live/20261017-211000-fixture-final/`。最终授权批次使用提交 `a1ac9df`、harness 1.2.0 与已通过 `verify-app`/`verify-profile` 的签名主 HAP、ohosTest HAP，在 API 26 设备实际报告 1/1 通过；Recorder 封存 schema 2 的 24 条真实 Provider runtime 记录，完整覆盖 12 个 case × Strong Single/Multi 两个 arm。实际 38/39 次 Provider 请求全部成功，usage 增加 67,538 input、9,002 output、76,540 total tokens，结算成本 31,083/431,340 USD micros（US$0.031083/US$0.43134）；Strong Single 质量通过 10/12，Multi 通过 9/12，总计 19/24，这是基线测量结果而不是 24/24 质量通过。桥接统计与报告请求数同为 38、拒绝为 0，证据未记录凭据或请求/响应正文。运行后已卸载 `com.harmony.agent`、移除 HDC 转发、停止 bridge 与 Local AI Gateway，并复核 revision 13 和配置 SHA-256 未漂移；根签名配置哈希保持 `67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63`。最终证据位于 `artifacts/t43-system-bench-live/20261017-211600-device-live-hard-cap/`；T43 与 S6 至此关闭。
 
+T44（M11-A Artifact 公共契约与 fail-closed 准入）本地主机与 HAR 门已完成：`ArtifactManifest` 新增 checkpoint/policy/workflow 类型、通用 payload digest、审批、detached signature 与 rollback target 元数据，并保留 `checkpointDigest` 兼容字段；完整 Git commit、SHA-256、JSON 结果对象、lineage、runtime compatibility、签名元数据与回滚目标均接受严格校验。未签名 shadow 可用于不参与选择的影子评估；canary、active 和 rolledBack 必须已批准且签名元数据完整。生命周期 validator 阻止从 disabled/shadow 直接跳到 active，并保留受控降级、回滚和幂等写入。缺字段 JSON 先恢复 DTO 默认值再稳定拒绝。主机 Hypium 实测 21/21；Release HAR 为 28,939 bytes、SHA-256 `49553DB2CA8FFB077C892639D45FC05C0FCAC807055A07AE098065AC555A549F`，公开声明已核对。证据位于 `artifacts/t44-artifact-contract/20261017-213200-final/`。T44 只验证签名元数据格式，不证明密码学签名有效、payload 存在或声明的 runtime 实际兼容；确定性打包/验签属于 T45，Runtime/Storage 发布、shadow/canary/rollback 演练仍属后续 S7。本轮未构建 HAP、未签名、安装、卸载或运行设备，`AgentRuntimeFacade` 仍是唯一任务控制入口。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -126,7 +128,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T43 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线。T39 已把模式选择收紧为版本化、可校验、可恢复的角色计划；T40 把计划接入按角色独立 Provider 请求和有界 workflow 修订；T41 补齐 schema 2 证据收集与完整封存；T42 在真实执行前加入 Profile/价格/授权及请求、Token、金额封顶；T43 以 38 次真实请求完成 12×2 设备批次并导出质量、token、成本、延迟、工具、Agent、恢复与 Router 指标。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、真实取消/timeout、第三方远端 MCP 兼容性、learned Router artifact 与后续策略供应链；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T44 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 已由 T44 的 Artifact 公共契约与 fail-closed 准入启动。T39 已把模式选择收紧为版本化、可校验、可恢复的角色计划；T40 把计划接入按角色独立 Provider 请求和有界 workflow 修订；T41 补齐 schema 2 证据收集与完整封存；T42 在真实执行前加入 Profile/价格/授权及请求、Token、金额封顶；T43 以 38 次真实请求完成 12×2 设备批次并导出质量、token、成本、延迟、工具、Agent、恢复与 Router 指标；T44 固定了 artifact provenance、三类独立结果、签名元数据、生命周期和 digest 回滚契约。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、真实取消/timeout、第三方远端 MCP 兼容性、T45 确定性打包/密码学验签、learned Router artifact 以及 S7 的 Runtime/Storage 发布与 shadow/canary/rollback 演练；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

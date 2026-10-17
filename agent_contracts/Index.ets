@@ -40,7 +40,9 @@ export {
   AgentRuntimeEventType,
   ReconciliationStatus,
   AgentErrorClass,
-  ArtifactLifecycleStatus
+  ArtifactLifecycleStatus,
+  ArtifactKind,
+  ArtifactApprovalStatus
 } from './src/main/ets/contracts/Enums';
 export {
   ContractId,
