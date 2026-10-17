@@ -57,16 +57,16 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - 公共 MCP 能力以 `{ serverId, kind, name }` 标识，避免跨 Server 同名冲突。
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
-- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 的 signed `LocalAIGatewayFacadeDevice` 又把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环，并在 API 26 实际通过 1/1；验收后 bundle、两个反向映射、bridge、fixture 和网关均已清理。
+- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 的 signed `LocalAIGatewayFacadeDevice` 又把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环，并在 API 26 实际通过 1/1。T43 继续通过 signed 主/ohosTest HAP 完成 12×2 真实 Provider/system Bench；各次验收后 bundle、反向映射、bridge、fixture 和网关均已清理。
 - `agent_connectors/` 0.8.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、具体 production composition 与 T37–T40 协作接线/逐角色规划的本地主机门。composition 保留宿主显式注入的 `CollaborationPlanSelectorPort`，也保留旧 `CollaborationSelectorPort` 的 Strong Single/兼容路径；有效计划会为每个角色产生独立 Provider request/activation trace，并顺序修订 typed workflow，模式标签式 Multi、计划外角色和累计预算越界会在 Provider 前失败。外部仍只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 55/55；Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`。T36 的单任务真实 Provider Planner → Facade → MCP signed API 26 证据继续有效；T40 没有运行真实 Provider 或设备，也不等于 S6 的十二类任务双 arm system Bench。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。宿主生产 credential store、真实取消/timeout、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。Runtime 0.14.0 与 Storage 0.8.0 已接通版本化协作计划、异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition；connector 0.8.0 已在 fake Provider 门实现按计划逐角色规划与结果修订，真实 Provider 的质量验证和 12×2 双 arm Bench 仍待后续。产品 Entry HAP 属于外部调用方范围。
+- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。Runtime 0.14.0 与 Storage 0.8.0 已接通版本化协作计划、异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition；connector 0.8.0 已实现按计划逐角色 Provider 规划与结果修订。T43 已在真实设备完成 12×2 双 arm Provider/system Bench，形成 19/24 质量通过、38 次请求和 US$0.031083 的基线。宿主生产 credential store、真实取消/timeout、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。产品 Entry HAP 属于外部调用方范围。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
 
 - `agent_connectors` 的 M06/M07 本地门与 T29 M09-B MCP Facade composition 门已由 T30 的 API 26 `McpFacadeDevice` 1/1 补齐受控只读 S2 设备闭环；T36 又以 signed 测试包和真实 Provider Planner 补齐一次生产 composition → 唯一 Facade → MCP 的设备闭环。发布签名、宿主生产 credential store、真实取消/timeout 及第三方远端 MCP 兼容性仍待各自验收。`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
-- 宿主生产 credential store 接线、12×2 真实 Provider/system Bench、learned Router artifact、持久化 Registry 的生产接线及 Artifact Registry。
+- 宿主生产 credential store 接线、learned Router artifact、持久化 Registry 的生产接线及 Artifact Registry。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。
 
@@ -758,7 +758,7 @@ external_consumer (out of scope)
 
 验收：baseline 可重复，模型、价格、region、schema 与日期全部冻结到报告。
 
-当前进度：TestKit 0.6.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。T42 又增加无任务控制权的执行前检：活动网关 Profile/revision、上游模型/价格、显式批量授权、最多一轮澄清、39 次 Provider 请求、每请求 4096/8192 Token 与 US$0.43134 最坏费用必须同时匹配才准入。主机 Hypium 29/29 与候选封顶 Node 检查已通过。Recorder/validator/preflight 均不执行 workload；当前 revision 13 配置已有 active/complete 的 `deepseek` Profile，但 Runtime 未启动且本轮真实批量执行尚未授权。真实 Strong Single/Multi Provider/system run 仍是关闭本阶段的剩余门。
+当前进度：TestKit 0.6.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。T42 又增加无任务控制权的执行前检：活动网关 Profile/revision、上游模型/价格、显式批量授权、最多一轮澄清、39 次 Provider 请求、每请求 4096/8192 Token 与 US$0.43134 最坏费用必须同时匹配才准入。T43 在提交 `a1ac9df`、harness 1.2.0 和 revision 13 `deepseek` Profile 上完成 signed API 26 真实双 arm 批次：设备套件 1/1，通过 Recorder 封存 24 条记录，38/39 次请求、US$0.031083/US$0.43134，Strong Single 10/12、Multi 9/12、总计 19/24 质量通过。请求正文、响应正文和凭据均未写入证据；应用、转发、bridge 与网关已清理。S6 Bench Pilot 至此关闭，实际质量结果作为后续 Router、策略供应链与工作流优化的基线。
 
 ### Phase 3：MTRouter
 

@@ -2,8 +2,8 @@
 
 2026-10-03 已统一命名并保留原有任务划分。更名前的设备证据不作为当前命名版本复验结果；命名与兼容边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新完成门以 [PROJECT_STATUS.md](../../PROJECT_STATUS.md) 为准。
 
-状态：**In progress / T01–T10 当前任务门已通过；T09/M06、T10/M07 为本地 connector 门**  
-日期：2026-10-03  
+状态：**In progress / T01–T43 当前任务门已通过；S6 Bench Pilot 已关闭**
+日期：2026-10-17
 上位架构：[HARMONY_AGENT_ARCHITECTURE.md](HARMONY_AGENT_ARCHITECTURE.md)
 
 ## 1. 拆分结论
@@ -457,7 +457,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - Strong Single Agent 与多 Agent 使用相同权限和上下文策略；
 - 质量、token、成本、p50/p95、工具、Agent、恢复和 Router 指标可导出。
 
-当前实施状态（M10 TestKit 0.6.0、S6 fixture baseline 与 T38/T41/T42 证据合同、封存和执行准入门，本地主机与 HAR 门已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与真实报告 validator。schema 2 要求逐 Agent activation/role 身份、独立 Provider 请求与唯一轨迹摘要、Role Registry/Collaboration decision 摘要和 case expected evidence；Strong Single 一条、Multi 至少两条不同角色证据，旧 schema fail-closed。T41 Recorder 只在 24 条完整 run 通过 validator 后返回封存副本；T42 preflight 在执行前绑定活动网关 Profile/revision、上游模型/价格、显式授权，以及 39 请求、每请求 4096/8192 Token 和 US$0.43134 最坏费用封顶。Hypium 29/29 与候选 envelope 检查已通过；TestKit 不提交、控制或恢复任务。T36 已通过单次 Planner → MCP signed 设备验收，T40 已具备逐角色 Provider 编排；当前 revision 13 配置已有 active/complete 的 `deepseek` Profile，但 Runtime 未启动且尚未取得本轮批量执行授权，也未运行 12×2 Bench。真实双 arm Provider/system run 仍是 S6 的剩余验收门。
+当前实施状态（M10 TestKit 0.6.0、T38/T41/T42 证据合同、封存和执行准入门，以及 T43/S6 真实批次均已通过）：公共 TestKit 已冻结十二种 pilot task、32/128/512 Tool Registry case、公平双 arm manifest 与 schema 2 真实报告 validator。T41 Recorder 只在 24 条完整 run 通过 validator 后返回封存副本；T42 preflight 在执行前绑定活动网关 Profile/revision、上游模型/价格、显式授权，以及 39 请求、每请求 4096/8192 Token 和 US$0.43134 最坏费用封顶。T43 使用 revision 13 的 active/complete `deepseek` Profile、signed API 26 主/ohosTest HAP 与唯一 `AgentRuntimeFacade` 完成实际 12×2 Provider/system run：设备套件 1/1，24 条 schema 2 记录封存，38 次请求全部成功，结算 US$0.031083；Strong Single 10/12、Multi 9/12、总计 19/24 质量通过。证据不含凭据或请求/响应正文，应用、转发、bridge 和网关已清理。S6 已关闭；该质量基线供后续 M11–M15 的策略发布、路由与离线优化使用。
 
 ### M11：Artifact、Parity 与策略发布链
 

@@ -2,7 +2,7 @@
 
 更新时间：2026-10-17（Asia/Shanghai）
 
-## Agent Runtime T01–T42 与 M10 Bench Pilot（T43 进行中；T26/T28/T36 已完成签名 API 26 验收）
+## Agent Runtime T01–T43 与 M10 Bench Pilot（S6 已完成；T26/T28/T36/T43 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -110,7 +110,7 @@ T41（M10/S6 System Bench 证据记录与封存门）本地主机与 HAR 门已�
 
 T42（M10/S6 真实 System Bench 执行准入门）本地主机与 HAR 门已完成：`@harmony_agent/agent-testkit` 升级为 0.6.0，新增无任务控制权的 `SystemBenchmarkExecutionPreflightValidator`。准入同时绑定 24 条记录、最多一轮澄清、Strong Single 13 次/Multi 26 次/总计 39 次 Provider 请求、每请求 4096 input/8192 output tokens，以及 DeepSeek Flash 官方峰时缓存未命中价格下 431,340 USD micros（US$0.43134）的最坏费用。活动网关 Profile/revision/digest、公开 alias、上游 Provider/model/version/region、价格 snapshot/digest 或显式批量执行授权缺失/漂移都会 fail-closed；候选 JSON 与 Node 检查器固定数据和算术，不持有凭据也不启动任务。主机 Hypium 实测 29/29；Release HAR 为 38,322 bytes、SHA-256 `B760ADF2FA71DF73055EA0DC6E3E11AA12C5B6EA19BC7EAB13CD3D6C023A0D09`，包内版本 0.6.0、`debug=false`、compatible SDK 26。证据位于 `artifacts/t42-system-bench-admission/20261017-1910-final/`。2026-10-17 在实际当前用户上下文执行只读 CLI 复核：配置有效且 revision 为 13，`deepseek` Profile 为 active/complete，Provider `official` 指向 `https://api.deepseek.com`，默认 alias `aigw/default` 映射 `deepseek-flash`，`config.json` SHA-256 为 `3E3FE8EE7F9E170C809E263B3191A28426C8DC9E41538AA27B820D5442DA9E95`；Runtime 当前 `running=false`。普通沙箱进程曾读到 revision 0/空列表，该隔离视图不代表当前用户配置。此次没有读取凭据、启动网关或发送 Provider 请求；真实批量执行仍未获授权，S6 继续开放。
 
-T43（M10/S6 真实 System Bench 设备批次）仍开放。首次授权批次在提交 `2cb540a` 上完成 12 条 Strong Single 记录后停止：共观察到 14 次成功 Provider 请求，首个 Multi 响应含未授权 workflow 字段，严格解析在 verifier 调用前拒绝，未形成封存报告；证据位于 `artifacts/t43-system-bench-live/20261017-203000-device-live/`。修正完整嵌套 schema 后，第二次授权批次在提交 `f632ab7` 上于真实设备完成 24 条记录并由 Recorder 封存，但 Provider 实际返回了两次额外澄清，导致 41 次请求超过授权/准入上限 39 次；设备断言失败，该报告明确标记为 `PROVIDER_REQUEST_LIMIT_EXCEEDED`，不能作为通过证据。该批次 41 次上游请求均为 200，计 72,197 input、15,327 output tokens，结算成本 40,073 USD micros（US$0.040073），20/24 条记录通过质量门；证据位于 `artifacts/t43-system-bench-live/20261017-210218-device-live-retry/`。两次批次结束后均已卸载 bundle、移除 HDC 转发并停止网关，证据未记录凭据或请求/响应正文。随后在提交 `fd35242` 增加委派前全局请求硬上限，并对完整输入禁止 Provider 自行要求澄清；纯 fixture 回归 1/1 通过，封存 24 条记录并产生 36 次 fake Provider 调用，证据位于 `artifacts/t43-system-bench-live/20261017-211000-fixture-final/`。此回归没有真实 Provider 请求、签名、安装或设备运行；尚未授权或执行第三次真实批次，只有在不超过 39 次请求且取得真实设备通过证据后才能关闭 T43/S6。
+T43（M10/S6 真实 System Bench 设备批次）已关闭。前两次授权尝试分别因 Provider workflow 严格解析失败和 41/39 请求超限而不被接受，证据保留于 `artifacts/t43-system-bench-live/20261017-203000-device-live/` 与 `artifacts/t43-system-bench-live/20261017-210218-device-live-retry/`。提交 `fd35242` 随后增加委派前全局请求硬上限，并对完整输入禁止 Provider 自行要求澄清；纯 fixture 回归 1/1 通过，证据位于 `artifacts/t43-system-bench-live/20261017-211000-fixture-final/`。最终授权批次使用提交 `a1ac9df`、harness 1.2.0 与已通过 `verify-app`/`verify-profile` 的签名主 HAP、ohosTest HAP，在 API 26 设备实际报告 1/1 通过；Recorder 封存 schema 2 的 24 条真实 Provider runtime 记录，完整覆盖 12 个 case × Strong Single/Multi 两个 arm。实际 38/39 次 Provider 请求全部成功，usage 增加 67,538 input、9,002 output、76,540 total tokens，结算成本 31,083/431,340 USD micros（US$0.031083/US$0.43134）；Strong Single 质量通过 10/12，Multi 通过 9/12，总计 19/24，这是基线测量结果而不是 24/24 质量通过。桥接统计与报告请求数同为 38、拒绝为 0，证据未记录凭据或请求/响应正文。运行后已卸载 `com.harmony.agent`、移除 HDC 转发、停止 bridge 与 Local AI Gateway，并复核 revision 13 和配置 SHA-256 未漂移；根签名配置哈希保持 `67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63`。最终证据位于 `artifacts/t43-system-bench-live/20261017-211600-device-live-hard-cap/`；T43 与 S6 至此关闭。
 
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
@@ -126,7 +126,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T42 已关闭各自记录的任务门，T43 仍开放。T39 已把模式选择收紧为版本化、可校验、可恢复的角色计划；T40 把计划接入按角色独立 Provider 请求和有界 workflow 修订；T41 补齐 schema 2 证据收集与完整封存；T42 又在真实执行前加入 Profile/价格/授权及请求、Token、金额封顶。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前网关配置 revision 13 已具备 active/complete 的 `deepseek` Profile；T43 两次真实批次均未达到验收条件，最新实现已增加委派前全局请求硬上限，但尚未在新的真实设备批次中验证。宿主生产 credential store、真实取消/timeout、第三方远端 MCP 兼容性、真实 Provider 下的逐角色质量验证，以及十二类任务 × Strong Single/Multi 的合格真实双 arm Provider/system Bench 尚未完成，因此 S6 仍开放。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T43 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线。T39 已把模式选择收紧为版本化、可校验、可恢复的角色计划；T40 把计划接入按角色独立 Provider 请求和有界 workflow 修订；T41 补齐 schema 2 证据收集与完整封存；T42 在真实执行前加入 Profile/价格/授权及请求、Token、金额封顶；T43 以 38 次真实请求完成 12×2 设备批次并导出质量、token、成本、延迟、工具、Agent、恢复与 Router 指标。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、真实取消/timeout、第三方远端 MCP 兼容性、learned Router artifact 与后续策略供应链；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
