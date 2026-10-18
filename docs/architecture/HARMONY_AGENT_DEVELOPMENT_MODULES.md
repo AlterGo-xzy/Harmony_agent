@@ -502,6 +502,8 @@ MTRouter 与 MasRouter 先分别验收再组合：Collaboration Router 先在总
 
 当前实施状态：T48/M12-A 已把官方仓库固定到 commit `ee9e4573a128c3e54aa8c83800318bfb783c4dfe` 和 tree `6911bcf33bfdd30d6f414c09b5f5d14c5deeb913`，并固定 source archive、MIT license、关键上游文件与 arXiv `2604.23530v1` 的 SHA-256。复现 spec 预注册论文三次运行、训练参数、六模型池、ScienceWorld/HLE 划分、预算/horizon、四项目标和 Go/No-Go 容差；离线 checker 报告可重复，fail-closed 自测 5/5。T48 没有安装依赖、读取凭据、调用 Provider 或运行 benchmark；T49 才能在另行授权后建立隔离原环境并执行上游 smoke/reproduction。decision fixture、checkpoint 导出、ArkTS/bridge parity、shadow 和 harmony_agent Bench 仍属后续 M12 门，S8 尚未关闭。
 
+主仓库另已准备独立训练仓库的版本化 handoff admission：沿用现有 `LearnedRouterPort`，固定 5 MiB decision payload、64 MiB handoff、外部受控 history encoder 与 deterministic fallback，并以纯 Node checker 逐文件核验摘要、模型池顺序、严格字段集合和 evidence 边界；15/15 fail-closed 自测通过。该准备工作没有生成或接受真实训练产物，不改变 T49 原环境复现、后续 parity 或上线门的未完成状态。
+
 ### M13：MasRouter
 
 位置：替换 M04 的 Collaboration Router policy。

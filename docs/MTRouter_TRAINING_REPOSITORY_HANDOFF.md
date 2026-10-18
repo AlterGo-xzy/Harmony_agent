@@ -1,8 +1,8 @@
 # MTRouter 决策头训练独立仓库任务书
 
-状态：待移交  
-编制日期：2026-10-18（Asia/Shanghai）  
-来源项目：`harmony_agent`  
+状态：待移交
+编制日期：2026-10-18（Asia/Shanghai）
+来源项目：`harmony_agent`
 建议独立仓库名：`harmony-agent-mtrouter-training`
 
 ## 1. 任务目标
