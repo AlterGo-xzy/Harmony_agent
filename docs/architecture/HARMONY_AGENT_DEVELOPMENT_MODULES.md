@@ -504,6 +504,8 @@ MTRouter 与 MasRouter 先分别验收再组合：Collaboration Router 先在总
 
 主仓库另已准备独立训练仓库的版本化 handoff admission：沿用现有 `LearnedRouterPort`，固定 5 MiB decision payload、64 MiB handoff、外部受控 history encoder 与 deterministic fallback，并以纯 Node checker 逐文件核验摘要、模型池顺序、严格字段集合和 evidence 边界；15/15 fail-closed 自测通过。该准备工作没有生成或接受真实训练产物，不改变 T49 原环境复现、后续 parity 或上线门的未完成状态。
 
+项目所有者于 2026-10-18 决定暂缓 MTRouter 训练。T49 及后续训练、checkpoint、parity 和上线门保持未开始；接口、来源锁和离线 admission 工具保留，Runtime 继续使用 deterministic baseline，直至项目所有者重新明确启动训练。
+
 ### M13：MasRouter
 
 位置：替换 M04 的 Collaboration Router policy。

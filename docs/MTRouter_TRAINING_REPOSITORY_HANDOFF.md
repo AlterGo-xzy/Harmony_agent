@@ -1,11 +1,13 @@
 # MTRouter 决策头训练独立仓库任务书
 
-状态：待移交
+状态：暂缓（项目所有者于 2026-10-18 决定暂不训练；保留接口与任务书）
 编制日期：2026-10-18（Asia/Shanghai）
 来源项目：`harmony_agent`
 建议独立仓库名：`harmony-agent-mtrouter-training`
 
 ## 1. 任务目标
+
+> 暂缓说明：当前不创建独立训练仓库，不安装依赖，不下载模型，不读取训练或 Provider 凭据，不运行训练、论文复现或付费 benchmark。本任务书仅作为后续恢复时的冻结输入；恢复必须由项目所有者重新明确启动。
 
 建立一个独立的研究与训练仓库，在不修改 `harmony_agent` 在线 Runtime 的前提下，完成 MTRouter 官方实现的可复验环境、历史 embedding 预计算、决策头训练、离线评估、checkpoint 导出和 golden decision fixture 生成。
 

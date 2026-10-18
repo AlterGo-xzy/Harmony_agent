@@ -124,6 +124,8 @@ T48（M12-A MTRouter 上游冻结与复现准入）本地离线门已完成：�
 
 2026-10-18 M12 独立训练仓库移交合同准备完成，但不改变 T48/T49 的执行状态：新增版本化 `handoff-contract.json`、纯 Node `check-mtrouter-handoff.mjs` 与 15/15 fail-closed 自测，固定 T48 upstream commit/tree、外部受控 Qwen history encoder、现有 `LearnedRouterPort`、deterministic baseline fallback、5 MiB decision payload 和 64 MiB handoff 上限。checker 逐文件核验相对路径、普通文件、大小、SHA-256、canonical `SHA256SUMS`、模型池顺序、按模型数计算的决策参数量、严格字段集合和 evidence 边界，并拒绝 encoder/tokenizer/Python runtime/optimizer state、同步 `route()` 网络调用、未列文件、未知字段、无报告的 evidence 声明及训练仓库对 ArkTS/device/shadow/canary/active 的越权声明。T48 原 checker 仍为 5/5，报告摘要保持 `20c028c94817847255c82ff19d8e42c6fdf8df4895580a865e8d95cb4d8fd7d5`。当前没有真实 handoff、依赖安装、模型下载、训练、checkpoint、Runtime 接线或质量结论；`learnedEnabled` 仍应保持 `false`。证据位于 `artifacts/m12-mtrouter-handoff-contract/20261018-224339-final/`。
 
+2026-10-18 项目所有者决定暂缓 MTRouter 训练。T49 原环境安装/复现、独立训练仓库、模型下载、embedding 预计算、checkpoint、parity、shadow、canary 和 active 均不启动；现有来源锁、训练任务书、handoff contract/checker 与 `LearnedRouterPort` 扩展点保留，deterministic baseline 继续生效，`learnedEnabled=false`。恢复训练需要项目所有者重新明确启动，不从本条记录推断安装、下载、凭据或付费调用授权。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
