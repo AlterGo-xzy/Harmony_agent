@@ -123,12 +123,18 @@ export {
   ArtifactPolicyRunResult,
   ArtifactBaselinePolicyPort,
   ArtifactReleasedPolicyPort,
+  ArtifactPolicyCancellationSubscriptionPort,
+  ArtifactPolicyCancellationSignalPort,
+  ArtifactPolicyTimerHandlePort,
+  ArtifactPolicyTimerPort,
   ArtifactCanaryAssignmentPort,
   ArtifactCanaryBucketPort,
   ArtifactReleaseRegistryViewPort
 } from './src/main/ets/artifact/ArtifactPolicyReleaseTypes';
 export { ArtifactPolicyReleaseRunner, DeterministicArtifactCanaryAssignment } from
   './src/main/ets/artifact/ArtifactPolicyReleaseRunner';
+export { ArtifactPolicyCancellationSource, SystemArtifactPolicyTimer } from
+  './src/main/ets/artifact/ArtifactPolicyExecutionControl';
 export {
   DeterministicRouterConfig,
   LearnedRouterPort,

@@ -1,0 +1,27 @@
+{
+  "schemaVersion": "1.0",
+  "gate": "M11-E Artifact Policy bounded execution control",
+  "status": "PASS",
+  "branch": "codex/module-policy-execution-control",
+  "baseCommit": "b0486c6777b6d11458abf61b4f69df60af8d681c",
+  "hostTests": {
+    "run": 96,
+    "pass": 96,
+    "failure": 0,
+    "error": 0,
+    "ignore": 0
+  },
+  "releaseHar": {
+    "file": "agent_runtime.har",
+    "bytes": 122251,
+    "sha256": "8BAF17965F5EBE88348E03ED6C9B50A2A51FF5B81BFA7BCDFD63EE744548FA20",
+    "packageVersion": "0.14.0",
+    "debug": false,
+    "compatibleSdkVersion": 26
+  },
+  "rootBuildProfileSha256": "67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63",
+  "deviceEvidence": "NOT_PERFORMED",
+  "signing": "NOT_PERFORMED",
+  "providerRequests": "NOT_PERFORMED",
+  "credentials": "NOT_USED"
+}

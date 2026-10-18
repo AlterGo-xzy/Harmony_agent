@@ -9,7 +9,9 @@ export const ARTIFACT_POLICY_RELEASE_VERSION: string = '1.0';
 export enum ArtifactPolicyRunCode {
   SUCCESS = 'SUCCESS',
   INVALID_REQUEST = 'INVALID_REQUEST',
-  BASELINE_FAILED = 'BASELINE_FAILED'
+  BASELINE_FAILED = 'BASELINE_FAILED',
+  BASELINE_TIMED_OUT = 'BASELINE_TIMED_OUT',
+  CANCELLED = 'CANCELLED'
 }
 
 export enum ArtifactPolicyExecutionMode {
@@ -26,19 +28,24 @@ export enum ArtifactPolicyFallbackCode {
   CANARY_ASSIGNMENT_FAILED = 'CANARY_ASSIGNMENT_FAILED',
   CANARY_REJECTED = 'CANARY_REJECTED',
   CANARY_FAILED = 'CANARY_FAILED',
+  CANARY_TIMED_OUT = 'CANARY_TIMED_OUT',
   ACTIVE_REJECTED = 'ACTIVE_REJECTED',
-  ACTIVE_FAILED = 'ACTIVE_FAILED'
+  ACTIVE_FAILED = 'ACTIVE_FAILED',
+  ACTIVE_TIMED_OUT = 'ACTIVE_TIMED_OUT'
 }
 
 export enum ArtifactShadowObservationCode {
   ACCEPTED = 'ACCEPTED',
   REJECTED = 'REJECTED',
-  FAILED = 'FAILED'
+  FAILED = 'FAILED',
+  TIMED_OUT = 'TIMED_OUT',
+  CANCELLED = 'CANCELLED'
 }
 
 export class ArtifactPolicyReleaseConfig {
   canaryTrafficBasisPoints: number = 0;
   maxShadowEvaluations: number = 0;
+  attemptTimeoutMs: number = 5000;
 }
 
 export class ArtifactPolicyRequest {
@@ -73,11 +80,30 @@ export class ArtifactPolicyRunResult {
 }
 
 export interface ArtifactBaselinePolicyPort {
-  decide(request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision>;
+  decide(request: ArtifactPolicyRequest,
+    cancellation?: ArtifactPolicyCancellationSignalPort): Promise<ArtifactPolicyDecision>;
 }
 
 export interface ArtifactReleasedPolicyPort {
-  decide(artifact: ArtifactRegistryEntry, request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision>;
+  decide(artifact: ArtifactRegistryEntry, request: ArtifactPolicyRequest,
+    cancellation?: ArtifactPolicyCancellationSignalPort): Promise<ArtifactPolicyDecision>;
+}
+
+export interface ArtifactPolicyCancellationSubscriptionPort {
+  dispose(): void;
+}
+
+export interface ArtifactPolicyCancellationSignalPort {
+  isCancellationRequested(): boolean;
+  subscribe(listener: () => void): ArtifactPolicyCancellationSubscriptionPort;
+}
+
+export interface ArtifactPolicyTimerHandlePort {
+  cancel(): void;
+}
+
+export interface ArtifactPolicyTimerPort {
+  schedule(delayMs: number, action: () => void): ArtifactPolicyTimerHandlePort;
 }
 
 export interface ArtifactCanaryAssignmentPort {

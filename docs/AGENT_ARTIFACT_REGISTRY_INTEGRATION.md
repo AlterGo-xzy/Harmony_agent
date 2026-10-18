@@ -54,9 +54,25 @@ rolledBack -> disabled
 - active rollback manifest 必须指向 Registry 中同 kind、已验签且仍保留的历史 active digest；成功后以一次 CAS 恢复该指针。
 - 调用 `activeArtifact`/`canaryArtifact` 只读取 defensive copy，不会提交或推进任务。
 
-T47 的 `ArtifactPolicyReleaseRunner` 已把这些指针接入通用发布 harness：每次先获得有效 baseline；shadow 仅观察；命中 canary bucket 时才尝试 canary；canary 失败先回退当前 active，active 失败再回退 baseline。Runner 只接受候选 ID 和 opaque JSON，不替代具体 Router 的资格过滤、预算或授权。生产 policy loader、超时/取消和 M12–M14 learned policy 接线仍由后续模块负责。
+T47 的 `ArtifactPolicyReleaseRunner` 已把这些指针接入通用发布 harness：每次先获得有效 baseline；shadow 仅观察；命中 canary bucket 时才尝试 canary；canary 失败先回退当前 active，active 失败再回退 baseline。Runner 只接受候选 ID 和 opaque JSON，不替代具体 Router 的资格过滤、预算或授权。生产 policy loader 和 M12–M14 learned policy 接线仍由后续模块负责。
 
-## 4. 验收边界
+## 4. 执行超时与取消
+
+`ArtifactPolicyReleaseConfig.attemptTimeoutMs` 控制每次 baseline、shadow、canary 或 active 调用的独立上限，默认值为 5000 ms，并要求为正的安全整数。宿主可以创建 `ArtifactPolicyCancellationSource`，把它作为 `runner.run(request, cancellation)` 的第二个参数，并在上层请求撤销时调用 `cancel()`。
+
+Runner 会为每次策略调用创建独立的 `ArtifactPolicyCancellationSignalPort`。实现 `ArtifactBaselinePolicyPort` 或 `ArtifactReleasedPolicyPort` 的 policy loader/bridge 应订阅该信号，立即中止自己持有的推理、worker、IPC 或网络资源；Promise 在超时或取消后才完成时，其结果会被忽略。`ArtifactPolicyTimerPort` 只用于注入平台计时器或确定性测试计时器，不提供任务控制能力。
+
+稳定结果语义如下：
+
+- baseline 超时返回 `BASELINE_TIMED_OUT`，不继续读取发布策略；
+- shadow 超时记录 `TIMED_OUT`，不改变最终选择；
+- canary 超时记录 `CANARY_TIMED_OUT` 并尝试当前 active；
+- active 超时记录 `ACTIVE_TIMED_OUT` 并回退已验证 baseline；
+- 外部取消返回 `CANCELLED`，不选择 fallback 或接受迟到 decision。
+
+超时只能发出协作取消信号，不能强制终止宿主资源。真实 loader 必须实现上述资源释放，并在自身集成测试中证明取消后不再占用对应资源。
+
+## 5. 验收边界
 
 T46 主机验收覆盖：
 
@@ -76,4 +92,11 @@ T47 主机验收另覆盖：
 - 请求、artifact 和 decision 的复制隔离；
 - durable active digest rollback 前后，同一 runner 的选择从新策略恢复到旧策略。
 
-T46/T47 不构建产品 HAP，不使用 DevEco signingConfig，不安装或运行设备，也不证明 learned Router artifact 的质量收益。
+M11-E 主机验收另覆盖：
+
+- timeout 配置 fail-closed；
+- baseline、shadow、canary、active 的超时结果和 fallback；
+- 超时向策略传播协作取消；
+- 外部取消停止选择且不接受迟到 decision。
+
+T46/T47/M11-E 不构建产品 HAP，不使用 DevEco signingConfig，不安装或运行设备，也不证明 learned Router artifact 的质量收益。

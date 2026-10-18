@@ -7,6 +7,8 @@ import {
   ArtifactBaselinePolicyPort,
   ArtifactCanaryAssignmentPort,
   ArtifactCanaryBucketPort,
+  ArtifactPolicyCancellationSignalPort,
+  ArtifactPolicyCancellationSource,
   ArtifactPolicyDecision,
   ArtifactPolicyExecutionMode,
   ArtifactPolicyFallbackCode,
@@ -14,6 +16,9 @@ import {
   ArtifactPolicyReleaseRunner,
   ArtifactPolicyRequest,
   ArtifactPolicyRunCode,
+  ArtifactPolicyRunResult,
+  ArtifactPolicyTimerHandlePort,
+  ArtifactPolicyTimerPort,
   ArtifactRegistryEntry,
   ArtifactReleaseRegistryViewPort,
   ArtifactReleasedPolicyPort,
@@ -64,11 +69,23 @@ class FixtureBaseline implements ArtifactBaselinePolicyPort {
   selectedId: string = 'baseline';
   throwOnDecide: boolean = false;
   mutateRequest: boolean = false;
+  pending: boolean = false;
+  cancellationObserved: boolean = false;
 
-  async decide(request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision> {
+  async decide(request: ArtifactPolicyRequest,
+    cancellation?: ArtifactPolicyCancellationSignalPort): Promise<ArtifactPolicyDecision> {
     this.calls++;
     if (this.throwOnDecide) throw new Error('baseline detail must not escape');
     if (this.mutateRequest) request.candidateIds[0] = 'mutated';
+    if (this.pending) {
+      if (cancellation !== undefined) {
+        cancellation.subscribe((): void => {
+          this.cancellationObserved = true;
+        });
+      }
+      return new Promise<ArtifactPolicyDecision>((): void => {
+      });
+    }
     const value: ArtifactPolicyDecision = new ArtifactPolicyDecision();
     value.selectedId = this.selectedId;
     value.evidenceJson = '{"source":"baseline"}';
@@ -81,12 +98,24 @@ class FixtureReleased implements ArtifactReleasedPolicyPort {
   selectedByArtifact: Map<string, string> = new Map<string, string>();
   throwingArtifactId: string = '';
   mutateInputs: boolean = false;
+  pendingArtifactId: string = '';
+  cancellationObserved: boolean = false;
 
   async decide(artifact: ArtifactRegistryEntry,
-    request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision> {
+    request: ArtifactPolicyRequest,
+    cancellation?: ArtifactPolicyCancellationSignalPort): Promise<ArtifactPolicyDecision> {
     this.calls.push(artifact.manifest.artifactId);
     if (artifact.manifest.artifactId === this.throwingArtifactId) {
       throw new Error('candidate detail must not escape');
+    }
+    if (artifact.manifest.artifactId === this.pendingArtifactId) {
+      if (cancellation !== undefined) {
+        cancellation.subscribe((): void => {
+          this.cancellationObserved = true;
+        });
+      }
+      return new Promise<ArtifactPolicyDecision>((): void => {
+      });
     }
     const selected: string | undefined = this.selectedByArtifact.get(artifact.manifest.artifactId);
     const value: ArtifactPolicyDecision = new ArtifactPolicyDecision();
@@ -120,6 +149,41 @@ class FixtureBucket implements ArtifactCanaryBucketPort {
   }
 }
 
+class FixtureTimerHandle implements ArtifactPolicyTimerHandlePort {
+  readonly action: () => void;
+  cancelled: boolean = false;
+
+  constructor(action: () => void) {
+    this.action = action;
+  }
+
+  cancel(): void {
+    this.cancelled = true;
+  }
+
+  fire(): void {
+    if (!this.cancelled) this.action();
+  }
+}
+
+class FixtureTimer implements ArtifactPolicyTimerPort {
+  handles: FixtureTimerHandle[] = [];
+
+  schedule(delayMs: number, action: () => void): ArtifactPolicyTimerHandlePort {
+    const handle: FixtureTimerHandle = new FixtureTimerHandle(action);
+    this.handles.push(handle);
+    return handle;
+  }
+
+  latest(): FixtureTimerHandle {
+    return this.handles[this.handles.length - 1];
+  }
+}
+
+async function flushPromises(): Promise<void> {
+  for (let index: number = 0; index < 6; index++) await Promise.resolve();
+}
+
 function request(): ArtifactPolicyRequest {
   const value: ArtifactPolicyRequest = new ArtifactPolicyRequest();
   value.requestId = 'request-1';
@@ -133,6 +197,7 @@ function config(maxShadows: number = 2): ArtifactPolicyReleaseConfig {
   const value: ArtifactPolicyReleaseConfig = new ArtifactPolicyReleaseConfig();
   value.canaryTrafficBasisPoints = 1000;
   value.maxShadowEvaluations = maxShadows;
+  value.attemptTimeoutMs = 5000;
   return value;
 }
 
@@ -300,6 +365,130 @@ export default function artifactPolicyReleaseRunnerTest(): void {
       expect(registry.active?.manifest.artifactId).assertEqual('active-a');
       if (result.decision !== undefined) result.decision.selectedId = 'mutated';
       expect(result.baselineDecision?.selectedId).assertEqual('baseline');
+    });
+
+    it('rejectsInvalidAttemptTimeoutBeforeRunningPolicies', 0, () => {
+      const invalid: ArtifactPolicyReleaseConfig = config();
+      invalid.attemptTimeoutMs = 0;
+      let rejected: boolean = false;
+      try {
+        new ArtifactPolicyReleaseRunner(new FixtureRegistryView(), new FixtureBaseline(),
+          new FixtureReleased(), new FixtureAssignment(), invalid, new FixtureTimer());
+      } catch (error) {
+        rejected = true;
+      }
+      expect(rejected).assertTrue();
+    });
+
+    it('stopsBeforeBaselineWhenCancellationWasAlreadyRequested', 0, async () => {
+      const baseline: FixtureBaseline = new FixtureBaseline();
+      const cancellation: ArtifactPolicyCancellationSource = new ArtifactPolicyCancellationSource();
+      cancellation.cancel();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        new FixtureRegistryView(), baseline, new FixtureReleased(), new FixtureAssignment(),
+        config(), new FixtureTimer());
+      const result = await runner.run(request(), cancellation);
+      expect(result.accepted).assertFalse();
+      expect(result.code).assertEqual(ArtifactPolicyRunCode.CANCELLED);
+      expect(baseline.calls).assertEqual(0);
+    });
+
+    it('timesOutBaselineAndPropagatesCooperativeCancellation', 0, async () => {
+      const baseline: FixtureBaseline = new FixtureBaseline();
+      baseline.pending = true;
+      const timer: FixtureTimer = new FixtureTimer();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        new FixtureRegistryView(), baseline, new FixtureReleased(), new FixtureAssignment(), config(), timer);
+      const pending: Promise<ArtifactPolicyRunResult> = runner.run(request());
+      expect(timer.handles.length).assertEqual(1);
+      timer.latest().fire();
+      const result = await pending;
+      expect(result.accepted).assertFalse();
+      expect(result.code).assertEqual(ArtifactPolicyRunCode.BASELINE_TIMED_OUT);
+      expect(baseline.cancellationObserved).assertTrue();
+      expect(timer.latest().cancelled).assertTrue();
+    });
+
+    it('fallsBackToBaselineWhenActivePolicyTimesOut', 0, async () => {
+      const registry: FixtureRegistryView = new FixtureRegistryView();
+      registry.active = entry('active-a', digest('a'), ArtifactLifecycleStatus.ACTIVE);
+      const released: FixtureReleased = new FixtureReleased();
+      released.pendingArtifactId = 'active-a';
+      const timer: FixtureTimer = new FixtureTimer();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        registry, new FixtureBaseline(), released, new FixtureAssignment(), config(), timer);
+      const pending: Promise<ArtifactPolicyRunResult> = runner.run(request());
+      await flushPromises();
+      expect(timer.handles.length).assertEqual(2);
+      timer.latest().fire();
+      const result = await pending;
+      expect(result.executionMode).assertEqual(ArtifactPolicyExecutionMode.BASELINE);
+      expect(result.fallbackCode).assertEqual(ArtifactPolicyFallbackCode.ACTIVE_TIMED_OUT);
+      expect(result.decision?.selectedId).assertEqual('baseline');
+      expect(released.cancellationObserved).assertTrue();
+    });
+
+    it('fallsBackFromTimedOutCanaryToCurrentActive', 0, async () => {
+      const registry: FixtureRegistryView = new FixtureRegistryView();
+      registry.canary = entry('canary-a', digest('a'), ArtifactLifecycleStatus.CANARY);
+      registry.active = entry('active-a', digest('b'), ArtifactLifecycleStatus.ACTIVE);
+      const released: FixtureReleased = new FixtureReleased();
+      released.pendingArtifactId = 'canary-a';
+      const assignment: FixtureAssignment = new FixtureAssignment();
+      assignment.value = true;
+      const timer: FixtureTimer = new FixtureTimer();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        registry, new FixtureBaseline(), released, assignment, config(), timer);
+      const pending: Promise<ArtifactPolicyRunResult> = runner.run(request());
+      await flushPromises();
+      expect(timer.handles.length).assertEqual(2);
+      timer.latest().fire();
+      const result = await pending;
+      expect(result.executionMode).assertEqual(ArtifactPolicyExecutionMode.ACTIVE);
+      expect(result.fallbackCode).assertEqual(ArtifactPolicyFallbackCode.CANARY_TIMED_OUT);
+      expect(result.selectedArtifactDigest).assertEqual(digest('b'));
+    });
+
+    it('recordsTimedOutShadowWithoutChangingBaselineSelection', 0, async () => {
+      const registry: FixtureRegistryView = new FixtureRegistryView();
+      registry.shadows = [entry('shadow-a', digest('a'), ArtifactLifecycleStatus.SHADOW)];
+      const released: FixtureReleased = new FixtureReleased();
+      released.pendingArtifactId = 'shadow-a';
+      const timer: FixtureTimer = new FixtureTimer();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        registry, new FixtureBaseline(), released, new FixtureAssignment(), config(), timer);
+      const pending: Promise<ArtifactPolicyRunResult> = runner.run(request());
+      await flushPromises();
+      expect(timer.handles.length).assertEqual(2);
+      timer.latest().fire();
+      const result = await pending;
+      expect(result.executionMode).assertEqual(ArtifactPolicyExecutionMode.BASELINE);
+      expect(result.fallbackCode).assertEqual(ArtifactPolicyFallbackCode.NO_RELEASE);
+      expect(result.decision?.selectedId).assertEqual('baseline');
+      expect(result.shadowObservations.length).assertEqual(1);
+      expect(result.shadowObservations[0].code).assertEqual(ArtifactShadowObservationCode.TIMED_OUT);
+      expect(released.cancellationObserved).assertTrue();
+    });
+
+    it('cancelsPendingActiveWithoutSelectingFallbackOrLateDecision', 0, async () => {
+      const registry: FixtureRegistryView = new FixtureRegistryView();
+      registry.active = entry('active-a', digest('a'), ArtifactLifecycleStatus.ACTIVE);
+      const released: FixtureReleased = new FixtureReleased();
+      released.pendingArtifactId = 'active-a';
+      const cancellation: ArtifactPolicyCancellationSource = new ArtifactPolicyCancellationSource();
+      const timer: FixtureTimer = new FixtureTimer();
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        registry, new FixtureBaseline(), released, new FixtureAssignment(), config(), timer);
+      const pending: Promise<ArtifactPolicyRunResult> = runner.run(request(), cancellation);
+      await flushPromises();
+      cancellation.cancel();
+      const result = await pending;
+      expect(result.accepted).assertFalse();
+      expect(result.code).assertEqual(ArtifactPolicyRunCode.CANCELLED);
+      expect(result.decision === undefined).assertTrue();
+      expect(result.selectedArtifactDigest).assertEqual('');
+      expect(released.cancellationObserved).assertTrue();
+      expect(timer.latest().cancelled).assertTrue();
     });
   });
 }
