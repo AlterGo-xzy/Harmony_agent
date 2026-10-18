@@ -1,0 +1,10 @@
+{
+  "artifactId": "mtrouter-policy-fixture-1",
+  "artifactKind": "policy",
+  "lifecycleStatus": "canary",
+  "artifactDigest": "sha256:437c5890130f5b50de86bdd30d9817e2130d7b13cc3176dd0d4d19c177d12284",
+  "signedManifestDigest": "sha256:2fd4d69903c87c498ed8137868333e44fee38ed0d396a99908cfc3a50fe94076",
+  "signingKeyId": "fixture-release-key",
+  "signatureAlgorithm": "Ed25519",
+  "packageSha256": "sha256:5856f5cb4c0c703e3243d41ca788b5acbf8fe74d65642bd5b6449daa2031ab32"
+}

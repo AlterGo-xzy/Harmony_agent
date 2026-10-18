@@ -1,0 +1,4 @@
+node --check offline\artifact_tooling\artifact-tool.mjs
+node --check offline\artifact_tooling\test-artifact-tooling.mjs
+node offline\artifact_tooling\test-artifact-tooling.mjs --output artifacts\t45-artifact-tooling\20261018-004000-final
+node offline\artifact_tooling\artifact-tool.mjs verify --package artifacts\t45-artifact-tooling\20261018-004000-final\fixture-artifact-package.json --public-key artifacts\t45-artifact-tooling\20261018-004000-final\fixture-public-key.pem --expected-key-id fixture-release-key
