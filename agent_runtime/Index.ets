@@ -111,6 +111,25 @@ export { ArtifactRuntimeCompatibilityEvaluator } from
 export { ArtifactRegistryOpenResult, ArtifactRegistry } from
   './src/main/ets/artifact/ArtifactRegistry';
 export {
+  ARTIFACT_POLICY_RELEASE_VERSION,
+  ArtifactPolicyRunCode,
+  ArtifactPolicyExecutionMode,
+  ArtifactPolicyFallbackCode,
+  ArtifactShadowObservationCode,
+  ArtifactPolicyReleaseConfig,
+  ArtifactPolicyRequest,
+  ArtifactPolicyDecision,
+  ArtifactShadowObservation,
+  ArtifactPolicyRunResult,
+  ArtifactBaselinePolicyPort,
+  ArtifactReleasedPolicyPort,
+  ArtifactCanaryAssignmentPort,
+  ArtifactCanaryBucketPort,
+  ArtifactReleaseRegistryViewPort
+} from './src/main/ets/artifact/ArtifactPolicyReleaseTypes';
+export { ArtifactPolicyReleaseRunner, DeterministicArtifactCanaryAssignment } from
+  './src/main/ets/artifact/ArtifactPolicyReleaseRunner';
+export {
   DeterministicRouterConfig,
   LearnedRouterPort,
   RouterResult,

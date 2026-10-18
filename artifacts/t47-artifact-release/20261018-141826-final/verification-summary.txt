@@ -1,0 +1,4 @@
+Runtime test command completed successfully at 2026-10-18 14:20 Asia/Shanghai.
+Tests run: 89, Failure: 0, Error: 0, Pass: 89, Ignore: 0.
+Runtime Release HAR build completed successfully at 2026-10-18 14:18 Asia/Shanghai.
+No HAP was built; no signingConfig, install, device execution, or provider call was used.

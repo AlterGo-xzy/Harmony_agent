@@ -7,15 +7,49 @@ import {
   ContractCodec
 } from '@harmony_agent/agent-contracts';
 import {
+  ArtifactBaselinePolicyPort,
+  ArtifactCanaryAssignmentPort,
+  ArtifactPolicyDecision,
+  ArtifactPolicyExecutionMode,
+  ArtifactPolicyReleaseConfig,
+  ArtifactPolicyReleaseRunner,
+  ArtifactPolicyRequest,
   ArtifactPackageVerifierPort,
   ArtifactRegistry,
   ArtifactRegistryDigestPort,
+  ArtifactRegistryEntry,
   ArtifactRegistryPersistencePort,
   ArtifactRegistrySnapshotEnvelope,
   ArtifactRegistryWriteCode,
+  ArtifactReleasedPolicyPort,
   ArtifactRuntimeCompatibilityEvaluator,
   ArtifactRuntimeEnvironment
 } from '../../Index';
+
+class RegistryRunnerBaseline implements ArtifactBaselinePolicyPort {
+  async decide(request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision> {
+    const value: ArtifactPolicyDecision = new ArtifactPolicyDecision();
+    value.selectedId = 'baseline-choice';
+    value.evidenceJson = '{"source":"baseline"}';
+    return value;
+  }
+}
+
+class RegistryRunnerReleased implements ArtifactReleasedPolicyPort {
+  async decide(artifact: ArtifactRegistryEntry,
+    request: ArtifactPolicyRequest): Promise<ArtifactPolicyDecision> {
+    const value: ArtifactPolicyDecision = new ArtifactPolicyDecision();
+    value.selectedId = artifact.manifest.artifactId + '-choice';
+    value.evidenceJson = '{"source":"released"}';
+    return value;
+  }
+}
+
+class RegistryRunnerAssignment implements ArtifactCanaryAssignmentPort {
+  assigned(requestId: string, artifactDigest: string, trafficBasisPoints: number): boolean {
+    return false;
+  }
+}
 
 class FixtureVerifier implements ArtifactPackageVerifierPort {
   accepted: boolean = true;
@@ -302,6 +336,40 @@ export default function artifactRegistryTest(): void {
       drift.sourceCommit = 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
       expect((await registry.publish(digest('2'), drift, 101)).code)
         .assertEqual(ArtifactRegistryWriteCode.IDENTITY_CONFLICT);
+    });
+
+    it('changesReleasedPolicySelectionAfterDurableDigestRollback', 0, async () => {
+      const registry: ArtifactRegistry = await openRegistry(new FixtureRegistryPersistence());
+      await publishActive(registry, 'policy-a', digest('a'), 100);
+      await publishActive(registry, 'policy-b', digest('b'), 200);
+      const releaseConfig: ArtifactPolicyReleaseConfig = new ArtifactPolicyReleaseConfig();
+      releaseConfig.canaryTrafficBasisPoints = 0;
+      releaseConfig.maxShadowEvaluations = 2;
+      const runner: ArtifactPolicyReleaseRunner = new ArtifactPolicyReleaseRunner(
+        registry,
+        new RegistryRunnerBaseline(),
+        new RegistryRunnerReleased(),
+        new RegistryRunnerAssignment(),
+        releaseConfig
+      );
+      const policyRequest: ArtifactPolicyRequest = new ArtifactPolicyRequest();
+      policyRequest.requestId = 'request-rollback';
+      policyRequest.artifactKind = ArtifactKind.POLICY;
+      policyRequest.candidateIds = ['baseline-choice', 'policy-a-choice', 'policy-b-choice'];
+      policyRequest.inputJson = '{"fixture":true}';
+      const before = await runner.run(policyRequest);
+      expect(before.executionMode).assertEqual(ArtifactPolicyExecutionMode.ACTIVE);
+      expect(before.decision?.selectedId).assertEqual('policy-b-choice');
+
+      const current: ArtifactManifest = registry.get('policy-b')?.manifest as ArtifactManifest;
+      const rolledBack: ArtifactManifest = withStatus(current, ArtifactLifecycleStatus.ROLLED_BACK);
+      rolledBack.rollbackTargetDigest = digest('a');
+      expect((await registry.publish(digest('5'), rolledBack, 300)).accepted).assertTrue();
+
+      const after = await runner.run(policyRequest);
+      expect(after.executionMode).assertEqual(ArtifactPolicyExecutionMode.ACTIVE);
+      expect(after.decision?.selectedId).assertEqual('policy-a-choice');
+      expect(after.selectedArtifactDigest).assertEqual(digest('a'));
     });
   });
 }

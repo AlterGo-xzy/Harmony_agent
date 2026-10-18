@@ -4,6 +4,7 @@ import runtimeCoordinatorTest from './RuntimeCoordinator.test';
 import deterministicRoutersTest from './DeterministicRouters.test';
 import productionAgentRuntimeTest from './ProductionAgentRuntime.test';
 import artifactRegistryTest from './ArtifactRegistry.test';
+import artifactPolicyReleaseRunnerTest from './ArtifactPolicyReleaseRunner.test';
 
 export default function testsuite(): void {
   policyGatewayTest();
@@ -12,4 +13,5 @@ export default function testsuite(): void {
   deterministicRoutersTest();
   productionAgentRuntimeTest();
   artifactRegistryTest();
+  artifactPolicyReleaseRunnerTest();
 }

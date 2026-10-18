@@ -24,6 +24,7 @@ import {
   copyArtifactRuntimeEnvironment
 } from './ArtifactRegistryTypes';
 import { ArtifactRuntimeCompatibilityEvaluator } from './ArtifactRuntimeCompatibility';
+import { ArtifactReleaseRegistryViewPort } from './ArtifactPolicyReleaseTypes';
 
 export class ArtifactRegistryOpenResult {
   accepted: boolean = false;
@@ -105,7 +106,7 @@ function stableSortChannels(values: ArtifactRegistryChannel[]): ArtifactRegistry
   return result;
 }
 
-export class ArtifactRegistry {
+export class ArtifactRegistry implements ArtifactReleaseRegistryViewPort {
   private readonly environment: ArtifactRuntimeEnvironment;
   private readonly verifier: ArtifactPackageVerifierPort;
   private readonly persistence: ArtifactRegistryPersistencePort;
@@ -164,6 +165,17 @@ export class ArtifactRegistry {
     const values: ArtifactRegistryEntry[] = [];
     for (let i: number = 0; i < this.current.entries.length; i++) {
       values.push(copyArtifactRegistryEntry(this.current.entries[i]));
+    }
+    return values;
+  }
+
+  shadowArtifacts(kind: ArtifactKind): ArtifactRegistryEntry[] {
+    const values: ArtifactRegistryEntry[] = [];
+    for (let i: number = 0; i < this.current.entries.length; i++) {
+      if (this.current.entries[i].manifest.artifactKind === kind &&
+        this.current.entries[i].manifest.lifecycleStatus === ArtifactLifecycleStatus.SHADOW) {
+        values.push(copyArtifactRegistryEntry(this.current.entries[i]));
+      }
     }
     return values;
   }

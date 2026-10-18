@@ -1,0 +1,45 @@
+{
+  "task": "T47",
+  "scenarios": [
+    {
+      "name": "shadow bounded non-selecting",
+      "result": "pass"
+    },
+    {
+      "name": "canary assigned",
+      "result": "pass"
+    },
+    {
+      "name": "canary not assigned",
+      "result": "pass"
+    },
+    {
+      "name": "0 bp never assigned",
+      "result": "pass"
+    },
+    {
+      "name": "10000 bp always assigned",
+      "result": "pass"
+    },
+    {
+      "name": "canary exception to active",
+      "result": "pass"
+    },
+    {
+      "name": "active invalid decision to baseline",
+      "result": "pass"
+    },
+    {
+      "name": "registry or assignment exception to baseline",
+      "result": "pass"
+    },
+    {
+      "name": "request baseline and copy isolation",
+      "result": "pass"
+    },
+    {
+      "name": "durable active digest rollback B to A",
+      "result": "pass"
+    }
+  ]
+}

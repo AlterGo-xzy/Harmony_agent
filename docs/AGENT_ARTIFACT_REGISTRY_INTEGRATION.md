@@ -47,14 +47,14 @@ active -> rolledBack
 rolledBack -> disabled
 ```
 
-- `shadow` 不参与选择，可以未签名；T46 不执行 shadow 流量。
+- `shadow` 不参与选择，可以未签名；T47 runner 只记录有界观察，绝不采用 shadow decision。
 - `canary`、`active`、`rolledBack` 必须通过 `ArtifactPackageVerifierPort` 和实际 Runtime compatibility 检查。
 - 每种 `ArtifactKind` 同时最多一个 canary 指针和一个 active 指针。
 - canary 晋升 active 时，以一次 CAS 替换 active 指针并清空 canary。
 - active rollback manifest 必须指向 Registry 中同 kind、已验签且仍保留的历史 active digest；成功后以一次 CAS 恢复该指针。
-- 调用 `activeArtifact`/`canaryArtifact` 只读取 defensive copy，不会把 artifact 接入 Router 或执行任务。
+- 调用 `activeArtifact`/`canaryArtifact` 只读取 defensive copy，不会提交或推进任务。
 
-T47 才会把这些指针接入明确标记的 shadow/canary 运行 harness，验证 deterministic baseline 在拒绝、故障和回滚期间不受影响。在 T47 完成前，T46 只证明准入、兼容性、持久化和选择状态机。
+T47 的 `ArtifactPolicyReleaseRunner` 已把这些指针接入通用发布 harness：每次先获得有效 baseline；shadow 仅观察；命中 canary bucket 时才尝试 canary；canary 失败先回退当前 active，active 失败再回退 baseline。Runner 只接受候选 ID 和 opaque JSON，不替代具体 Router 的资格过滤、预算或授权。生产 policy loader、超时/取消和 M12–M14 learned policy 接线仍由后续模块负责。
 
 ## 4. 验收边界
 
@@ -67,4 +67,13 @@ T46 主机验收覆盖：
 - Storage adapter 重开恢复、双 session 竞争和 record/envelope metadata 损坏；
 - Runtime/Storage Release HAR 的公共声明。
 
-本门不构建产品 HAP，不使用 DevEco signingConfig，不安装或运行设备，也不证明 learned Router artifact 的质量收益。
+T47 主机验收另覆盖：
+
+- shadow decision 无法改变 baseline，且观察数量有上限；
+- 0/10000 basis points 与稳定 bucket 阈值；
+- canary 未命中、异常或越界时回退 active/baseline；
+- active 异常、越界与伪造 Registry view 时回退 baseline；
+- 请求、artifact 和 decision 的复制隔离；
+- durable active digest rollback 前后，同一 runner 的选择从新策略恢复到旧策略。
+
+T46/T47 不构建产品 HAP，不使用 DevEco signingConfig，不安装或运行设备，也不证明 learned Router artifact 的质量收益。

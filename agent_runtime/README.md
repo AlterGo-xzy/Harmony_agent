@@ -20,7 +20,9 @@ Tool dispatch 携带 `DispatchPersistenceContext` 1.0：只包含 operation/disp
 
 M11/T46 新增 storage-neutral `ArtifactRegistry` 数据面。它要求 signed canary/active/rolledBack manifest 先通过宿主注入的 `ArtifactPackageVerifierPort`，再以明确的 `harmony_agent-runtime>=x.y.z`、`api>=n` 和 feature schema allowlist 检查实际 Runtime 兼容性。每种 artifact kind 只有一个 canary 指针和一个 active 指针；immutable active release 可保留为历史 rollback target，新的 active 以单次持久化 CAS 替换选择指针，rolledBack release 按 digest 原子恢复旧 active。相同 artifact ID 的 provenance、payload digest、compatibility 和三类结果不能在生命周期更新中漂移。
 
-Registry 快照通过 `ArtifactRegistryPersistencePort` 先持久化后发布，CAS/摘要/验签异常均返回稳定拒绝，重开时会重新检查 snapshot integrity、signed package receipt 和当前 Runtime compatibility。该公共数据 API 不能提交、控制、授权或推进任务，也没有接入 Router 选择路径；shadow/canary 运行和 deterministic baseline 回退演练属于 T47。生产宿主必须为 verifier 提供受信公钥、撤销策略和按 package digest 绑定的真实 T45 验签结果，并为 `ArtifactRegistryDigestPort` 提供密码学摘要；不能根据 manifest 自报字段直接返回成功。具体接线见 `docs/AGENT_ARTIFACT_REGISTRY_INTEGRATION.md`。
+Registry 快照通过 `ArtifactRegistryPersistencePort` 先持久化后发布，CAS/摘要/验签异常均返回稳定拒绝，重开时会重新检查 snapshot integrity、signed package receipt 和当前 Runtime compatibility。该公共数据 API 不能提交、控制、授权或推进任务；T47 release runner 只消费 Registry 的防御性只读视图，仍不直接接管具体 Router。生产宿主必须为 verifier 提供受信公钥、撤销策略和按 package digest 绑定的真实 T45 验签结果，并为 `ArtifactRegistryDigestPort` 提供密码学摘要；不能根据 manifest 自报字段直接返回成功。具体接线见 `docs/AGENT_ARTIFACT_REGISTRY_INTEGRATION.md`。
+
+T47 新增 `ArtifactPolicyReleaseRunner` 与 `DeterministicArtifactCanaryAssignment`。Runner 总是先调用并校验 deterministic baseline，再读取 T46 Registry：shadow 只生成数量有界且不含异常文本的观察；canary 仅在稳定 0–9999 bucket 命中 basis-point 阈值时参与选择；未命中或 canary 失败时使用当前 active，active 异常、越界 decision 或 Registry view 损坏时回退 baseline。`0 bp` 不调用 assignment port，`10000 bp` 全量命中。请求、Registry entry 和 decision 均复制隔离。该 runner 只处理候选 ID 与 opaque JSON evidence，不创建任务、不签发授权、不执行工具，也不替代具体 Model/Tool Router 的 hard eligibility。
 
 M03 当前提供：
 
@@ -40,4 +42,4 @@ M04 当前提供：
 - Collaboration Router 对 Runtime composition port 保持单 Agent，只有显式 route 请求、可并行任务、独立能力和至少两个 activation 预算时才返回 multi；
 - Tool Router 不依赖 embedding，并保持 schema、description、retrieval relation 的版本职责分离。
 
-当前限制：M04 的 Model/Role/Tool/Workflow Registry 仍是内存实现，其 `snapshotDigest` 是由调用方提供的 entry digest 组成的确定性身份串，不声称由 Runtime 重新计算密码学哈希；M11 Artifact Registry 已有 durable CAS port，但生产 verifier、密钥治理和策略执行接线仍由宿主与后续任务完成。0.14.0 已冻结协作计划验证/恢复、异步 Facade、异步 Planner 生命周期、同实例 FIFO、checkpoint/authority 写入，以及无在途和 active operation 的启动恢复；M05-A bridge 可把 active operation 保守转入 `WAITING_RECONCILIATION`，不会在重启后重放 Adapter，具体 RDB composition 和 API 26 跨进程恢复已由 T26 验收。生产 credential store、真实 learned Router artifact 或带写副作用 Tool 仍未接入。映射和时序边界见 `docs/AGENT_RUNTIME_STORAGE_INTEGRATION.md`。
+当前限制：M04 的 Model/Role/Tool/Workflow Registry 仍是内存实现，其 `snapshotDigest` 是由调用方提供的 entry digest 组成的确定性身份串，不声称由 Runtime 重新计算密码学哈希；M11 Artifact Registry 与 release runner 已有 durable CAS、shadow/canary/active/fallback/rollback 协议，但生产 verifier、密钥治理、policy loader 和具体 Router 接线仍由宿主与 M12–M14 完成。0.14.0 已冻结协作计划验证/恢复、异步 Facade、异步 Planner 生命周期、同实例 FIFO、checkpoint/authority 写入，以及无在途和 active operation 的启动恢复；M05-A bridge 可把 active operation 保守转入 `WAITING_RECONCILIATION`，不会在重启后重放 Adapter，具体 RDB composition 和 API 26 跨进程恢复已由 T26 验收。生产 credential store、真实 learned Router artifact、真实策略 timeout/cancel 或带写副作用 Tool 仍未接入。映射和时序边界见 `docs/AGENT_RUNTIME_STORAGE_INTEGRATION.md`。

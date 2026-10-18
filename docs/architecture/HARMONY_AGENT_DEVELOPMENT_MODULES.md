@@ -2,7 +2,7 @@
 
 2026-10-03 已统一命名并保留原有任务划分。更名前的设备证据不作为当前命名版本复验结果；命名与兼容边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新完成门以 [PROJECT_STATUS.md](../../PROJECT_STATUS.md) 为准。
 
-状态：**In progress / T01–T46 当前任务门已通过；S6 已关闭；S7 策略供应链进行中**
+状态：**In progress / T01–T47 当前任务门已通过；S6、S7 已关闭**
 日期：2026-10-18
 上位架构：[HARMONY_AGENT_ARCHITECTURE.md](HARMONY_AGENT_ARCHITECTURE.md)
 
@@ -478,7 +478,7 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 - 所有 active artifact 可按 digest 回滚；
 - paper reproduction 与 harmony_agent adaptation 的结果表完全分离。
 
-当前实施状态：T44/M11-A 的 `ArtifactManifest` 已增加 checkpoint/policy/workflow 类型、通用 `artifactDigest`、审批、detached signature 与 rollback target 元数据；严格校验完整 source commit、SHA-256、JSON 证据对象、lineage、runtime compatibility、签名准入和受控生命周期转换。未签名 shadow 可进入不参与选择的影子评估，canary/active/rolledBack 必须已批准且签名元数据完整。主机 Hypium 21/21，Release HAR 28,939 bytes、SHA-256 `49553DB2CA8FFB077C892639D45FC05C0FCAC807055A07AE098065AC555A549F`，证据位于 `artifacts/t44-artifact-contract/20261017-213200-final/`。T45/M11-B 新增 canonical 单文件 package 与 Ed25519 pack/verify，自测 9/9，并在删除临时私钥后保留可独立 replay 的 package/public key，证据位于 `artifacts/t45-artifact-tooling/20261018-004000-final/`。T46/M11-C 已增加 Runtime/API/feature schema compatibility evaluator、宿主验签端口、storage-neutral Artifact Registry 和 `DurableArtifactRegistryAdapter`；每种 kind 只有一个 canary/active 选择指针，Registry 先 durable CAS 再发布，重开重新验签，active 可按同 kind 历史 digest 原子回滚。Runtime 主机 78/78、Storage 50/50 与两个 Release HAR 均通过。生产密钥治理和 shadow/canary/rollback 运行演练尚未完成，因此 S7 继续开放。
+当前实施状态：T44/M11-A 的 `ArtifactManifest` 已增加 checkpoint/policy/workflow 类型、通用 `artifactDigest`、审批、detached signature 与 rollback target 元数据；严格校验完整 source commit、SHA-256、JSON 证据对象、lineage、runtime compatibility、签名准入和受控生命周期转换。未签名 shadow 可进入不参与选择的影子评估，canary/active/rolledBack 必须已批准且签名元数据完整。主机 Hypium 21/21，Release HAR 28,939 bytes、SHA-256 `49553DB2CA8FFB077C892639D45FC05C0FCAC807055A07AE098065AC555A549F`，证据位于 `artifacts/t44-artifact-contract/20261017-213200-final/`。T45/M11-B 新增 canonical 单文件 package 与 Ed25519 pack/verify，自测 9/9，并在删除临时私钥后保留可独立 replay 的 package/public key，证据位于 `artifacts/t45-artifact-tooling/20261018-004000-final/`。T46/M11-C 已增加 compatibility evaluator、宿主验签端口、storage-neutral Artifact Registry 和 `DurableArtifactRegistryAdapter`；每种 kind 只有一个 canary/active 指针，Registry 先 durable CAS 再发布，重开重新验签，active 可按同 kind 历史 digest 原子回滚。T47/M11-D 又增加 baseline-first release runner 与 deterministic basis-point canary assignment；shadow 只观察，canary/active 异常、越界 decision 或损坏 Registry view 均回退 active/baseline，真实 Registry rollback 后同一 runner 已恢复旧策略选择。Runtime 主机 Hypium 89/89；Release HAR 为 118,685 bytes、SHA-256 `B377C9EF22FAB96EC5993F662DFF83CD46293A30A49C529AC7BFCE079C36840A`，包内版本 0.14.0、`debug=false`、compatible SDK 26，证据位于 `artifacts/t47-artifact-release/20261018-141826-final/`。S7 通用策略供应链门已关闭；生产密钥治理、policy loader、真实策略 timeout/cancel 和具体 learned Router 仍属于宿主与 M12–M14。
 
 ## 8. 算法接入模块
 
