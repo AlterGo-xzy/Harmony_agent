@@ -2,7 +2,7 @@
 
 2026-10-03 已统一命名并保留原有任务划分。更名前的设备证据不作为当前命名版本复验结果；命名与兼容边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新完成门以 [PROJECT_STATUS.md](../../PROJECT_STATUS.md) 为准。
 
-状态：**In progress / T01–T48 当前任务门已通过；S6、S7 已关闭，S8 已启动**
+状态：**In progress / T01–T48、T50 当前任务门已通过；S6、S7 已关闭，S8 暂缓，S9 已启动**
 日期：2026-10-18
 上位架构：[HARMONY_AGENT_ARCHITECTURE.md](HARMONY_AGENT_ARCHITECTURE.md)
 
@@ -518,6 +518,8 @@ MTRouter 与 MasRouter 先分别验收再组合：Collaboration Router 先在总
 - 一次任务的协作模式重判次数有上限。
 
 验收：降低 unnecessary activation；多 Agent 只在净收益任务启用；失败时回退 single 而不是扩大团队。
+
+当前实施状态：T50/M13-A 已在 `offline/paper_repro/masrouter/` 冻结 MasRouter 官方仓库 commit `e005f7696fe0c0412563f6cd67f4cd3712fa2822`、tree `e4d618f81675a46ed6e2f5e6ee1970519f1afa5b`、Apache-2.0 license、15 个关键源码文件和 arXiv `2502.11133v1` PDF 的字节数与 SHA-256。复现 spec 分开记录论文协议和源码协议，并把接入边界固定为只替换 `CollaborationPlanSelectorPort`：角色只能来自 Role Registry、Single 始终合法、Multi 前预留完整激活预算、协作重判最多一次，低置信度/超时/checkpoint 不兼容回退 Single，外部仍只通过 `AgentRuntimeFacade` 控制任务。源码审计确认上游缺少依赖清单和 checkpoint，README 入口大小写与仓库不一致，Claude 价格元数据存在冲突，因此 strict reproduction 尚不具备执行条件。纯 Node checker 报告可重复，精简的关键漂移自测 4/4 通过。本门没有安装依赖、读取凭据、下载模型、训练、调用 Provider、执行 benchmark、修改 Runtime 或打包研究模型；S9 已启动但没有形成 learned policy、parity、shadow 或质量收益证据。
 
 ### M14：HYSET
 

@@ -1,0 +1,14 @@
+Workspace: D:\Harmony_agent
+Branch: codex/module-masrouter-t50
+Base commit: 83d21187d42390c016b7ff6b8f974f0f9c565dfc
+Root build-profile.json5 SHA-256: 67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63
+git diff --check: passed (line-ending warnings only)
+JSON parse: 3/3
+
+Six pre-existing unstaged files were excluded from this task and preserved:
+- agent_connectors/BuildProfile.ets
+- agent_connectors/oh-package-lock.json5
+- agent_runtime/BuildProfile.ets
+- agent_storage/oh-package-lock.json5
+- native_tools/oh-package-lock.json5
+- test_host/oh-package-lock.json5

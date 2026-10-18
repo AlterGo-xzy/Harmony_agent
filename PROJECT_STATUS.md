@@ -2,7 +2,7 @@
 
 更新时间：2026-10-18（Asia/Shanghai）
 
-## Agent Runtime T01–T48、M11 策略供应链与 M12 Model Routing（S7 已关闭、S8 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
+## Agent Runtime T01–T48、T50，M11 策略供应链与 M12/M13 Routing（S7 已关闭、S8 暂缓、S9 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -128,6 +128,8 @@ T48（M12-A MTRouter 上游冻结与复现准入）本地离线门已完成：�
 
 2026-10-18 项目所有者决定暂缓 MTRouter 训练。T49 原环境安装/复现、独立训练仓库、模型下载、embedding 预计算、checkpoint、parity、shadow、canary 和 active 均不启动；现有来源锁、训练任务书、handoff contract/checker 与 `LearnedRouterPort` 扩展点保留，deterministic baseline 继续生效，`learnedEnabled=false`。恢复训练需要项目所有者重新明确启动，不从本条记录推断安装、下载、凭据或付费调用授权。
 
+T50（M13-A MasRouter 上游冻结与复现准入）本地离线门已完成：新增 `offline/paper_repro/masrouter/`，把官方仓库固定到 commit `e005f7696fe0c0412563f6cd67f4cd3712fa2822`、tree `e4d618f81675a46ed6e2f5e6ee1970519f1afa5b`，并记录 source archive、Apache-2.0 license、15 个关键文件和 arXiv `2502.11133v1` PDF 的字节数与 SHA-256。复现 spec 分开固定论文的四模型核心池/DeepSeek-V3 归纳验证与源码的五模型 profile，记录 26 个 role profile、六种源码协作模式、五项 benchmark、训练默认值和论文结果；同时固定 harmony_agent 适配只能替换 `CollaborationPlanSelectorPort`，角色只取自 Role Registry，Single 始终合法，Multi 前预留完整 Agent activation budget，一次任务最多重判一次，低置信度/超时/checkpoint 不兼容回退 Single，唯一任务控制入口仍为 `AgentRuntimeFacade`。源码审计确认上游没有依赖清单或 checkpoint，README 的 `experiments` 与实际 `Experiments` 大小写不一致，Claude 价格元数据在两个源码文件间冲突，因此 strict reproduction 当前 fail-closed。纯 Node 离线报告 SHA-256 为 `4bf8569986a742020068d413499e1c50c1235fc2cea68d6141112be7e7b50311`，按本轮精简策略保留 valid、commit、架构边界和执行声明四类关键检查，4/4 通过。本门没有安装依赖、读取凭据、下载模型、训练、调用 Provider、运行 benchmark、修改 Runtime、构建 HAR/HAP 或运行设备；S9 已启动但 learned policy、parity、shadow/canary 和质量收益仍未完成。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -142,7 +144,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T48 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭，S8 Model Routing 已通过来源冻结与复现预注册门。T39–T43 固定协作计划、逐角色 Provider、真实证据封存/准入并完成 12×2 设备批次；T44–T47 完成 artifact provenance、签名包、durable Registry 和 baseline-first 安全发布/回滚；M11-E 补齐通用 policy timeout/cancel；T48 固定 MTRouter 官方 commit、论文、依赖边界、实验协议和 Go/No-Go 容差，但没有执行原环境复现。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、具体 Provider/Tool/learned policy 的底层取消资源释放、第三方远端 MCP 兼容性、生产密钥治理、policy loader、MTRouter 原环境安装/复现、decision fixture、checkpoint/parity/shadow/Bench，以及 M13–M14 learned Router；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T48 与 T50 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭；S8 Model Routing 完成来源冻结后按项目所有者决定暂缓训练，S9 Collaboration Routing 已完成来源冻结与复现准入。T39–T43 固定协作计划、逐角色 Provider、真实证据封存/准入并完成 12×2 设备批次；T44–T47 完成 artifact provenance、签名包、durable Registry 和 baseline-first 安全发布/回滚；M11-E 补齐通用 policy timeout/cancel；T48/T50 分别固定 MTRouter 与 MasRouter 的官方来源和论文协议，但都没有执行原环境复现。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、具体 Provider/Tool/learned policy 的底层取消资源释放、第三方远端 MCP 兼容性、生产密钥治理、policy loader、MTRouter 原环境安装/复现、MasRouter 依赖环境冻结/复现、decision fixture、checkpoint/parity/shadow/Bench，以及 M13–M14 learned Router；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

@@ -1,0 +1,45 @@
+{
+  "reportSchemaVersion": "1",
+  "task": "T50",
+  "milestone": "M13-A",
+  "generatedAt": "2026-10-18T23:21:16+08:00",
+  "status": "source-frozen-reproduction-blocked-on-environment-definition",
+  "inputDigests": {
+    "upstreamLock": "sha256:ac95df4add7978efc53a2d00cfe5ee7ffe12a66fbb17aa26b71394f5a550f780",
+    "reproductionSpec": "sha256:8dd03a8b54fbe86bae8560e47e6a58f58c60b9d12d28c437a3df8d4cabcf6d53"
+  },
+  "upstream": {
+    "commit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+    "tree": "e4d618f81675a46ed6e2f5e6ee1970519f1afa5b",
+    "license": "Apache-2.0",
+    "sourceArchiveSha256": "1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651",
+    "paper": "2502.11133v1",
+    "paperPdfSha256": "b5f6c21f22d94c3a8a790519506399221b5f499c3f9d005a426bd32230e8070b"
+  },
+  "sourceAudit": {
+    "pinnedFileCount": 15,
+    "roleProfileCount": 26,
+    "dependencyManifestPresent": false,
+    "checkpointPresent": false,
+    "documentedEntrypointCaseMatchesRepository": false,
+    "priceMetadataConsistent": false
+  },
+  "adaptationBoundary": {
+    "targetPolicyPort": "CollaborationPlanSelectorPort",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "singleAgentAlwaysValid": true,
+    "maximumAgents": 6,
+    "maximumCollaborationReevaluations": 1
+  },
+  "execution": {
+    "sourceCopiedIntoRepository": false,
+    "paperCopiedIntoRepository": false,
+    "dependenciesInstalled": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "trainingRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "nextGate": "freeze an isolated dependency lock, dataset digests, provider revisions and price snapshot before requesting execution authorization"
+}

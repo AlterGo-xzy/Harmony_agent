@@ -1,0 +1,8 @@
+node offline/paper_repro/masrouter/check-masrouter-repro.mjs --write
+node offline/paper_repro/masrouter/check-masrouter-repro.mjs --check
+node offline/paper_repro/masrouter/test-masrouter-preflight.mjs
+node -e "for (const p of process.argv.slice(1)) JSON.parse(require('fs').readFileSync(p,'utf8')); console.log('JSON parse: 3/3')" offline/paper_repro/masrouter/upstream-lock.json offline/paper_repro/masrouter/reproduction-spec.json offline/paper_repro/masrouter/reports/preflight-v1.json
+git diff --check
+Get-FileHash -Algorithm SHA256 build-profile.json5
+curl.exe -L --fail -o <temporary-workspace-file> https://codeload.github.com/yanweiyue/masrouter/tar.gz/e005f7696fe0c0412563f6cd67f4cd3712fa2822
+Get-FileHash -Algorithm SHA256 <temporary-workspace-file>

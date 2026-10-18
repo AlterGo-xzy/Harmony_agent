@@ -1,0 +1,7 @@
+Tests run: 4, Failure: 0, Error: 0, Pass: 4, Ignore: 0
+
+Cases:
+- valid preflight accepted
+- upstream commit drift rejected
+- harmony_agent collaboration boundary drift rejected
+- zero-execution claim drift rejected

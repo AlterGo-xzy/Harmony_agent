@@ -1,0 +1,26 @@
+Official repository: https://github.com/yanweiyue/masrouter
+Default branch: main
+Commit: e005f7696fe0c0412563f6cd67f4cd3712fa2822
+Tree: e4d618f81675a46ed6e2f5e6ee1970519f1afa5b
+Commit date: 2025-10-29T10:50:44+08:00
+Observed release tags: 0
+Source archive bytes: 2849986
+Source archive SHA-256: 1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651
+Source archive URL: https://codeload.github.com/yanweiyue/masrouter/tar.gz/e005f7696fe0c0412563f6cd67f4cd3712fa2822
+License: Apache-2.0
+License SHA-256: 1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6
+
+Official paper: https://arxiv.org/abs/2502.11133
+Version: v1
+Submitted: 2025-02-16T14:00:59Z
+PDF bytes: 11904536
+PDF SHA-256: b5f6c21f22d94c3a8a790519506399221b5f499c3f9d005a426bd32230e8070b
+
+Source limitations observed at the pinned commit:
+- no requirements.txt, pyproject.toml, setup.py, setup.cfg, environment.yml, Pipfile, Pipfile.lock, poetry.lock, or uv.lock
+- no .pth, .pt, .ckpt, .bin, or .safetensors checkpoint
+- README documents python experiments/run_mbpp.py while the repository path is Experiments/run_mbpp.py
+- 26 role profile JSON files excluding FinalNode
+- claude-3-5-haiku-20241022 price is 1.0/5.0 in llm_profile.py and 0.8/4.0 in price.py
+
+The temporary clone, paper PDF, and source archive were inspection inputs only. They are not retained or vendored in the repository.

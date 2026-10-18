@@ -1,0 +1,66 @@
+{
+  "schemaVersion": "1",
+  "capturedAt": "2026-10-18T23:21:16+08:00",
+  "repository": {
+    "url": "https://github.com/yanweiyue/masrouter",
+    "defaultBranch": "main",
+    "commit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+    "tree": "e4d618f81675a46ed6e2f5e6ee1970519f1afa5b",
+    "commitDate": "2025-10-29T10:50:44+08:00",
+    "commitSubject": "Modify data random sampling BUG.",
+    "releaseTagsObserved": 0,
+    "archive": {
+      "url": "https://codeload.github.com/yanweiyue/masrouter/tar.gz/e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+      "sizeBytes": 2849986,
+      "sha256": "1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651"
+    }
+  },
+  "license": {
+    "spdx": "Apache-2.0",
+    "path": "LICENSE",
+    "sizeBytes": 11558,
+    "sha256": "1eb85fc97224598dad1852b5d6483bbcf0aa8608790dcc657a5a2a761ae9c8c6"
+  },
+  "pinnedFiles": [
+    { "path": "README.md", "sizeBytes": 2446, "sha256": "5bd99b87c04a7bc56962a7763f5cba7e2225d22d8385f4a93176da51bf8556bc" },
+    { "path": "template.env", "sizeBytes": 18, "sha256": "df9af933b85d3e4abe3e3296554ed366ea08f4d05f22168b5acc5b695f038c93" },
+    { "path": "MAR/MasRouter/mas_router.py", "sizeBytes": 21445, "sha256": "580606e25360db8e0192c261720566811b8ba4fea3de3cb570b5d81e2830bf93" },
+    { "path": "MAR/Agent/agent_registry.py", "sizeBytes": 589, "sha256": "e5b7e1a1fdd0f65357ad376a66af13a08a961639241de7cb931c4dad40ded33d" },
+    { "path": "MAR/Roles/role_registry.py", "sizeBytes": 1049, "sha256": "e1756f0582ef7102354b3ad93a2acc60547a111f5d65d5574b8a7de538dc5498" },
+    { "path": "MAR/LLM/llm_profile.py", "sizeBytes": 3988, "sha256": "0221e572c48104c61e7f872ec39109ca2d87e51ff4af01aca7c1110fb4aac91a" },
+    { "path": "MAR/Agent/reasoning_profile.py", "sizeBytes": 953, "sha256": "8189fcf898b7846659e282a310025033fc6d982c5802c72095b4940dcc1f97ae" },
+    { "path": "MAR/LLM/llm_embedding.py", "sizeBytes": 812, "sha256": "6b6e4fd6281bd995e959990789ea73b5f7f107e081ee67f3b683386f32dfa782" },
+    { "path": "MAR/LLM/price.py", "sizeBytes": 2390, "sha256": "e9ea9982af66ffcb4a0854e0eae5868d601acf7d4dca50684fbf8aa3f44819fc" },
+    { "path": "MAR/Utils/utils.py", "sizeBytes": 6966, "sha256": "f299ba70e5087bb00e307d39c45160e426a825cdd4d5c54341f569d6fc5a3257" },
+    { "path": "Experiments/run_gsm8k.py", "sizeBytes": 7546, "sha256": "027d759d75a19379805f0596a205fb2bb1a7f365a62c511afe7dbc78d452d74d" },
+    { "path": "Experiments/run_math.py", "sizeBytes": 7524, "sha256": "0b434ef9fef4ad7e214e4f38b136257535c28fed7c85f1861df143390dac029a" },
+    { "path": "Experiments/run_humaneval.py", "sizeBytes": 8066, "sha256": "648f3e219befae6ca76fa9666de284a024d9cbbd021484fcbe8074894434c328" },
+    { "path": "Experiments/run_mbpp.py", "sizeBytes": 7814, "sha256": "49463fae08d7a8c3c6274839a4ef1fa131609931925c397a709f94fcc4dd3f97" },
+    { "path": "Experiments/run_mmlu.py", "sizeBytes": 8378, "sha256": "5b864e4cd3b4285feec1cfb7c28822d77c48dcfb71567fb0567643626b9dd910" }
+  ],
+  "paper": {
+    "title": "MasRouter: Learning to Route LLMs for Multi-Agent Systems",
+    "arxivId": "2502.11133",
+    "version": "v1",
+    "submittedAt": "2025-02-16T14:00:59Z",
+    "pdfUrl": "https://arxiv.org/pdf/2502.11133v1",
+    "pdfSizeBytes": 11904536,
+    "pdfSha256": "b5f6c21f22d94c3a8a790519506399221b5f499c3f9d005a426bd32230e8070b"
+  },
+  "sourceAudit": {
+    "dependencyManifestPresent": false,
+    "checkpointPresent": false,
+    "documentedEntrypoint": "python experiments/run_mbpp.py",
+    "repositoryEntrypoint": "Experiments/run_mbpp.py",
+    "documentedEntrypointCaseMatchesRepository": false,
+    "roleProfileFileCountExcludingFinalNode": 26,
+    "priceMetadataConsistent": false,
+    "priceMismatch": {
+      "model": "claude-3-5-haiku-20241022",
+      "llmProfileInputUsdPerMillion": 1.0,
+      "llmProfileOutputUsdPerMillion": 5.0,
+      "priceModuleInputUsdPerMillion": 0.8,
+      "priceModuleOutputUsdPerMillion": 4.0
+    }
+  }
+}
