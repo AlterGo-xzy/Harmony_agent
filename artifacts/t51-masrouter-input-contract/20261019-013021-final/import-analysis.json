@@ -1,0 +1,787 @@
+{
+  "fileCount": 50,
+  "reachableFiles": [
+    "Datasets/gsm8k_dataset.py",
+    "Datasets/math_dataset.py",
+    "Datasets/mbpp_dataset.py",
+    "Datasets/mmlu_dataset.py",
+    "Experiments/run_gsm8k.py",
+    "Experiments/run_humaneval.py",
+    "Experiments/run_math.py",
+    "Experiments/run_mbpp.py",
+    "Experiments/run_mmlu.py",
+    "MAR/Agent/__init__.py",
+    "MAR/Agent/agent.py",
+    "MAR/Agent/agent_registry.py",
+    "MAR/Agent/reasoning_profile.py",
+    "MAR/Graph/__init__.py",
+    "MAR/Graph/graph.py",
+    "MAR/Graph/node.py",
+    "MAR/LLM/__init__.py",
+    "MAR/LLM/gpt_chat.py",
+    "MAR/LLM/llm.py",
+    "MAR/LLM/llm_embedding.py",
+    "MAR/LLM/llm_profile.py",
+    "MAR/LLM/llm_registry.py",
+    "MAR/LLM/price.py",
+    "MAR/MasRouter/mas_router.py",
+    "MAR/Prompts/__init__.py",
+    "MAR/Prompts/message_aggregation.py",
+    "MAR/Prompts/output_format.py",
+    "MAR/Prompts/post_process.py",
+    "MAR/Prompts/reasoning.py",
+    "MAR/Prompts/tasks_profile.py",
+    "MAR/Roles/__init__.py",
+    "MAR/Roles/role_registry.py",
+    "MAR/Tools/coding/executor_types.py",
+    "MAR/Tools/coding/executor_utils.py",
+    "MAR/Tools/coding/python_executor.py",
+    "MAR/Tools/reader/readers.py",
+    "MAR/Utils/const.py",
+    "MAR/Utils/globals.py",
+    "MAR/Utils/log.py",
+    "MAR/Utils/utils.py"
+  ],
+  "unresolvedLocalImports": [
+    {
+      "file": "Experiments/run_mmlu.py",
+      "line": 27,
+      "module": "Datasets.MMLU.download"
+    }
+  ],
+  "externalModules": {
+    "PyPDF2": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:25"
+      ]
+    },
+    "abc": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/mmlu_dataset.py",
+        "MAR/Graph/graph.py",
+        "MAR/Graph/node.py",
+        "MAR/LLM/llm.py",
+        "MAR/Tools/coding/executor_types.py",
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "Datasets/mmlu_dataset.py:5",
+        "MAR/Graph/graph.py:3",
+        "MAR/Graph/node.py:3",
+        "MAR/LLM/llm.py:1",
+        "MAR/Tools/coding/executor_types.py:5",
+        "MAR/Tools/reader/readers.py:31"
+      ]
+    },
+    "aiohttp": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py",
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:1",
+        "MAR/Tools/reader/readers.py:42"
+      ]
+    },
+    "argparse": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:3",
+        "Experiments/run_humaneval.py:9",
+        "Experiments/run_math.py:3",
+        "Experiments/run_mbpp.py:9",
+        "Experiments/run_mmlu.py:9"
+      ]
+    },
+    "arxiv": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/search/arXiv.py"
+      ],
+      "evidence": [
+        "MAR/Tools/search/arXiv.py:4"
+      ]
+    },
+    "ast": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/coding/python_executor.py",
+        "MAR/Tools/search/search.py"
+      ],
+      "evidence": [
+        "MAR/Tools/coding/python_executor.py:4",
+        "MAR/Tools/search/search.py:8"
+      ]
+    },
+    "astunparse": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/coding/python_executor.py"
+      ],
+      "evidence": [
+        "MAR/Tools/coding/python_executor.py:5"
+      ]
+    },
+    "asyncio": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Graph/graph.py",
+        "MAR/Graph/node.py",
+        "MAR/Tools/search/wiki.py",
+        "MAR/Tools/vgen/dalle3.py"
+      ],
+      "evidence": [
+        "MAR/Graph/graph.py:6",
+        "MAR/Graph/node.py:5",
+        "MAR/Tools/search/wiki.py:5",
+        "MAR/Tools/vgen/dalle3.py:5"
+      ]
+    },
+    "base64": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/web/screenshot.py"
+      ],
+      "evidence": [
+        "MAR/Tools/web/screenshot.py:8"
+      ]
+    },
+    "bs4": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py",
+        "MAR/Tools/vgen/dalle3.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:33",
+        "MAR/Tools/vgen/dalle3.py:9"
+      ]
+    },
+    "charset_normalizer": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:22"
+      ]
+    },
+    "class_registry": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Agent/agent_registry.py",
+        "MAR/LLM/llm_registry.py"
+      ],
+      "evidence": [
+        "MAR/Agent/agent_registry.py:1",
+        "MAR/LLM/llm_registry.py:2"
+      ]
+    },
+    "collections": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "MAR/Utils/utils.py:4"
+      ]
+    },
+    "docx": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:23"
+      ]
+    },
+    "dotenv": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py",
+        "MAR/Tools/reader/readers.py",
+        "MAR/Tools/search/search.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:5",
+        "MAR/Tools/reader/readers.py:40",
+        "MAR/Tools/search/search.py:5"
+      ]
+    },
+    "fastapi": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/web/screenshot.py"
+      ],
+      "evidence": [
+        "MAR/Tools/web/screenshot.py:9"
+      ]
+    },
+    "glob": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/math_dataset.py",
+        "Datasets/mmlu_dataset.py"
+      ],
+      "evidence": [
+        "Datasets/math_dataset.py:1",
+        "Datasets/math_dataset.py:3",
+        "Datasets/mmlu_dataset.py:1"
+      ]
+    },
+    "googleapiclient": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/search/search.py"
+      ],
+      "evidence": [
+        "MAR/Tools/search/search.py:6"
+      ]
+    },
+    "groq": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:8"
+      ]
+    },
+    "httpx": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/web/screenshot.py"
+      ],
+      "evidence": [
+        "MAR/Tools/web/screenshot.py:11"
+      ]
+    },
+    "io": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:7",
+        "Experiments/run_humaneval.py:3",
+        "Experiments/run_math.py:8",
+        "Experiments/run_mbpp.py:3",
+        "Experiments/run_mmlu.py:3"
+      ]
+    },
+    "json": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/math_dataset.py",
+        "Datasets/sample_MATH.py",
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Agent/agent.py",
+        "MAR/MasRouter/mas_router.py",
+        "MAR/Roles/role_registry.py",
+        "MAR/Tools/coding/executor_utils.py",
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "Datasets/math_dataset.py:4",
+        "Datasets/sample_MATH.py:2",
+        "Experiments/run_gsm8k.py:5",
+        "Experiments/run_humaneval.py:11",
+        "Experiments/run_math.py:5",
+        "Experiments/run_mbpp.py:11"
+      ]
+    },
+    "langchain_community": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Prompts/post_process.py"
+      ],
+      "evidence": [
+        "MAR/Prompts/post_process.py:7",
+        "MAR/Prompts/post_process.py:8"
+      ]
+    },
+    "loguru": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Agent/agent.py",
+        "MAR/MasRouter/mas_router.py",
+        "MAR/Prompts/post_process.py",
+        "MAR/Utils/log.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:24",
+        "Experiments/run_humaneval.py:15",
+        "Experiments/run_math.py:23",
+        "Experiments/run_mbpp.py:14",
+        "Experiments/run_mmlu.py:14",
+        "MAR/Agent/agent.py:3"
+      ]
+    },
+    "markdown": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:24"
+      ]
+    },
+    "math": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/sample_MATH.py",
+        "MAR/MasRouter/mas_router.py"
+      ],
+      "evidence": [
+        "Datasets/sample_MATH.py:5",
+        "MAR/MasRouter/mas_router.py:8"
+      ]
+    },
+    "matplotlib": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "MAR/Utils/utils.py:7"
+      ]
+    },
+    "numpy": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/math_dataset.py",
+        "Datasets/mmlu_dataset.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Graph/graph.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Datasets/math_dataset.py:6",
+        "Datasets/mmlu_dataset.py:4",
+        "Experiments/run_mmlu.py:13",
+        "MAR/Graph/graph.py:4",
+        "MAR/Utils/utils.py:8"
+      ]
+    },
+    "openai": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py",
+        "MAR/Tools/reader/readers.py",
+        "MAR/Tools/vgen/dalle3.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:9",
+        "MAR/Tools/reader/readers.py:4",
+        "MAR/Tools/reader/readers.py:44",
+        "MAR/Tools/vgen/dalle3.py:8"
+      ]
+    },
+    "openpyxl": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:26"
+      ]
+    },
+    "os": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/math_dataset.py",
+        "Datasets/sample_MATH.py",
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/LLM/gpt_chat.py",
+        "MAR/MasRouter/mas_router.py",
+        "MAR/Tools/coding/executor_utils.py",
+        "MAR/Tools/reader/readers.py",
+        "MAR/Tools/search/search.py",
+        "MAR/Tools/vgen/dalle3.py",
+        "MAR/Utils/const.py",
+        "MAR/Utils/log.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Datasets/math_dataset.py:2",
+        "Datasets/sample_MATH.py:1",
+        "Experiments/run_gsm8k.py:2",
+        "Experiments/run_humaneval.py:2",
+        "Experiments/run_math.py:2",
+        "Experiments/run_mbpp.py:2"
+      ]
+    },
+    "pandas": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/mbpp_dataset.py",
+        "Datasets/mmlu_dataset.py",
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "Datasets/mbpp_dataset.py:2",
+        "Datasets/mmlu_dataset.py:2",
+        "MAR/Tools/reader/readers.py:21"
+      ]
+    },
+    "pathlib": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py",
+        "MAR/Utils/const.py",
+        "MAR/Utils/log.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:30",
+        "MAR/Utils/const.py:5",
+        "MAR/Utils/log.py:6"
+      ]
+    },
+    "pdb": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:5"
+      ]
+    },
+    "pptx": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:35"
+      ]
+    },
+    "pydantic": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/web/screenshot.py"
+      ],
+      "evidence": [
+        "MAR/Tools/web/screenshot.py:10"
+      ]
+    },
+    "pylatexenc": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:34"
+      ]
+    },
+    "pytube": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/web/youtube.py"
+      ],
+      "evidence": [
+        "MAR/Tools/web/youtube.py:4"
+      ]
+    },
+    "random": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/mbpp_dataset.py",
+        "Datasets/sample_MATH.py",
+        "MAR/Utils/globals.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Datasets/mbpp_dataset.py:28",
+        "Datasets/sample_MATH.py:3",
+        "MAR/Utils/globals.py:2",
+        "MAR/Utils/utils.py:5"
+      ]
+    },
+    "re": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/gsm8k/gsm8k_dataset.py",
+        "Datasets/gsm8k_dataset.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_mbpp.py",
+        "MAR/Prompts/message_aggregation.py",
+        "MAR/Prompts/post_process.py",
+        "MAR/Tools/vgen/dalle3.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Datasets/gsm8k/gsm8k_dataset.py:1",
+        "Datasets/gsm8k_dataset.py:1",
+        "Experiments/run_humaneval.py:13",
+        "Experiments/run_mbpp.py:12",
+        "MAR/Prompts/message_aggregation.py:1",
+        "MAR/Prompts/post_process.py:1"
+      ]
+    },
+    "requests": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py",
+        "MAR/Tools/reader/readers.py",
+        "MAR/Tools/search/search.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:7",
+        "MAR/Tools/reader/readers.py:43",
+        "MAR/Tools/search/search.py:7"
+      ]
+    },
+    "seaborn": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "MAR/Utils/utils.py:9"
+      ]
+    },
+    "sentence_transformers": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/llm_embedding.py"
+      ],
+      "evidence": [
+        "MAR/LLM/llm_embedding.py:1"
+      ]
+    },
+    "shortuuid": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Graph/graph.py",
+        "MAR/Graph/node.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "MAR/Graph/graph.py:1",
+        "MAR/Graph/node.py:1",
+        "MAR/Utils/utils.py:3"
+      ]
+    },
+    "shutil": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "Datasets/sample_MATH.py"
+      ],
+      "evidence": [
+        "Datasets/sample_MATH.py:4"
+      ]
+    },
+    "subprocess": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:29"
+      ]
+    },
+    "sys": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Utils/globals.py",
+        "MAR/Utils/log.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:1",
+        "Experiments/run_humaneval.py:1",
+        "Experiments/run_math.py:1",
+        "Experiments/run_mbpp.py:1",
+        "Experiments/run_mmlu.py:1",
+        "MAR/Utils/globals.py:1"
+      ]
+    },
+    "tenacity": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/gpt_chat.py"
+      ],
+      "evidence": [
+        "MAR/LLM/gpt_chat.py:3"
+      ]
+    },
+    "threading": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/coding/executor_utils.py"
+      ],
+      "evidence": [
+        "MAR/Tools/coding/executor_utils.py:6"
+      ]
+    },
+    "tiktoken": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/LLM/price.py"
+      ],
+      "evidence": [
+        "MAR/LLM/price.py:2"
+      ]
+    },
+    "time": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:6",
+        "Experiments/run_humaneval.py:8",
+        "Experiments/run_humaneval.py:12",
+        "Experiments/run_math.py:6",
+        "Experiments/run_mbpp.py:8",
+        "Experiments/run_mmlu.py:8"
+      ]
+    },
+    "torch": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Graph/graph.py",
+        "MAR/LLM/llm_embedding.py",
+        "MAR/MasRouter/mas_router.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:12",
+        "Experiments/run_gsm8k.py:13",
+        "Experiments/run_humaneval.py:14",
+        "Experiments/run_humaneval.py:16",
+        "Experiments/run_math.py:7",
+        "Experiments/run_math.py:12"
+      ]
+    },
+    "typing": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Datasets/math_dataset.py",
+        "Datasets/mbpp_dataset.py",
+        "Datasets/mmlu_dataset.py",
+        "MAR/Agent/agent.py",
+        "MAR/Agent/agent_registry.py",
+        "MAR/Graph/graph.py",
+        "MAR/Graph/node.py",
+        "MAR/LLM/gpt_chat.py",
+        "MAR/LLM/llm.py",
+        "MAR/LLM/llm_registry.py",
+        "MAR/MasRouter/mas_router.py",
+        "MAR/Prompts/message_aggregation.py",
+        "MAR/Prompts/post_process.py",
+        "MAR/Tools/coding/executor_types.py",
+        "MAR/Tools/coding/python_executor.py",
+        "MAR/Tools/reader/readers.py",
+        "MAR/Utils/globals.py",
+        "MAR/Utils/utils.py"
+      ],
+      "evidence": [
+        "Datasets/math_dataset.py:5",
+        "Datasets/mbpp_dataset.py:1",
+        "Datasets/mmlu_dataset.py:3",
+        "MAR/Agent/agent.py:1",
+        "MAR/Agent/agent_registry.py:2",
+        "MAR/Graph/graph.py:2"
+      ]
+    },
+    "unicodedata": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "Datasets/gsm8k/gsm8k_dataset.py"
+      ],
+      "evidence": [
+        "Datasets/gsm8k/gsm8k_dataset.py:23"
+      ]
+    },
+    "warnings": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Graph/node.py"
+      ],
+      "evidence": [
+        "MAR/Graph/node.py:4"
+      ]
+    },
+    "wikipedia": {
+      "reachableFromBenchmarkEntries": false,
+      "files": [
+        "MAR/Tools/search/wiki.py"
+      ],
+      "evidence": [
+        "MAR/Tools/search/wiki.py:4"
+      ]
+    },
+    "yaml": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "Experiments/run_gsm8k.py",
+        "Experiments/run_humaneval.py",
+        "Experiments/run_math.py",
+        "Experiments/run_mbpp.py",
+        "Experiments/run_mmlu.py",
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "Experiments/run_gsm8k.py:4",
+        "Experiments/run_humaneval.py:10",
+        "Experiments/run_math.py:4",
+        "Experiments/run_mbpp.py:10",
+        "Experiments/run_mmlu.py:10",
+        "MAR/Tools/reader/readers.py:27"
+      ]
+    },
+    "zipfile": {
+      "reachableFromBenchmarkEntries": true,
+      "files": [
+        "MAR/Tools/reader/readers.py"
+      ],
+      "evidence": [
+        "MAR/Tools/reader/readers.py:28"
+      ]
+    }
+  }
+}

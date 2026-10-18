@@ -1,0 +1,167 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-dataset-lock-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "lockStatus": "candidate-unresolved",
+  "executionReady": false,
+  "datasets": [
+    {
+      "id": "gsm8k",
+      "requiredPath": "Datasets/gsm8k/gsm8k.jsonl",
+      "source": "GSM8K JSONL named by the upstream README; no canonical URL or revision recorded upstream",
+      "sourceRevision": null,
+      "split": {
+        "description": "Python random.shuffle then first 20 percent train, remaining 80 percent test; fix_random_seed(1234) seeds torch only, not the random module",
+        "trainPercent": 20,
+        "testPercent": 80,
+        "seed": 1234,
+        "determinism": "not-reproducible"
+      },
+      "sizeBytes": null,
+      "sha256": null,
+      "recordCount": null,
+      "status": "unresolved",
+      "blockingIssues": [
+        "gsm8k-humaneval-split-unseeded",
+        "dataset-digests-missing"
+      ],
+      "evidence": [
+        "README.md:29",
+        "Experiments/run_gsm8k.py:46",
+        "Experiments/run_gsm8k.py:65-68",
+        "MAR/Utils/utils.py:94-99",
+        "MAR/Utils/utils.py:171-180"
+      ]
+    },
+    {
+      "id": "humaneval",
+      "requiredPath": "Datasets/humaneval/humaneval-py.jsonl",
+      "source": "HumanEval Python JSONL named by the upstream README; no canonical URL or revision recorded upstream",
+      "sourceRevision": null,
+      "split": {
+        "description": "Python random.shuffle then first 20 percent train, remaining 80 percent test; fix_random_seed(1234) seeds torch only, not the random module",
+        "trainPercent": 20,
+        "testPercent": 80,
+        "seed": 1234,
+        "determinism": "not-reproducible"
+      },
+      "sizeBytes": null,
+      "sha256": null,
+      "recordCount": null,
+      "status": "unresolved",
+      "blockingIssues": [
+        "gsm8k-humaneval-split-unseeded",
+        "dataset-digests-missing"
+      ],
+      "evidence": [
+        "README.md:30-31",
+        "Experiments/run_humaneval.py:48",
+        "Experiments/run_humaneval.py:67-69",
+        "MAR/Utils/utils.py:94-99",
+        "MAR/Utils/utils.py:171-180"
+      ]
+    },
+    {
+      "id": "math",
+      "requiredPath": "Datasets/MATH/{train,test}/**/*.json",
+      "source": "Hendrycks MATH directory layout named by the upstream README; no canonical URL or revision recorded upstream",
+      "sourceRevision": null,
+      "split": {
+        "description": "Repository train/test directories; loader sorts category paths and shuffles each split with numpy default_rng(888); the paper evaluates a stratified 519-problem subset",
+        "trainPercent": null,
+        "testPercent": null,
+        "seed": 888,
+        "determinism": "deterministic-given-identical-file-order"
+      },
+      "sizeBytes": null,
+      "sha256": null,
+      "recordCount": null,
+      "status": "unresolved",
+      "blockingIssues": [
+        "math-paper-subset-not-reproducible",
+        "dataset-digests-missing"
+      ],
+      "evidence": [
+        "README.md:32-34",
+        "Experiments/run_math.py:64-65",
+        "Datasets/math_dataset.py:10-24",
+        "Datasets/sample_MATH.py:8-11",
+        "Datasets/sample_MATH.py:49"
+      ]
+    },
+    {
+      "id": "mbpp",
+      "requiredPath": "hf://datasets/google-research-datasets/mbpp/full/{train,test,validation,prompt}-00000-of-00001.parquet",
+      "source": "Hugging Face dataset google-research-datasets/mbpp",
+      "sourceRevision": null,
+      "split": {
+        "description": "Repository full/train and full/test parquet splits loaded through pandas; MbppDataLoader shuffles train and test with Python random without an explicit seed",
+        "trainPercent": null,
+        "testPercent": null,
+        "seed": null,
+        "determinism": "not-reproducible"
+      },
+      "sizeBytes": null,
+      "sha256": null,
+      "recordCount": null,
+      "status": "unresolved",
+      "blockingIssues": [
+        "mbpp-remote-dataset-unpinned",
+        "gsm8k-humaneval-split-unseeded",
+        "dataset-digests-missing"
+      ],
+      "evidence": [
+        "README.md:35-36",
+        "Datasets/mbpp_dataset.py:5-9",
+        "Datasets/mbpp_dataset.py:27-29",
+        "Experiments/run_mbpp.py:68-69"
+      ]
+    },
+    {
+      "id": "mmlu",
+      "requiredPath": "datasets/MMLU/data/{dev,test}/*.csv",
+      "source": "Hendrycks MMLU CSV layout referenced by the repository; upstream download module is absent at the pinned commit",
+      "sourceRevision": null,
+      "split": {
+        "description": "dev split for training and test split for evaluation; numpy default_rng(888) shuffle; evaluation skips the first train_batch test batches",
+        "trainPercent": null,
+        "testPercent": null,
+        "seed": 888,
+        "determinism": "deterministic-given-identical-file-order"
+      },
+      "sizeBytes": null,
+      "sha256": null,
+      "recordCount": null,
+      "status": "unresolved",
+      "blockingIssues": [
+        "mmlu-download-module-missing",
+        "dataset-path-case",
+        "mmlu-test-slice-implied",
+        "dataset-digests-missing"
+      ],
+      "evidence": [
+        "README.md:37-38",
+        "Experiments/run_mmlu.py:27",
+        "Experiments/run_mmlu.py:82-83",
+        "Experiments/run_mmlu.py:93",
+        "Experiments/run_mmlu.py:147-150",
+        "Datasets/mmlu_dataset.py:14",
+        "Datasets/mmlu_dataset.py:26-43"
+      ]
+    }
+  ],
+  "paperSubsets": [
+    {
+      "benchmark": "math",
+      "expectedCount": 519,
+      "reconstructionScript": "Datasets/sample_MATH.py",
+      "manifestPresent": false,
+      "status": "unresolved",
+      "evidence": [
+        "reproduction-spec.json:84",
+        "Datasets/sample_MATH.py:8-11",
+        "Datasets/sample_MATH.py:49"
+      ]
+    }
+  ]
+}

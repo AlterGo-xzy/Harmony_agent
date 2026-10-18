@@ -2,7 +2,7 @@
 
 这是无 UI 的 harmony_agent Agent Runtime 与其 HarmonyOS/OpenHarmony ArkTS 基础模块，不是示例应用，也不包含产品前端。
 
-harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T42 已关闭各自记录的任务门，M10 已完成 TestKit、S6 fixture baseline、真实证据封存和执行准入封顶；Local AI Gateway 已完成单任务真实设备闭环，但真实 12×2 Provider/system Bench 尚未运行，当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
+harmony_agent Agent Runtime 的分层、数据契约、安全边界、算法落点和实施门见 [docs/architecture/HARMONY_AGENT_ARCHITECTURE.md](docs/architecture/HARMONY_AGENT_ARCHITECTURE.md)；可独立开发和验收的 M00–M15 模块见 [docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md](docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md)。T01–T48、T50 与 T51 已关闭各自记录的任务门，M10 已完成 TestKit、S6 fixture baseline、真实证据封存和执行准入封顶；T43 已完成真实 12×2 Provider/system Bench 基线，T50/T51 已完成 MasRouter 来源冻结与环境输入合同，当前证据边界以 [PROJECT_STATUS.md](PROJECT_STATUS.md) 为准。
 
 当前工程交付包括：
 

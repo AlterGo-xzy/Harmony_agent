@@ -1,0 +1,11 @@
+# T51 commands actually executed (2026-10-19, Asia/Shanghai)
+# Source inspection (isolated temporary directory; source not retained)
+curl.exe -L --fail --silent --show-error -o <isolated-temp-dir>/masrouter-source.tar.gz https://codeload.github.com/yanweiyue/masrouter/tar.gz/e005f7696fe0c0412563f6cd67f4cd3712fa2822
+sha256sum <isolated-temp-dir>/masrouter-source.tar.gz
+tar -xzf masrouter-source.tar.gz -C source
+node <isolated-temp-dir>/masrouter-t51-analyze.mjs <isolated-temp-dir>/source/masrouter-e005f7696fe0c0412563f6cd67f4cd3712fa2822
+node offline/paper_repro/masrouter/check-masrouter-inputs.mjs --write
+node offline/paper_repro/masrouter/check-masrouter-inputs.mjs --check
+node offline/paper_repro/masrouter/test-masrouter-inputs.mjs
+node -e "JSON.parse(...) for schemas and input documents"
+git diff --check

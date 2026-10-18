@@ -1,0 +1,131 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-model-pools-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "lockStatus": "candidate-unresolved",
+  "poolsSeparate": true,
+  "paperCoreModelPool": [
+    {
+      "modelId": "gpt-4o-mini-0718",
+      "provider": "unresolved",
+      "providerModelId": null,
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["reproduction-spec.json:49-53"]
+    },
+    {
+      "modelId": "claude-3.5-haiku",
+      "provider": "unresolved",
+      "providerModelId": null,
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["reproduction-spec.json:49-53"]
+    },
+    {
+      "modelId": "gemini-1.5-flash",
+      "provider": "unresolved",
+      "providerModelId": null,
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["reproduction-spec.json:49-53"]
+    },
+    {
+      "modelId": "llama-3.1-70b",
+      "provider": "unresolved",
+      "providerModelId": null,
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["reproduction-spec.json:49-53"]
+    }
+  ],
+  "paperInductiveValidationModel": {
+    "modelId": "deepseek-v3",
+    "provider": "unresolved",
+    "providerModelId": null,
+    "revision": null,
+    "region": null,
+    "transportClass": "ALLChat",
+    "status": "unresolved",
+    "evidence": ["reproduction-spec.json:55"]
+  },
+  "sourceModelPool": [
+    {
+      "modelId": "gpt-4o-mini",
+      "provider": "unresolved",
+      "providerModelId": "gpt-4o-mini",
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_profile.py:2", "MAR/LLM/llm_registry.py:19-25"]
+    },
+    {
+      "modelId": "claude-3-5-haiku-20241022",
+      "provider": "unresolved",
+      "providerModelId": "claude-3-5-haiku-20241022",
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_profile.py:9", "MAR/LLM/price.py:53-56"]
+    },
+    {
+      "modelId": "gemini-1.5-flash-latest",
+      "provider": "unresolved",
+      "providerModelId": "gemini-1.5-flash-latest",
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_profile.py:16"]
+    },
+    {
+      "modelId": "llama-3.1-70b-instruct",
+      "provider": "unresolved",
+      "providerModelId": "llama-3.1-70b-instruct",
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_profile.py:23"]
+    },
+    {
+      "modelId": "deepseek-chat",
+      "provider": "unresolved",
+      "providerModelId": "deepseek-chat",
+      "revision": null,
+      "region": null,
+      "transportClass": "ALLChat",
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_profile.py:30", "MAR/LLM/llm_registry.py:22-25"]
+    }
+  ],
+  "modelArtifacts": [
+    {
+      "artifactId": "sentence-transformers/all-MiniLM-L6-v2",
+      "kind": "sentence-encoder",
+      "revision": null,
+      "sha256": null,
+      "status": "unresolved",
+      "packaging": "forbidden-in-har-hap",
+      "evidence": ["MAR/LLM/llm_embedding.py:5", "MAR/LLM/llm_embedding.py:13", "reproduction-spec.json:33"]
+    },
+    {
+      "artifactId": "masrouter-router-checkpoint",
+      "kind": "router-checkpoint",
+      "revision": null,
+      "sha256": null,
+      "status": "unresolved",
+      "packaging": "not-yet-classified",
+      "evidence": ["upstream-lock.json:52"]
+    }
+  ]
+}

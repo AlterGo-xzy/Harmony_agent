@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-17。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；真实双 arm Provider/system Bench 仍未运行。
+最后更新：2026-10-19。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；T43 已完成真实 12×2 双 arm Provider/system Bench（19/24 质量基线）；T51 已完成 MasRouter 环境输入合同的离线 checker（9/9）与确定性报告。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -70,6 +70,8 @@ T37 将 connector 主机套件增至 52/52、runtime 增至 64/64。显式 Multi
 T39 将 runtime 增至 68/68，connector 保持 52/52。Runtime 0.14.0/composition 2.5 新增 schema 1.0 `CollaborationPlan` 和严格 validator；计划携带 task/mode、完整 Role Registry/decision SHA-256 摘要与互异 role identity，并作为 Planner 请求及 checkpoint 1.1 的深拷贝状态参与恢复。确定性 Collaboration Router 使用宿主 digest port 从 active Role Registry 选择并固化角色；旧 Single checkpoint 继续兼容，模式标签式 Multi、角色重复、非法摘要或预算越界会在 Planner/credential/network/MCP 前失败。Release Runtime HAR 为 100,808 bytes、SHA-256 `678998BFCC96C6FDA7E8109DF3C4B246C9B74ED717FF898AAA3C5D38A4C8CC1E`；包内版本 0.14.0、`debug=false`、compatible SDK 26。该门没有真实 Provider、HAP 或设备证据，不关闭 S6。
 
 T50/M13-A 是纯离线 MasRouter 来源与复现准入门：Node checker 确定性校验官方 commit/tree、archive/license/paper 与 15 个关键文件摘要，分离论文和源码协议，并固定 `CollaborationPlanSelectorPort`、Role Registry、Single fallback、Multi 预算预留及唯一 `AgentRuntimeFacade` 边界。按精简测试策略只保留四个高价值用例，结果为 4/4；没有运行 ArkTS/Hypium、HAR/HAP、设备、训练、Provider 或 benchmark。上游依赖清单/checkpoint 缺失、入口大小写和价格元数据冲突保持显式 fail-closed。
+
+T51/M13-B 是纯离线环境、数据与价格输入合同门：四份 JSON Schema 和六份输入文档覆盖 34 个依赖候选、五个数据集、论文/源码模型池及 Claude 价格冲突；`check-masrouter-inputs.mjs` 确定性生成报告 `sha256:91a6ef1d965430cf12d44329a61697048692dca94f38268ca0f25875d5cd8dc8`，`test-masrouter-inputs.mjs` 以 9/9 拒绝未解析依赖冒充 locked、数据集缺 digest、模型池合并、模型 revision 漂移、价格冲突被静默解决、执行声明漂移和必需问题缺失。没有下载数据集、安装依赖、读取凭据、调用 Provider、训练、运行 benchmark、ArkTS/Hypium、HAR/HAP 或设备；所有版本、digest、revision 和官方价格仍为 unresolved。
 
 T40 将 connector 增至 55/55。`CollaborativeProviderSemanticPlanner` 对计划内每个角色发起独立 Provider 请求，首角色生成 workflow，后续角色走已有 replan validator 修订前序 typed workflow；trace 记录唯一 activation/request、role identity、decision digest 与 usage。计划外角色、无计划 Multi，以及按激活数累计后的 token/cost/Agent 预算越界均在 credential/network 前 fail-closed。具体 Local AI Gateway composition 的两角色用例实际观察到 2 次 credential 解析与 2 次 HTTP 请求，并在第二角色完成后进入同一 Facade 的授权等待。Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`，包内版本 0.8.0、`debug=false`、compatible SDK 26。该门只使用 fake Provider/HTTP/MCP fixture，没有 HAP、签名、设备或真实 Provider 证据，不关闭 S6。
 

@@ -1,0 +1,20 @@
+Workspace: D:\Harmony_agent
+Branch: codex/module-masrouter-t51
+Base commit: 8f607c30fe4987e32b6807867e31d543f021c32c
+Node: v24.16.0
+OS: MINGW64_NT-10.0-26200 3.6.3-7674c51e.x86_64 x86_64
+Local time: 2026-10-19T01:30:21+0800
+Root build-profile.json5 SHA-256: 67e5ead71d95e1eba36f84f9b0e91ebdec2225ad4eb2b76ab9fd2acdd04c6c63
+Source archive bytes: 2849986
+Source archive SHA-256: 1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651
+Source archive URL: https://codeload.github.com/yanweiyue/masrouter/tar.gz/e005f7696fe0c0412563f6cd67f4cd3712fa2822
+Python files inspected: 50
+Reachable files from five benchmark entrypoints: 40
+
+Six pre-existing unstaged files were excluded from this task and preserved:
+- agent_connectors/BuildProfile.ets
+- agent_connectors/oh-package-lock.json5
+- agent_runtime/BuildProfile.ets
+- agent_storage/oh-package-lock.json5
+- native_tools/oh-package-lock.json5
+- test_host/oh-package-lock.json5

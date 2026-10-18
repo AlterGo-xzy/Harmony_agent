@@ -1,0 +1,406 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-environment-candidates-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "lockStatus": "candidate-unresolved",
+  "python": {
+    "implementation": "CPython",
+    "minimumVersion": "3.10",
+    "version": null,
+    "status": "unresolved",
+    "evidence": [
+      "MAR/Agent/agent.py:17"
+    ]
+  },
+  "torch": {
+    "name": "torch",
+    "version": null,
+    "build": null,
+    "status": "unresolved",
+    "evidence": [
+      "MAR/MasRouter/mas_router.py:7",
+      "MAR/Utils/utils.py:66",
+      "MAR/Utils/utils.py:70"
+    ]
+  },
+  "accelerator": {
+    "supportedModes": [
+      "cpu",
+      "cuda"
+    ],
+    "selectedMode": null,
+    "cudaVersion": null,
+    "cudnnVersion": null,
+    "status": "unresolved",
+    "evidence": [
+      "Experiments/run_gsm8k.py:74",
+      "MAR/LLM/llm_embedding.py:12",
+      "MAR/Utils/utils.py:95"
+    ]
+  },
+  "dependencies": [
+    {
+      "name": "torch",
+      "importNames": ["torch"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["Experiments/run_gsm8k.py:12", "MAR/MasRouter/mas_router.py:4", "MAR/Utils/utils.py:2"]
+    },
+    {
+      "name": "sentence-transformers",
+      "importNames": ["sentence_transformers"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/llm_embedding.py:1"]
+    },
+    {
+      "name": "numpy",
+      "importNames": ["numpy"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["Datasets/math_dataset.py:6", "Datasets/mmlu_dataset.py:4", "MAR/Graph/graph.py:4"]
+    },
+    {
+      "name": "pandas",
+      "importNames": ["pandas"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["Datasets/mbpp_dataset.py:2", "Datasets/mmlu_dataset.py:2", "MAR/Tools/reader/readers.py:21"]
+    },
+    {
+      "name": "tiktoken",
+      "importNames": ["tiktoken"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/price.py:2"]
+    },
+    {
+      "name": "openai",
+      "importNames": ["openai"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:9", "MAR/Tools/reader/readers.py:44"]
+    },
+    {
+      "name": "groq",
+      "importNames": ["groq"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:8"]
+    },
+    {
+      "name": "tenacity",
+      "importNames": ["tenacity"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:3"]
+    },
+    {
+      "name": "aiohttp",
+      "importNames": ["aiohttp"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:1", "MAR/Tools/reader/readers.py:42"]
+    },
+    {
+      "name": "requests",
+      "importNames": ["requests"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:7", "MAR/Tools/reader/readers.py:43"]
+    },
+    {
+      "name": "python-dotenv",
+      "importNames": ["dotenv"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/LLM/gpt_chat.py:5", "MAR/Tools/reader/readers.py:40"]
+    },
+    {
+      "name": "PyYAML",
+      "importNames": ["yaml"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["Experiments/run_gsm8k.py:4", "MAR/Tools/reader/readers.py:27"]
+    },
+    {
+      "name": "loguru",
+      "importNames": ["loguru"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["Experiments/run_gsm8k.py:24", "MAR/Utils/log.py:7"]
+    },
+    {
+      "name": "shortuuid",
+      "importNames": ["shortuuid"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Graph/graph.py:1", "MAR/Utils/utils.py:3"]
+    },
+    {
+      "name": "class-registry",
+      "importNames": ["class_registry"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Agent/agent_registry.py:1", "MAR/LLM/llm_registry.py:2"]
+    },
+    {
+      "name": "matplotlib",
+      "importNames": ["matplotlib"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Utils/utils.py:7"]
+    },
+    {
+      "name": "seaborn",
+      "importNames": ["seaborn"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Utils/utils.py:9"]
+    },
+    {
+      "name": "beautifulsoup4",
+      "importNames": ["bs4"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:33"]
+    },
+    {
+      "name": "charset-normalizer",
+      "importNames": ["charset_normalizer"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:22"]
+    },
+    {
+      "name": "python-docx",
+      "importNames": ["docx"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:23"]
+    },
+    {
+      "name": "openpyxl",
+      "importNames": ["openpyxl"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:26"]
+    },
+    {
+      "name": "python-pptx",
+      "importNames": ["pptx"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:35"]
+    },
+    {
+      "name": "markdown",
+      "importNames": ["markdown"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:24"]
+    },
+    {
+      "name": "PyPDF2",
+      "importNames": ["PyPDF2"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:25"]
+    },
+    {
+      "name": "pylatexenc",
+      "importNames": ["pylatexenc"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/reader/readers.py:34"]
+    },
+    {
+      "name": "astunparse",
+      "importNames": ["astunparse"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/coding/python_executor.py:5"]
+    },
+    {
+      "name": "langchain-community",
+      "importNames": ["langchain_community"],
+      "scope": "benchmark-entrypoint-transitive",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Prompts/post_process.py:7"]
+    },
+    {
+      "name": "arxiv",
+      "importNames": ["arxiv"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/search/arXiv.py:4"]
+    },
+    {
+      "name": "fastapi",
+      "importNames": ["fastapi"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/web/screenshot.py:9"]
+    },
+    {
+      "name": "google-api-python-client",
+      "importNames": ["googleapiclient"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/search/search.py:6"]
+    },
+    {
+      "name": "httpx",
+      "importNames": ["httpx"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/web/screenshot.py:11"]
+    },
+    {
+      "name": "pydantic",
+      "importNames": ["pydantic"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/web/screenshot.py:10"]
+    },
+    {
+      "name": "pytube",
+      "importNames": ["pytube"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/web/youtube.py:4"]
+    },
+    {
+      "name": "wikipedia",
+      "importNames": ["wikipedia"],
+      "scope": "tool-only-not-imported-by-benchmark-entrypoints",
+      "version": null,
+      "versionConstraint": "unresolved: no upstream dependency manifest at the pinned commit",
+      "sha256": null,
+      "status": "unresolved",
+      "evidence": ["MAR/Tools/search/wiki.py:4"]
+    }
+  ],
+  "implicitRuntimeDependencies": [
+    {
+      "name": "pyarrow",
+      "reason": "pandas.read_parquet is used for the MBPP dataset",
+      "version": null,
+      "status": "unresolved",
+      "evidence": ["Datasets/mbpp_dataset.py:7"]
+    },
+    {
+      "name": "fsspec",
+      "reason": "pandas resolves the hf:// URL through fsspec",
+      "version": null,
+      "status": "unresolved",
+      "evidence": ["Datasets/mbpp_dataset.py:7"]
+    },
+    {
+      "name": "huggingface-hub",
+      "reason": "the hf:// dataset namespace requires the Hugging Face hub integration",
+      "version": null,
+      "status": "unresolved",
+      "evidence": ["Datasets/mbpp_dataset.py:7"]
+    }
+  ]
+}

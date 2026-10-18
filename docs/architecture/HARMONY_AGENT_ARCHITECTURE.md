@@ -2,8 +2,8 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T48、T50 已完成各自记录的任务门；S6、S7 已关闭，S8 暂缓，S9 已启动**
-日期：2026-10-18
+状态：**In progress / T01–T48、T50、T51 已完成各自记录的任务门；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入与环境输入合同**
+日期：2026-10-19
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
 ## 1. 结论
@@ -47,6 +47,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - T44 已把 Artifact 契约收紧为可审计的 checkpoint/policy/workflow manifest：完整 source commit、许可证、数据 lineage、模型/Provider 快照、runtime compatibility、通用 payload digest、三类独立结果、审批、签名和 rollback target 均有显式字段与 fail-closed 校验。T45 以 canonical JSON package 和 Ed25519 完成 payload/manifest/signature/key-ID 验证及篡改拒绝；T46 增加 compatibility evaluator、宿主验签端口、durable CAS Registry 和按 digest 的 active/canary 选择与回滚；T47 又完成 baseline-first shadow/canary/active/fallback runner、deterministic basis-point assignment 和 durable rollback 后策略选择恢复演练。M11-E 为每次策略调用补充有界 timeout、外部取消和协作资源释放信号，超时按 shadow/canary/active/baseline 边界稳定观察或回退，并忽略迟到结果。S7 通用策略供应链门已关闭；生产密钥治理、policy loader、具体策略资源释放实现和 learned Router 属于宿主与 M12–M14。
 - T48 已在 `offline/paper_repro/mtrouter/` 冻结 MTRouter 官方 commit/tree、MIT license、arXiv v1、Python/research 依赖边界和论文实验协议，并预注册三次运行、六模型池、两个 benchmark 四项结果的容差。该门只证明来源锁与准入 spec 可离线复验；尚未安装原环境、运行官方测试或 benchmark，也没有形成 checkpoint、parity 或在线 Router 质量证据。
 - T50 已在 `offline/paper_repro/masrouter/` 冻结 MasRouter 官方 commit/tree、Apache-2.0 license、15 个关键源码文件和 arXiv v1，并分别记录论文与源码的模型池、协作模式、训练参数和五项 benchmark 目标。上游没有依赖清单或 checkpoint，入口路径大小写及价格元数据还有冲突，所以当前结论是来源审计完成、严格复现尚不可执行；没有修改在线 Runtime。
+- T51 在同一目录新增环境、数据集、Provider/model revision 和价格快照四类版本化 schema，以及 34 个直接依赖候选（全部 unresolved）、五个 benchmark 的数据集锁定骨架、严格分离的 4+1 论文模型池/5 模型源码 profile、Claude 价格冲突记录和 17 项未解决问题。checker 报告 `sha256:91a6ef1d965430cf12d44329a61697048692dca94f38268ca0f25875d5cd8dc8`，9/9 fail-closed 自测通过。该门只完成环境输入合同，不证明依赖可安装、数据已下载、Provider 可调用或论文可复现；T54 继续暂停。
 - `agent_core/` 是独立的 `@harmony_agent/agent-core` HAR，已经实现语义 DAG 校验、确定性状态机与调度、deadline/取消传播、operation journal、有界恢复决策及 `UNKNOWN_OUTCOME` 对账边界，并通过 host 侧内核测试与 Release HAR 构建。
 - `agent_core/` 已增加 task、step、provider 三层 Budget Ledger；预留、结算、释放和未知费用保留均为同步确定性状态转换。
 - `agent_runtime/` 已建立 `@harmony_agent/agent-runtime` HAR，并实现 M02 的确定性资格过滤、Policy Gateway、内部 grant 签发/校验/撤回和 secret 脱敏。

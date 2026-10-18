@@ -1,0 +1,144 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-unresolved-issues-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "issueCount": 17,
+  "issues": [
+    {
+      "id": "dependency-manifest-missing",
+      "severity": "blocking",
+      "summary": "The pinned upstream commit has no requirements.txt, pyproject.toml, setup.py, environment.yml, Pipfile, poetry.lock or uv.lock, so every dependency version remains unresolved.",
+      "evidence": ["upstream-lock.json:51"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "checkpoint-manifest-missing",
+      "severity": "blocking",
+      "summary": "No .pth, .pt, .ckpt, .bin or .safetensors checkpoint is present at the pinned commit; no router checkpoint identity or digest can be frozen.",
+      "evidence": ["upstream-lock.json:52"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "readme-entrypoint-case",
+      "severity": "documented-blocker",
+      "summary": "The README documents python experiments/run_mbpp.py, but the repository path is Experiments/run_mbpp.py; the case mismatch fails on case-sensitive filesystems.",
+      "evidence": ["README.md:54", "upstream-lock.json:53-55"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "mmlu-download-module-missing",
+      "severity": "blocking",
+      "summary": "Experiments/run_mmlu.py imports Datasets.MMLU.download, but no Datasets/MMLU/download.py exists at the pinned commit, so run_mmlu.py fails at import time even though the download call is commented out.",
+      "evidence": ["Experiments/run_mmlu.py:27", "Datasets/mmlu_dataset.py:1-14"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "dataset-path-case",
+      "severity": "blocking",
+      "summary": "Dataset paths mix Datasets and datasets casing (README and run scripts use Datasets, Datasets/mmlu_dataset.py uses datasets/MMLU), and run_gsm8k.py defines a lowercase default while hard-coding a capital-D path.",
+      "evidence": ["README.md:25-39", "Datasets/mmlu_dataset.py:14", "Experiments/run_gsm8k.py:46", "Experiments/run_gsm8k.py:66"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "claude-price-conflict",
+      "severity": "blocking",
+      "summary": "claude-3-5-haiku-20241022 is priced at 1.0/5.0 USD per million tokens in llm_profile.py but 0.8/4.0 in price.py; the conflict is unresolved and cost claims are disabled.",
+      "evidence": ["MAR/LLM/llm_profile.py:11", "MAR/LLM/price.py:53-56"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "gsm8k-humaneval-split-unseeded",
+      "severity": "blocking",
+      "summary": "GSM8K and HumanEval call fix_random_seed(1234), which seeds torch only; split_list and MbppDataLoader use Python random.shuffle without random.seed, so the declared 20/80 split is not reproducible across processes.",
+      "evidence": ["MAR/Utils/utils.py:94-99", "MAR/Utils/utils.py:171-180", "Experiments/run_gsm8k.py:65-68", "Experiments/run_humaneval.py:67-69", "Datasets/mbpp_dataset.py:27-29"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "mbpp-remote-dataset-unpinned",
+      "severity": "blocking",
+      "summary": "MBPP is loaded through pandas from hf://datasets/google-research-datasets/mbpp without a pinned dataset revision, file digest or record count.",
+      "evidence": ["Datasets/mbpp_dataset.py:5-9"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "math-paper-subset-not-reproducible",
+      "severity": "blocking",
+      "summary": "The paper evaluates a stratified 519-problem MATH subset; sample_MATH.py uses hard-coded absolute paths, unsorted directory order and 10 percent per level, and emits no subset ID manifest, so the exact paper subset cannot be reconstructed from the repository.",
+      "evidence": ["reproduction-spec.json:84", "Datasets/sample_MATH.py:8-11", "Datasets/sample_MATH.py:49"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "mmlu-test-slice-implied",
+      "severity": "blocking",
+      "summary": "run_mmlu.py caps training at 40 batches and then skips the first train_batch batches of the test split, so the evaluated test slice depends implicitly on the dev split size and is not stated as a dataset lock.",
+      "evidence": ["Experiments/run_mmlu.py:93", "Experiments/run_mmlu.py:147-150"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "provider-env-contract-drift",
+      "severity": "blocking",
+      "summary": "template.env and the README document URL and KEY, but gpt_chat.py also reads BASE_URL, API_KEY, DS_URL, DS_KEY, GROQ_API_KEY, OPENROUTER_BASE_URL and OPENROUTER_API_KEY; provider selection and required variables are not documented.",
+      "evidence": ["template.env:1-2", "README.md:41-47", "MAR/LLM/gpt_chat.py:16-17", "MAR/LLM/gpt_chat.py:106-107", "MAR/LLM/gpt_chat.py:268", "MAR/LLM/gpt_chat.py:330-331"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "deepseek-client-selection-case",
+      "severity": "documented-blocker",
+      "summary": "LLMRegistry.get selects the Deepseek client only when the model name contains the case-sensitive substring DeepSeek-V3; source profile deepseek-chat and paper name deepseek-v3 both fall through to ALLChat, so the DS_URL/DS_KEY path is effectively unreachable for the recorded pools.",
+      "evidence": ["MAR/LLM/llm_registry.py:19-25", "MAR/LLM/llm_profile.py:30", "reproduction-spec.json:55"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "model-revisions-regions-unresolved",
+      "severity": "blocking",
+      "summary": "The paper pool and source pool are recorded separately, but no provider, provider model revision or region is frozen for any model.",
+      "evidence": ["model-pools.json:1-140"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "minimum-python-version-undeclared",
+      "severity": "blocking",
+      "summary": "No Python version is declared upstream; PEP 604 syntax such as str | None in agent.py implies a 3.10 minimum, but no exact interpreter version or artifact digest is locked.",
+      "evidence": ["MAR/Agent/agent.py:17"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "tokenizer-encoding-mismatch",
+      "severity": "review",
+      "summary": "price.py always tokenizes with the gpt-4o encoding regardless of the model being costed, so token counts and cost accounting are not model-specific.",
+      "evidence": ["MAR/LLM/price.py:7-9"],
+      "requiredBeforeExecution": false,
+      "status": "open"
+    },
+    {
+      "id": "dataset-digests-missing",
+      "severity": "blocking",
+      "summary": "None of the five benchmark datasets has a frozen byte size, SHA-256 or record count at T51; execution remains blocked until each dataset is downloaded in an isolated environment and locked.",
+      "evidence": ["dataset-lock.json:1-150"],
+      "requiredBeforeExecution": true,
+      "status": "open"
+    },
+    {
+      "id": "duplicate-gsm8k-module",
+      "severity": "review",
+      "summary": "Two GSM8K processing modules exist (Datasets/gsm8k_dataset.py and Datasets/gsm8k/gsm8k_dataset.py); run_gsm8k.py imports the top-level module, so the nested copy is ambiguous dead code for this entrypoint.",
+      "evidence": ["Datasets/gsm8k_dataset.py:1", "Datasets/gsm8k/gsm8k_dataset.py:1", "Experiments/run_gsm8k.py:22"],
+      "requiredBeforeExecution": false,
+      "status": "open"
+    }
+  ]
+}
