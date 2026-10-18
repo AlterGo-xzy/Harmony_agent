@@ -93,6 +93,24 @@ export {
   WorkflowRegistry
 } from './src/main/ets/registry/Registries';
 export {
+  ARTIFACT_REGISTRY_SCHEMA_VERSION,
+  ArtifactRegistryWriteCode,
+  ArtifactRegistryWriteResult,
+  ArtifactRuntimeEnvironment,
+  ArtifactCompatibilityResult,
+  ArtifactRegistryEntry,
+  ArtifactRegistryChannel,
+  ArtifactRegistrySnapshot,
+  ArtifactRegistrySnapshotEnvelope,
+  ArtifactPackageVerifierPort,
+  ArtifactRegistryDigestPort,
+  ArtifactRegistryPersistencePort
+} from './src/main/ets/artifact/ArtifactRegistryTypes';
+export { ArtifactRuntimeCompatibilityEvaluator } from
+  './src/main/ets/artifact/ArtifactRuntimeCompatibility';
+export { ArtifactRegistryOpenResult, ArtifactRegistry } from
+  './src/main/ets/artifact/ArtifactRegistry';
+export {
   DeterministicRouterConfig,
   LearnedRouterPort,
   RouterResult,

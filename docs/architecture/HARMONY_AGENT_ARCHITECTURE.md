@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T45 已完成各自记录的任务门；S6 已关闭；S7 策略供应链进行中**
+状态：**In progress / T01–T46 已完成各自记录的任务门；S6 已关闭；S7 策略供应链进行中**
 日期：2026-10-18
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
@@ -44,7 +44,7 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 ### 2.1 当前仓库中已经存在的事实
 
 - `agent_contracts/` 是独立的 `@harmony_agent/agent-contracts` HAR，已经定义版本化 Task、Workflow、Router、Tool、Policy、Trace 和 Artifact 契约，并通过 host 侧契约测试与 Release HAR 构建。
-- T44 已把 Artifact 契约收紧为可审计的 checkpoint/policy/workflow manifest：完整 source commit、许可证、数据 lineage、模型/Provider 快照、runtime compatibility、通用 payload digest、三类独立结果、审批、签名和 rollback target 均有显式字段与 fail-closed 校验。T45 又以无第三方依赖的 canonical JSON package 和 Ed25519 完成 payload/manifest/signature/key-ID 验证及篡改拒绝；生产密钥治理、实际 runtime compatibility 和 durable Registry 仍由后续 S7 完成。
+- T44 已把 Artifact 契约收紧为可审计的 checkpoint/policy/workflow manifest：完整 source commit、许可证、数据 lineage、模型/Provider 快照、runtime compatibility、通用 payload digest、三类独立结果、审批、签名和 rollback target 均有显式字段与 fail-closed 校验。T45 又以无第三方依赖的 canonical JSON package 和 Ed25519 完成 payload/manifest/signature/key-ID 验证及篡改拒绝。T46 增加 storage-neutral Artifact Registry、实际 Runtime/API/feature schema compatibility evaluator、验签端口、durable CAS adapter，以及按 digest 的 active/canary 选择与回滚；生产密钥治理和 shadow/canary 执行演练仍由后续 S7 完成。
 - `agent_core/` 是独立的 `@harmony_agent/agent-core` HAR，已经实现语义 DAG 校验、确定性状态机与调度、deadline/取消传播、operation journal、有界恢复决策及 `UNKNOWN_OUTCOME` 对账边界，并通过 host 侧内核测试与 Release HAR 构建。
 - `agent_core/` 已增加 task、step、provider 三层 Budget Ledger；预留、结算、释放和未知费用保留均为同步确定性状态转换。
 - `agent_runtime/` 已建立 `@harmony_agent/agent-runtime` HAR，并实现 M02 的确定性资格过滤、Policy Gateway、内部 grant 签发/校验/撤回和 secret 脱敏。
@@ -61,13 +61,13 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 - `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 的 signed `LocalAIGatewayFacadeDevice` 又把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环，并在 API 26 实际通过 1/1。T43 继续通过 signed 主/ohosTest HAP 完成 12×2 真实 Provider/system Bench；各次验收后 bundle、反向映射、bridge、fixture 和网关均已清理。
 - `agent_connectors/` 0.8.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、具体 production composition 与 T37–T40 协作接线/逐角色规划的本地主机门。composition 保留宿主显式注入的 `CollaborationPlanSelectorPort`，也保留旧 `CollaborationSelectorPort` 的 Strong Single/兼容路径；有效计划会为每个角色产生独立 Provider request/activation trace，并顺序修订 typed workflow，模式标签式 Multi、计划外角色和累计预算越界会在 Provider 前失败。外部仍只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 55/55；Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`。T36 的单任务真实 Provider Planner → Facade → MCP signed API 26 证据继续有效；T40 没有运行真实 Provider 或设备，也不等于 S6 的十二类任务双 arm system Bench。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。Runtime 0.14.0 与 Storage 0.8.0 已接通版本化协作计划、异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition；connector 0.8.0 已实现按计划逐角色 Provider 规划与结果修订。T43 已在真实设备完成 12×2 双 arm Provider/system Bench，形成 19/24 质量通过、38 次请求和 US$0.031083 的基线。宿主生产 credential store、真实取消/timeout、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 和离线 Router 工程仍未完成。产品 Entry HAP 属于外部调用方范围。
+- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。Runtime 0.14.0 与 Storage 0.8.0 已接通版本化协作计划、异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition；T46 又完成 Artifact Registry 的 compatibility/verifier/durable CAS/rollback 数据面。connector 0.8.0 已实现按计划逐角色 Provider 规划与结果修订。T43 已在真实设备完成 12×2 双 arm Provider/system Bench，形成 19/24 质量通过、38 次请求和 US$0.031083 的基线。宿主生产 credential store、真实取消/timeout、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、生产 Artifact key/verifier 治理、真实 learned Router artifact、离线 Router 工程和 T47 执行演练仍未完成。产品 Entry HAP 属于外部调用方范围。
 - 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
 
 - `agent_connectors` 的 M06/M07 本地门与 T29 M09-B MCP Facade composition 门已由 T30 的 API 26 `McpFacadeDevice` 1/1 补齐受控只读 S2 设备闭环；T36 又以 signed 测试包和真实 Provider Planner 补齐一次生产 composition → 唯一 Facade → MCP 的设备闭环。发布签名、宿主生产 credential store、真实取消/timeout 及第三方远端 MCP 兼容性仍待各自验收。`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
-- 宿主生产 credential store 接线、learned Router artifact、持久化 Registry 的生产接线及 Artifact Registry。
+- 宿主生产 credential store、Artifact key/verifier 治理、learned Router artifact，以及 Artifact Registry 到策略执行路径的 T47 接线。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。
 

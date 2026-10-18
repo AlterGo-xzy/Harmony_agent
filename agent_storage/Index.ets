@@ -94,3 +94,7 @@ export {
 } from './src/main/ets/integration/RuntimeExecutionRecoveryBridge';
 export { createRdbRecoveredAgentRuntime } from
   './src/main/ets/integration/RdbRuntimeRecoveryComposition';
+export {
+  ARTIFACT_REGISTRY_RECORD_ID,
+  DurableArtifactRegistryAdapter
+} from './src/main/ets/integration/DurableArtifactRegistryAdapter';

@@ -1,0 +1,50 @@
+{
+  "task": "T46",
+  "module": "M11-C Runtime/Storage Artifact Registry",
+  "branch": "codex/module-artifact-registry-t46",
+  "baseCommit": "752e05f6d46b3c33632a278c387a820ffc89a9e9",
+  "result": "passed",
+  "runtimeTests": "78/78",
+  "storageTests": "50/50",
+  "runtimeHar": {
+    "file": "agent_runtime-0.14.0-release.har",
+    "bytes": 111694,
+    "sha256": "2D66BED85D90F862712DD1F13C0A61306727867441DCBFD056E77797687EB587",
+    "debug": false,
+    "compatibleSdkVersion": 26
+  },
+  "storageHar": {
+    "file": "agent_storage-0.8.0-release.har",
+    "bytes": 72245,
+    "sha256": "C89E03FB0082B7F04FF3E0B560D1F69DCC321208D31F276D40C3F06ABA5A2A1A",
+    "debug": false,
+    "compatibleSdkVersion": 26
+  },
+  "verified": [
+    "strict runtime API and feature-schema compatibility",
+    "host verifier gate for signed release states",
+    "disabled shadow canary active and digest rollback transitions",
+    "single canary and active selection per artifact kind",
+    "durable compare-and-set before in-memory publication",
+    "reopen re-verification and malformed snapshot rejection",
+    "storage record and envelope metadata binding",
+    "corrupt current record cannot be overwritten",
+    "competing durable session single winner",
+    "defensive copies and artifact identity immutability"
+  ],
+  "pending": [
+    "production key provisioning rotation revocation and verifier implementation",
+    "T47 shadow canary rollback execution exercise",
+    "learned Router artifact quality and production selection wiring",
+    "no HAP build signing install or device run was performed"
+  ],
+  "rootBuildProfileSha256": "67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63",
+  "preservedUserDiffs": [
+    "agent_connectors/BuildProfile.ets",
+    "agent_connectors/oh-package-lock.json5",
+    "agent_runtime/BuildProfile.ets",
+    "agent_storage/oh-package-lock.json5",
+    "native_tools/oh-package-lock.json5",
+    "test_host/oh-package-lock.json5"
+  ]
+}

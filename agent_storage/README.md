@@ -47,5 +47,11 @@ Router、Planner 和外部宿主不能借此签发授权；Policy Gateway grant 
 
 公共存储类型和 backend 是 composition ports，不是第二条 Agent 业务控制入口。外部产品调用任务能力时仍只能使用 `AgentRuntimeFacade`。
 
+## M11：Artifact Registry 持久化适配
+
+T46 新增 `DurableArtifactRegistryAdapter`。它把 Runtime 拥有的完整 Artifact Registry envelope 保存为现有 `DurableExecutionRecoveryStore` 中固定 ID `artifact-registry:m11` 的 Registry record，并同时核对 record version、record digest 与 envelope metadata。Artifact revision 使用 Registry record version 做局部 CAS，底层 durable store 再以全局 snapshot revision CAS 发布；任一竞争失败都不会更新 Runtime 内存选择指针，调用方必须重开 durable session 后重试。
+
+该适配器不解释 manifest、不验签、不决定兼容性或路由，也不提供任务提交、控制、授权和执行方法。Runtime 在首次读取和每次发布时负责 manifest、验签 receipt、compatibility、生命周期和 rollback target 校验；宿主仍负责 RDB 打开、加密、备份、迁移和关闭。接线与信任边界见 [`AGENT_ARTIFACT_REGISTRY_INTEGRATION.md`](../docs/AGENT_ARTIFACT_REGISTRY_INTEGRATION.md)。
+
 RDB 设备验收用例、构建命令、运行门和清理要求见 [`docs/AGENT_STORAGE_DEVICE_ACCEPTANCE.md`](../docs/AGENT_STORAGE_DEVICE_ACCEPTANCE.md)。
 
