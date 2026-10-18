@@ -2,7 +2,7 @@
 
 2026-10-03 已统一命名并保留原有任务划分。更名前的设备证据不作为当前命名版本复验结果；命名与兼容边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新完成门以 [PROJECT_STATUS.md](../../PROJECT_STATUS.md) 为准。
 
-状态：**In progress / T01–T47 当前任务门已通过；S6、S7 已关闭**
+状态：**In progress / T01–T48 当前任务门已通过；S6、S7 已关闭，S8 已启动**
 日期：2026-10-18
 上位架构：[HARMONY_AGENT_ARCHITECTURE.md](HARMONY_AGENT_ARCHITECTURE.md)
 
@@ -499,6 +499,8 @@ fake 必须明确标记为测试实现，不伪装成真实系统能力；`DemoS
 验收：decision agreement 达到预注册门槛；Router 额外时延和资源可接受；相同模型池/价格快照下出现稳定 Cost@Quality 改善。
 
 MTRouter 与 MasRouter 先分别验收再组合：Collaboration Router 先在总预算内决定 single/multi、角色和激活数，Model Router 再为每个已批准角色从合格候选中选择模型。路由一致率只评价策略迁移，不替代授权、预算、重复写入和恢复等安全不变量。
+
+当前实施状态：T48/M12-A 已把官方仓库固定到 commit `ee9e4573a128c3e54aa8c83800318bfb783c4dfe` 和 tree `6911bcf33bfdd30d6f414c09b5f5d14c5deeb913`，并固定 source archive、MIT license、关键上游文件与 arXiv `2604.23530v1` 的 SHA-256。复现 spec 预注册论文三次运行、训练参数、六模型池、ScienceWorld/HLE 划分、预算/horizon、四项目标和 Go/No-Go 容差；离线 checker 报告可重复，fail-closed 自测 5/5。T48 没有安装依赖、读取凭据、调用 Provider 或运行 benchmark；T49 才能在另行授权后建立隔离原环境并执行上游 smoke/reproduction。decision fixture、checkpoint 导出、ArkTS/bridge parity、shadow 和 harmony_agent Bench 仍属后续 M12 门，S8 尚未关闭。
 
 ### M13：MasRouter
 

@@ -1,0 +1,8 @@
+git ls-remote https://github.com/ZhangYiqun018/MTRouter.git refs/heads/main
+git ls-remote --tags https://github.com/ZhangYiqun018/MTRouter.git
+read GitHub commit/tree metadata and pinned raw files without saving credentials
+hash commit-pinned source archive and arXiv 2604.23530v1 PDF in memory
+node offline/paper_repro/mtrouter/check-mtrouter-repro.mjs --write
+node offline/paper_repro/mtrouter/check-mtrouter-repro.mjs --check
+node offline/paper_repro/mtrouter/test-mtrouter-preflight.mjs
+git diff --check

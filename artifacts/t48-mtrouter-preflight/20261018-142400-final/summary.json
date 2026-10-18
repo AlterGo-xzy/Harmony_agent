@@ -1,0 +1,30 @@
+{
+  "task": "T48",
+  "milestone": "M12-A",
+  "branch": "codex/module-mtrouter-t48",
+  "baseCommit": "644192d69caff879721a5e313631756bf92ecf3c",
+  "status": "source-frozen-reproduction-not-run",
+  "upstream": {
+    "repository": "https://github.com/ZhangYiqun018/MTRouter",
+    "commit": "ee9e4573a128c3e54aa8c83800318bfb783c4dfe",
+    "tree": "6911bcf33bfdd30d6f414c09b5f5d14c5deeb913",
+    "license": "MIT",
+    "paper": "2604.23530v1"
+  },
+  "verification": {
+    "deterministicReportSha256": "20c028c94817847255c82ff19d8e42c6fdf8df4895580a865e8d95cb4d8fd7d5",
+    "testsRun": 5,
+    "testsPass": 5,
+    "testsFailure": 0,
+    "testsError": 0
+  },
+  "execution": {
+    "dependenciesInstalled": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "nextGate": "T49 isolated upstream environment and smoke/reproduction",
+  "rootBuildProfileSha256": "67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63"
+}

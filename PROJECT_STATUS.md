@@ -2,7 +2,7 @@
 
 更新时间：2026-10-18（Asia/Shanghai）
 
-## Agent Runtime T01–T47 与 M11 策略供应链（S7 已关闭；T26/T28/T36/T43 已完成签名 API 26 验收）
+## Agent Runtime T01–T48、M11 策略供应链与 M12 Model Routing（S7 已关闭、S8 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -120,6 +120,8 @@ T46（M11-C Runtime/Storage Artifact Registry）本地主机与 HAR 门已完成
 
 T47（M11-D Artifact 安全发布与回滚演练）本地主机与 HAR 门已完成：`agent_runtime` 新增 storage-neutral `ArtifactPolicyReleaseRunner`、版本化发布 DTO/ports 与 `DeterministicArtifactCanaryAssignment`。Runner 每次先取得并校验 deterministic baseline；shadow 只记录数量有界且不含异常文本的观察，永不参与选择；canary 仅在稳定 0–9999 bucket 命中 basis-point 阈值时执行，未命中或 canary 异常/越界时回退当前 active，active 异常/越界、Registry 抛错或伪造视图时回退 baseline。请求、Registry entry 与 decision 均防御性复制，`0 bp` 不调用 assignment port，`10000 bp` 全量命中。真实 T46 Registry 集成用例证明 active B 选中后，以 durable digest rollback B→A，同一 runner 随即恢复选择 A。Runtime 主机 Hypium 实测 89/89；Release HAR 为 118,685 bytes、SHA-256 `B377C9EF22FAB96EC5993F662DFF83CD46293A30A49C529AC7BFCE079C36840A`，包内版本 0.14.0、`debug=false`、compatible SDK 26，公共声明已包含 release runner/types/Registry。证据位于 `artifacts/t47-artifact-release/20261018-141826-final/`。T47 不构建 HAP、不使用 signingConfig、不签名、不安装或运行设备，也不证明 learned Router 的质量收益；生产密钥治理、policy loader、策略 timeout/cancel 以及 M12–M14 具体 Router 接线仍属于宿主或后续模块。Runner 不提交、控制、授权或推进任务，唯一任务控制入口仍为 `AgentRuntimeFacade`。S7 至此关闭。
 
+T48（M12-A MTRouter 上游冻结与复现准入）本地离线门已完成：新增 `offline/paper_repro/mtrouter/`，把官方仓库固定到 commit `ee9e4573a128c3e54aa8c83800318bfb783c4dfe`、tree `6911bcf33bfdd30d6f414c09b5f5d14c5deeb913`，并记录 source archive、MIT license、`pyproject.toml`、README 与 arXiv `2604.23530v1` PDF 的字节数和 SHA-256。复现 spec 按论文预注册三次运行、Qwen3-Embedding-0.6B/1024 维 history encoder、8192 token history、训练参数、六模型池、ScienceWorld/HLE 划分、US$2 episode 预算、50/30 turn 上限与四项目标；性能均值容差固定为论文报告的一个标准差，成本相对容差为 5%，模型/数据/价格快照漂移必须标记不可比较。纯 Node 离线 checker 两次生成同一报告 SHA-256 `20c028c94817847255c82ff19d8e42c6fdf8df4895580a865e8d95cb4d8fd7d5`，并以 5/5 自测拒绝 commit、模型价格、论文目标和执行状态漂移。证据位于 `artifacts/t48-mtrouter-preflight/20261018-142400-final/`。本门没有安装 Python/Java 或研究依赖，没有读取 Provider/Serper 凭据，没有下载模型、发送请求、运行官方测试或 benchmark，也没有生成 checkpoint、决策 fixture、ArkTS bridge 或 Router 质量结论；这些属于 T49 及后续独立门。在线 Runtime、`LearnedRouterPort`、M04 hard eligibility、预算/Policy Gateway 与唯一 `AgentRuntimeFacade` 均未修改。S8 已启动但尚未关闭。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -134,7 +136,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T47 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭。T39 已把模式选择收紧为版本化、可校验、可恢复的角色计划；T40 把计划接入按角色独立 Provider 请求和有界 workflow 修订；T41 补齐 schema 2 证据收集与完整封存；T42 在真实执行前加入 Profile/价格/授权及请求、Token、金额封顶；T43 以 38 次真实请求完成 12×2 设备批次并导出质量、token、成本、延迟、工具、Agent、恢复与 Router 指标；T44 固定 artifact provenance、三类独立结果、签名元数据、生命周期和 digest 回滚契约；T45 生成可独立复验且不持有私钥的 canonical 签名包；T46 以实际 Runtime/API/feature schema 检查、宿主验签端口和 durable CAS 保存 canary/active/rollback 选择；T47 以 baseline-first runner 完成 shadow 非选择、deterministic canary、active/baseline 回退和 durable rollback 后选择恢复。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、真实取消/timeout、第三方远端 MCP 兼容性、生产密钥治理、policy loader、learned Router artifact 及 M12–M14 接线；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T48 已关闭各自记录的任务门，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭，S8 Model Routing 已通过来源冻结与复现预注册门。T39–T43 固定协作计划、逐角色 Provider、真实证据封存/准入并完成 12×2 设备批次；T44–T47 完成 artifact provenance、签名包、durable Registry 和 baseline-first 安全发布/回滚；T48 固定 MTRouter 官方 commit、论文、依赖边界、实验协议和 Go/No-Go 容差，但没有执行原环境复现。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、真实取消/timeout、第三方远端 MCP 兼容性、生产密钥治理、policy loader、MTRouter 原环境安装/复现、decision fixture、checkpoint/parity/shadow/Bench，以及 M13–M14 learned Router；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 
