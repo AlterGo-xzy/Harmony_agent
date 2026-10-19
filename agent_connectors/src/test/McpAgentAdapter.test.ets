@@ -1,3 +1,4 @@
+import { CollaborationPolicyPreparationPort } from '@harmony_agent/agent-runtime';
 import { describe, expect, it } from '@ohos/hypium';
 import {
   AgentErrorClass,
@@ -552,6 +553,10 @@ class CompositionPlanner implements SemanticPlannerPort {
     return this.ready(request);
   }
 
+  interrupt(taskId: string): boolean {
+    return false;
+  }
+
   private ready(request: PlanningRequest): PlanningResult {
     const graph: WorkflowGraph = new WorkflowGraph();
     graph.workflowId = 'workflow:' + request.envelope.taskId;
@@ -589,7 +594,14 @@ class FixedMultiCollaborationSelector implements CollaborationSelectorPort {
   }
 }
 
-class FixedMultiCollaborationPlanSelector implements CollaborationPlanSelectorPort {
+class FixedMultiCollaborationPlanSelector implements CollaborationPlanSelectorPort, CollaborationPolicyPreparationPort {
+  preparations: number = 0;
+  async prepare(): Promise<void> { this.preparations++; }
+  selectBaselinePlan(frame: TaskFrame, budget: number): CollaborationPlan {
+    const value: CollaborationPlan = this.selectPlan(frame, budget);
+    value.mode = CollaborationMode.SINGLE; value.assignments = value.assignments.slice(0, 1);
+    return value;
+  }
   calls: number = 0;
 
   selectPlan(frame: TaskFrame, _maxAgentActivations: number): CollaborationPlan {
@@ -1239,6 +1251,7 @@ export default function mcpAgentAdapterTest(): void {
         localGatewayCompositionPorts(registry, fixture, credentials, client);
       const collaboration: FixedMultiCollaborationPlanSelector = new FixedMultiCollaborationPlanSelector();
       ports.runtimePorts.collaborationPlan = collaboration;
+      ports.runtimePorts.collaborationPreparation = collaboration;
       const runtime: AgentRuntimeFacade = await createLocalAIGatewayMcpProductionAgentRuntime(
         localGatewayCompositionConfig(), ports, fixture.adapter, registry);
 
@@ -1249,6 +1262,7 @@ export default function mcpAgentAdapterTest(): void {
       expect(collaboration.calls).assertEqual(1);
       expect(credentials.calls).assertEqual(2);
       expect(client.calls).assertEqual(2);
+      expect(collaboration.preparations).assertEqual(1);
       expect(client.lastRequest?.body.includes('collaborationMode=multi')).assertTrue();
       expect(client.lastRequest?.body.includes('activeRole')).assertTrue();
       expect(client.lastRequest?.body.includes('verifier')).assertTrue();

@@ -133,6 +133,10 @@ class BridgePlanner implements SemanticPlannerPort {
   async replan(request: PlanningRequest): Promise<PlanningResult> {
     return bridgePlan(request);
   }
+
+  interrupt(taskId: string): boolean {
+    return false;
+  }
 }
 
 class BridgeToolPreparer implements ToolInvocationPreparerPort {

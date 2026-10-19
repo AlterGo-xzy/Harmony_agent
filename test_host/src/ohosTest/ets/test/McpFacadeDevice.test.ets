@@ -134,6 +134,10 @@ class DevicePlanner implements SemanticPlannerPort {
     return this.ready(request);
   }
 
+  interrupt(taskId: string): boolean {
+    return false;
+  }
+
   private ready(request: PlanningRequest): PlanningResult {
     const result: PlanningResult = new PlanningResult();
     if (request.collaborationMode !== CollaborationMode.SINGLE ||

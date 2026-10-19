@@ -118,7 +118,7 @@ Cross-cutting: T63 -> T64 -> T65
 
 ### T53：M13-D Collaboration policy 适配骨架与 deterministic fallback
 
-状态：**READY**，依赖 T52 验收通过
+状态：**IMPLEMENTED / 待人工审核**。2026-10-19 本地主机门与 Release HAR 通过；详见 `docs/architecture/T53-协作策略接入与验收.md`。依赖 T52 审核修复（同工作区未提交）。
 
 目标：沿用现有 Runtime 和 M11 release runner，以 fake/research-only artifact 验证接线和失败回退，不启用 learned policy。
 
@@ -154,13 +154,15 @@ Cross-cutting: T63 -> T64 -> T65
 
 ### T56：M14-A HYSET 上游来源冻结与复现准入
 
-状态：**READY**
+状态：**IMPLEMENTED / 待人工审核**。2026-10-19 离线来源门完成，报告与边界见 `offline/paper_repro/hyset/README.md`。
 
 目标：按 T48/T50 的证据模式冻结官方仓库、论文、license、commit/tree、关键文件、checkpoint/encoder 身份、依赖声明、数据和论文目标。
 
 实施范围：只读获取和短期检查上游；主仓库只保留 lock/spec/checker/report，不 vendoring 上游仓库、checkpoint 或 encoder。服务器原版复现与 harmony_agent adaptation 必须分开。
 
 最低验证：确定性报告、来源漂移/执行声明/架构边界的少量关键自测；不安装依赖，不下载 checkpoint，不跑模型。
+
+完成记录：固定官方 commit/tree、MIT/Apache-2.0 许可证边界、arXiv v2、26 个关键文件、13,860-tool corpus、六个 100-query split、论文参数与结果表。checkpoint、BERT/Qwen encoder、ToolLLaMA/DFSDT 的权威 revision/digest、raw ToolBench/UltraTool、reward/trajectory 和 judge snapshot 仍 unresolved；T56 不把这些缺口伪装为可执行复现。`.gitmodules` 声明与固定提交的 tracked-tree 存储差异已显式记录。确定性报告和 11/11 fail-closed 自测见 `offline/paper_repro/hyset/`。T57 可继续；T58 仍需身份补齐和单独授权。
 
 ### T57：M14-B Tool-Set handoff 合同与规模基线 harness
 
@@ -222,11 +224,13 @@ Cross-cutting: T63 -> T64 -> T65
 
 ### T63：M11-F 具体 policy loader 与取消资源释放
 
-状态：**READY**（fixture）/ **EXTERNAL**（生产实现）
+状态：**IMPLEMENTED / 待人工审核**（fixture）/ **EXTERNAL**（生产实现）
 
 目标：补齐 M11-E 留下的具体资源释放证据。
 
 主仓库可以实现 storage-neutral loader port、进程/worker/IPC/网络 fixture 和 fail-closed 测试，证明 timeout/cancel 信号会停止底层工作、释放订阅并忽略迟到结果。生产密钥信任、撤销、轮换、私钥保管和实际推理服务生命周期由宿主负责；仓库只提供接口、验证器、fake 和集成说明。
+
+2026-10-19 实现记录：新增 `ArtifactPolicyResourceOperationPort`、baseline/released loader port 与 managed adapter。资源 operation 在 timeout/cancel 时立即收到 `cancel()` 和 `close()`，成功时只 `close()`；fixture 分别覆盖 process、worker、IPC、network 四类底层以及 active 迟到结果隔离。Runtime Hypium 127/127、Release HAR 构建通过。该结果不证明生产 loader、密钥、模型、IPC 或网络服务已经接入。
 
 最低验证：baseline/shadow/canary/active 四路径的 timeout/cancel/resource release；无明文密钥；Runtime 定向测试和 HAR。
 

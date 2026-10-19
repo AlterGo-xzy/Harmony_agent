@@ -1,5 +1,6 @@
 import {
   AgentRuntimeFacade,
+  PlanningMemoryContextPort,
   ProductionAgentRuntimeConfig,
   ProductionAgentRuntimePorts,
   ToolRegistry
@@ -62,6 +63,7 @@ export class LocalAIGatewayMcpRuntimePorts {
   timer?: ProviderTimerPort;
   httpClient?: LocalAIGatewayHttpClientPort;
   plannerObserver?: ProviderSemanticPlannerObserverPort;
+  memoryContext?: PlanningMemoryContextPort;
 }
 
 class LocalAIGatewayProviderAssembly {
@@ -111,12 +113,8 @@ export async function createLocalAIGatewayMcpProductionAgentRuntime(config: Loca
   ports: LocalAIGatewayMcpRuntimePorts, adapter: McpAgentAdapter,
   registry: ToolRegistry): Promise<AgentRuntimeFacade> {
   const assembly: LocalAIGatewayProviderAssembly = assembleProvider(config, ports);
-  if (ports.plannerObserver === undefined) {
-    return await createProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts, adapter, registry,
-      assembly.registered, assembly.provider, config.plannerConfig);
-  }
   return await createProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts, adapter, registry,
-    assembly.registered, assembly.provider, config.plannerConfig, ports.plannerObserver);
+    assembly.registered, assembly.provider, config.plannerConfig, ports.plannerObserver, ports.memoryContext);
 }
 
 /** Restores durable tasks through the same concrete Local AI Gateway Provider chain. */
@@ -124,10 +122,7 @@ export async function createRecoveredLocalAIGatewayMcpProductionAgentRuntime(
   config: LocalAIGatewayMcpRuntimeConfig, ports: LocalAIGatewayMcpRuntimePorts, adapter: McpAgentAdapter,
   registry: ToolRegistry): Promise<AgentRuntimeFacade> {
   const assembly: LocalAIGatewayProviderAssembly = assembleProvider(config, ports);
-  if (ports.plannerObserver === undefined) {
-    return await createRecoveredProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts,
-      adapter, registry, assembly.registered, assembly.provider, config.plannerConfig);
-  }
   return await createRecoveredProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts,
-    adapter, registry, assembly.registered, assembly.provider, config.plannerConfig, ports.plannerObserver);
+    adapter, registry, assembly.registered, assembly.provider, config.plannerConfig,
+    ports.plannerObserver, ports.memoryContext);
 }

@@ -47,6 +47,14 @@ Router、Planner 和外部宿主不能借此签发授权；Policy Gateway grant 
 
 公共存储类型和 backend 是 composition ports，不是第二条 Agent 业务控制入口。外部产品调用任务能力时仍只能使用 `AgentRuntimeFacade`。
 
+### Planner 记忆上下文适配
+
+`RuntimeMemoryContextAdapter` 把 `RebuildableMemoryIndexPort` 投影为 Runtime 的 `PlanningMemoryContextPort`。查询始终以任务的 `userId` 作为 owner，固定拒绝敏感记忆与原始个人轨迹，并在返回前应用条目数和字符数预算。它不写入记忆、不访问网络、不调用模型，也不负责数据库加密。Provider Planner 接线、关闭顺序和宿主配置见 [`AGENT_MEMORY_CONTEXT_INTEGRATION.md`](../docs/AGENT_MEMORY_CONTEXT_INTEGRATION.md)。
+
+### 加密 RDB 配置
+
+`createEncryptedRdbStoreConfigs` 为执行恢复库和长期记忆库生成 `encrypt: true`、`persist: true` 的 API 26 `StoreConfig`，并拒绝同名或不安全文件名。它不接收原始密钥，也不替宿主打开数据库；接线和设备验收边界见 [`AGENT_ENCRYPTED_RDB_CONFIGURATION.md`](../docs/AGENT_ENCRYPTED_RDB_CONFIGURATION.md)。
+
 ## M11：Artifact Registry 持久化适配
 
 T46 新增 `DurableArtifactRegistryAdapter`。它把 Runtime 拥有的完整 Artifact Registry envelope 保存为现有 `DurableExecutionRecoveryStore` 中固定 ID `artifact-registry:m11` 的 Registry record，并同时核对 record version、record digest 与 envelope metadata。Artifact revision 使用 Registry record version 做局部 CAS，底层 durable store 再以全局 snapshot revision CAS 发布；任一竞争失败都不会更新 Runtime 内存选择指针，调用方必须重开 durable session 后重试。

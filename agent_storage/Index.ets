@@ -98,3 +98,11 @@ export {
   ARTIFACT_REGISTRY_RECORD_ID,
   DurableArtifactRegistryAdapter
 } from './src/main/ets/integration/DurableArtifactRegistryAdapter';
+export { RuntimeMemoryContextAdapter } from
+  './src/main/ets/integration/RuntimeMemoryContextAdapter';
+export {
+  ENCRYPTED_RDB_CONFIGURATION_VERSION,
+  EncryptedRdbConfigurationRequest,
+  EncryptedRdbStoreConfigs,
+  createEncryptedRdbStoreConfigs
+} from './src/main/ets/integration/EncryptedRdbConfiguration';

@@ -6,7 +6,7 @@
 
 宿主或后续 M09-B composition root 负责提供：
 
-- `ProviderCredentialPort`：按 `providerId + credentialScope` 从受保护存储解析短期凭据；
+- `ProviderCredentialPort`：按 `providerId + credentialScope` 从受保护存储解析短期凭据；产品宿主可使用本 HAR 提供的 `AssetStoreProviderCredentialPort`，或注入满足同一契约的实现；
 - `ModelTransportPort`、`EmbeddingTransportPort`、`RemoteApiTransportPort`：实现具体 Provider 的 HTTP/SDK 映射和底层网络取消；
 - `ProviderTimerPort`：生产环境可使用 `SystemProviderTimer`，测试可注入确定性计时器；
 - `ProviderGrantVerifierPort`：把 Remote API `ToolInvocation` 重新绑定到 M02 已签发且仍有效的内部 grant；
@@ -24,6 +24,8 @@ Remote API 返回 `RemoteApiProviderResult`。其中 `outcome` 是通用 `ToolOu
 
 普通 invocation、workflow、stream chunk、结果和错误不包含认证 header。`ProviderOperationRunner` 只在输入和取消预检通过后调用 `ProviderCredentialPort`，再把凭据直接交给 transport。transport 不应把凭据复制到请求 DTO、日志、trace 或 provider receipt。
 
+API 26 产品宿主可使用 `AssetStoreProviderCredentialPort` 与 `HarmonyAssetSecretQueryPort`。绑定表显式固定 provider、scope、Asset alias 与 Bearer/`x-api-key` 二选一；重复绑定、共享 alias 和未知 scope fail-closed。适配器只查询，不写入、缓存或轮换 secret；查询异常与畸形 secret 统一脱敏，临时字节在组装调用期 header 后清零。具体写入、轮换与设备验收见 [Agent AssetStore credential store 接入](AGENT_ASSET_CREDENTIAL_STORE.md)。
+
 取消或 timeout 会调用当前 `ProviderOperationHandle.cancel()`，取消计时器并解除取消订阅。transport 的 `cancel()` 必须关闭或中止实际 HTTP/SDK 资源。对于已经启动且带副作用的 Remote API，网络中断、取消或 timeout 返回 `UNKNOWN_OUTCOME`；connector 不自动重试，后续由恢复与对账流程处理。
 
 ## Semantic Planner 适配
@@ -40,4 +42,6 @@ M07 的 15 项 contract test、Local AI Gateway transport 5 项、T33 Planner 6 
 
 T37 要求通用与 Local AI Gateway 工厂保留宿主显式提供的 `CollaborationSelectorPort`，仅在缺失时使用 Strong Single fallback。Multi 选择仍由 Runtime 激活预算约束；预算不足时在 planner、credential、Provider 网络和 MCP 前失败，且终态恢复检查点保持有效。该接线不提供角色拓扑或第二任务控制入口。
 
-这些主机门本身不证明真实 Provider Planner 请求、宿主生产凭据存储、真实取消/timeout、HAP/设备行为或 S6 system run。T36 已另行取得 signed API 26 的单任务系统证据：真实 Provider Planner 生成一个 Tool workflow，经唯一 `AgentRuntimeFacade` 等待显式授权后调用一次 MCP `echo` 并完成；该证据不替代生产凭据存储、真实取消/timeout、第三方远端 MCP 或 12×2 S6 Bench。
+这些历史主机门本身不证明真实 Provider Planner 请求、真实 Asset 预置/轮换、真实取消/timeout、HAP/设备行为或 S6 system run。T36 已另行取得 signed API 26 的单任务系统证据：真实 Provider Planner 生成一个 Tool workflow，经唯一 `AgentRuntimeFacade` 等待显式授权后调用一次 MCP `echo` 并完成；该证据不替代产品宿主凭据治理、真实取消/timeout、第三方远端 MCP 或 12×2 S6 Bench。
+
+P0-C 又新增 5 项 AssetStore credential resolver 主机用例，当前合并 Connector 套件为 65/65。Release HAR 为 67,249 bytes、SHA-256 `176DE3443BB09836D6B6B2433237127599E17441CD11F7061A1D72622C5F9F5E`。该门证明 API 26 类型、allowlist/脱敏/清零逻辑与打包，不替代真实 Asset 写入、轮换、锁屏策略或签名设备查询。

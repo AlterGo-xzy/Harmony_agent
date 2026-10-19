@@ -1,3 +1,4 @@
+import { CollaborationPolicyPreparationPort } from '../routing/CollaborationPreparation';
 import {
   ReconciliationReport,
   ToolOutcome
@@ -20,8 +21,8 @@ import {
   RuntimeRecoveryAuthority
 } from '../orchestration/RecoveryAuthorityTypes';
 
-/** 2.5 adds an optional versioned collaboration-plan selector. */
-export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.5';
+/** 2.7 adds task-bound interruption for every Semantic Planner invocation. */
+export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.7';
 
 export enum RuntimePersistenceCode {
   SAVED = 'SAVED',
@@ -94,6 +95,7 @@ export class ProductionAgentRuntimeConfig {
   policyVersion: string = '';
   grantTtlMs: number = 0;
   autoAdvanceLimit: number = 32;
+  collaborationPreparationTimeoutMs: number = 5000;
 }
 
 export class ProductionAgentRuntimePorts {
@@ -102,6 +104,7 @@ export class ProductionAgentRuntimePorts {
   planner?: SemanticPlannerPort;
   collaboration?: CollaborationSelectorPort;
   collaborationPlan?: CollaborationPlanSelectorPort;
+  collaborationPreparation?: CollaborationPolicyPreparationPort;
   toolPreparer?: ToolInvocationPreparerPort;
   adapterFactory?: ProductionRuntimeAdapterFactoryPort;
   persistence?: ProductionRuntimePersistencePort;

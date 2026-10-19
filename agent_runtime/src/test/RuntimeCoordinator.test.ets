@@ -1,3 +1,4 @@
+import { FakeCollaborationPreparation } from './FakeCollaborationPreparation';
 import { describe, expect, it } from '@ohos/hypium';
 import {
   AgentErrorClass,
@@ -37,6 +38,7 @@ import {
 import {
   CollaborationPlan,
   CollaborationRoleAssignment,
+  OrchestrationAcceptance,
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
@@ -176,6 +178,10 @@ class FixturePlanner implements SemanticPlannerPort {
     }
     return result;
   }
+
+  interrupt(taskId: string): boolean {
+    return false;
+  }
 }
 
 class FixtureToolPreparer implements ToolInvocationPreparerPort {
@@ -310,7 +316,7 @@ class FixtureRuntime {
   collaborationPlan?: FixtureCollaborationPlan;
   coordinator: RuntimeCoordinator;
 
-  constructor(kind: FixturePlanKind = FixturePlanKind.BASIC, withCollaborationPlan: boolean = false) {
+  constructor(kind: FixturePlanKind = FixturePlanKind.BASIC, withCollaborationPlan: boolean = false, preparation?: FakeCollaborationPreparation) {
     this.planner.kind = kind;
     const config: RuntimeCoordinatorConfig = new RuntimeCoordinatorConfig();
     config.policyVersion = 'policy-v1';
@@ -318,7 +324,7 @@ class FixtureRuntime {
     if (withCollaborationPlan) this.collaborationPlan = new FixtureCollaborationPlan();
     this.coordinator = new RuntimeCoordinator(config, this.clock, new FixtureIds(), this.planner,
       this.collaboration, this.toolPreparer, this.dispatcher, new NoopRuntimeStateObserver(),
-      this.collaborationPlan);
+      preparation === undefined ? this.collaborationPlan : preparation, preparation);
   }
 }
 
@@ -438,6 +444,71 @@ function activeAuthority(checkpoint: RuntimeTaskRecoveryCheckpoint, request: Pol
 
 export default function runtimeCoordinatorTest(): void {
   describe('RuntimeCoordinator', () => {
+    it('T53LegacySingleRestoresAsBaselineOnly', 0, async () => {
+      const fixture = new FixtureRuntime();
+      const accepted = await fixture.coordinator.acceptTask(submission('t53-legacy'));
+      const checkpoint = fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+      checkpoint.checkpointVersion = '1.1';
+      const restored = new FixtureRuntime(FixturePlanKind.BASIC, false, new FakeCollaborationPreparation());
+      expect(restored.coordinator.restoreCheckpoint(checkpoint).accepted).assertTrue();
+      const migrated = restored.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+      expect(migrated.checkpointVersion).assertEqual('1.2');
+      expect(migrated.collaborationPreparation.baselineOnly).assertTrue();
+      expect(migrated.collaborationPreparation.evaluations).assertEqual(2);
+    });
+    it('T53ReevaluationAndActivationCountersSurviveCheckpoint', 0, async () => {
+      const preparation = new FakeCollaborationPreparation();
+      const fixture = new FixtureRuntime(FixturePlanKind.BASIC, false, preparation);
+      const request = submission('t53-replan'); request.requestedBudget.maxAgentActivations = 6;
+      request.requestedBudget.maxReplans = 3;
+      const accepted: OrchestrationAcceptance = await fixture.coordinator.acceptTask(request);
+      const taskId: string = accepted.handle.taskId;
+      fixture.planner.rejectReplan = true;
+      fixture.coordinator.advance(taskId);
+      const completion = success(taskId, fixture.dispatcher.requests[0]);
+      completion.result.outputJson = 'not-json';
+      expect(fixture.coordinator.completeStep(completion).code).assertEqual('REPLAN_REQUIRED');
+      await fixture.coordinator.requestReplan(taskId, ['step-1']);
+      expect(preparation.calls).assertEqual(2);
+      expect(fixture.coordinator.getUsage(taskId).agentActivations).assertEqual(4);
+      const checkpoint = fixture.coordinator.getRecoveryCheckpoint(taskId);
+      expect(checkpoint.collaborationPreparation.evaluations).assertEqual(2);
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertTrue();
+      const restoredPreparation = new FakeCollaborationPreparation();
+      const restored = new FixtureRuntime(FixturePlanKind.BASIC, false, restoredPreparation);
+      expect(restored.coordinator.restoreCheckpoint(checkpoint).accepted).assertTrue();
+      expect(restored.coordinator.getRecoveryCheckpoint(taskId).collaborationPreparation.evaluations).assertEqual(2);
+      expect(restored.coordinator.getUsage(taskId).agentActivations).assertEqual(4);
+      expect(restored.coordinator.hydrateRecoveryAuthority(taskId, recoveryAuthority(checkpoint)).accepted).assertTrue();
+      await restored.coordinator.requestReplan(taskId, ['step-1']);
+      expect(restoredPreparation.calls).assertEqual(0);
+      expect(restored.coordinator.getUsage(taskId).agentActivations).assertEqual(5);
+      await fixture.coordinator.requestReplan(taskId, ['step-1']);
+      expect(preparation.calls).assertEqual(2);
+      expect(fixture.coordinator.getUsage(taskId).agentActivations).assertEqual(5);
+    });
+    it('T53RejectsUnsafeLegacyMultiAndPendingRecovery', 0, async () => {
+      const preparation = new FakeCollaborationPreparation();
+      const fixture = new FixtureRuntime(FixturePlanKind.BASIC, false, preparation);
+      const accepted = await fixture.coordinator.acceptTask(submission('t53-recovery'));
+      const checkpoint = fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
+      checkpoint.checkpointVersion = '1.1';
+      expect(RuntimeCheckpointValidator.validate(checkpoint).valid).assertFalse();
+      checkpoint.checkpointVersion = '1.2'; checkpoint.collaborationPreparation.pending = true;
+      const restored = new FixtureRuntime();
+      expect(restored.coordinator.restoreCheckpoint(checkpoint).code).assertEqual('PREPARATION_REQUIRES_RECONCILIATION');
+    });
+    it('T53WrongTaskInterruptionDoesNotCancelPreparation', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new FixtureRuntime(FixturePlanKind.BASIC, false, preparation);
+      const submitted = fixture.coordinator.acceptTask(submission('t53-wrong-task'));
+      await preparation.entered;
+      expect(fixture.coordinator.interruptPreparation('wrong')).assertFalse();
+      expect(preparation.cancelled).assertFalse();
+      expect(fixture.coordinator.interruptPreparation(preparation.taskId)).assertTrue();
+      await submitted;
+      expect(fixture.planner.calls).assertEqual(0);
+    });
     it('normalizesAndDeduplicatesSubmission', 0, async () => {
       const fixture: FixtureRuntime = new FixtureRuntime();
       const first = await fixture.coordinator.acceptTask(submission('request-1'));
@@ -572,7 +643,7 @@ export default function runtimeCoordinatorTest(): void {
       const pending: PolicyRequest | undefined = fixture.coordinator.getPendingPolicyRequest(accepted.handle.taskId);
       const awaiting: RuntimeTaskRecoveryCheckpoint =
         fixture.coordinator.getRecoveryCheckpoint(accepted.handle.taskId);
-      expect(awaiting.checkpointVersion).assertEqual('1.1');
+      expect(awaiting.checkpointVersion).assertEqual('1.2');
       expect(awaiting.envelope.taskId).assertEqual(accepted.handle.taskId);
       expect(awaiting.pendingPolicyRequest?.requestId).assertEqual(pending?.requestId);
       expect(awaiting.scheduler?.steps[0].state).assertEqual(WorkflowStepState.READY);

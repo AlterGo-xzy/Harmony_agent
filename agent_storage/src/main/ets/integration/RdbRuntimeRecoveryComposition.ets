@@ -20,6 +20,8 @@ function composedRuntimePorts(source: ProductionAgentRuntimePorts,
   value.ids = source.ids;
   value.planner = source.planner;
   value.collaboration = source.collaboration;
+  value.collaborationPlan = source.collaborationPlan;
+  value.collaborationPreparation = source.collaborationPreparation;
   value.toolPreparer = source.toolPreparer;
   value.adapterFactory = source.adapterFactory;
   value.persistence = bridge;

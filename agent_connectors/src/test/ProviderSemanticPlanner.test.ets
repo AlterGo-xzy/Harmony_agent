@@ -11,6 +11,10 @@ import {
   CollaborationPlan,
   CollaborationRoleAssignment,
   ModelRegistryEntry,
+  PlanningMemoryContextItem,
+  PlanningMemoryContextPort,
+  PlanningMemoryContextRequest,
+  PlanningMemoryContextResult,
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
@@ -77,6 +81,20 @@ class FixturePlannerObserver implements ProviderSemanticPlannerObserverPort {
   }
 }
 
+class FixturePlanningMemoryContext implements PlanningMemoryContextPort {
+  calls: number = 0;
+  fail: boolean = false;
+  lastRequest?: PlanningMemoryContextRequest;
+  result: PlanningMemoryContextResult = memoryResult();
+
+  retrieve(request: PlanningMemoryContextRequest): PlanningMemoryContextResult {
+    this.calls++;
+    this.lastRequest = request;
+    if (this.fail) throw new Error('memory unavailable');
+    return this.result;
+  }
+}
+
 class FixturePlannerProvider implements ModelProvider {
   readonly registered: RegisteredModelProvider;
   calls: number = 0;
@@ -88,9 +106,16 @@ class FixturePlannerProvider implements ModelProvider {
   mismatchRegistry: boolean = false;
   mismatchTrace: boolean = false;
   invalidUsage: boolean = false;
+  waitForCancellation: boolean = false;
+  cancellationObserved: boolean = false;
+  entered: Promise<void>;
+  private enteredResolve?: () => void;
 
   constructor(registered: RegisteredModelProvider) {
     this.registered = registered;
+    this.entered = new Promise<void>((resolve: () => void): void => {
+      this.enteredResolve = resolve;
+    });
   }
 
   registryEntry(estimatedInputTokens: number, estimatedOutputTokens: number): ModelRegistryEntry {
@@ -100,10 +125,21 @@ class FixturePlannerProvider implements ModelProvider {
   }
 
   async generate(request: ModelInvocation,
-    _cancellation: ProviderCancellationSignalPort): Promise<ModelProviderResult> {
+    cancellation: ProviderCancellationSignalPort): Promise<ModelProviderResult> {
     this.calls++;
     this.lastRequest = request;
     this.requests.push(request);
+    if (this.waitForCancellation) {
+      const entered: (() => void) | undefined = this.enteredResolve;
+      if (entered !== undefined) entered();
+      return await new Promise<ModelProviderResult>((_resolve: (value: ModelProviderResult) => void,
+        reject: (reason: Object) => void): void => {
+        cancellation.subscribe((): void => {
+          this.cancellationObserved = true;
+          reject(new Error('provider cancelled'));
+        });
+      });
+    }
     if (this.fail) throw new Error('provider unavailable');
     const profile: ModelProviderProfile = this.registered.profileSnapshot();
     const price: ProviderPriceSnapshot = this.registered.priceSnapshot();
@@ -177,6 +213,13 @@ function plannerConfig(): ProviderSemanticPlannerConfig {
   return result;
 }
 
+function memoryPlannerConfig(): ProviderSemanticPlannerConfig {
+  const result: ProviderSemanticPlannerConfig = plannerConfig();
+  result.maxMemoryItems = 2;
+  result.maxMemoryCharacters = 64;
+  return result;
+}
+
 function planningRequest(): PlanningRequest {
   const envelope: TaskEnvelope = new TaskEnvelope();
   envelope.requestId = 'request-1';
@@ -210,6 +253,21 @@ function planningRequest(): PlanningRequest {
 
 function fullDigest(character: string): string {
   return 'sha256:' + character.repeat(64);
+}
+
+function memoryResult(): PlanningMemoryContextResult {
+  const result: PlanningMemoryContextResult = new PlanningMemoryContextResult();
+  result.taskId = 'task-1';
+  result.ownerId = 'user-1';
+  const item: PlanningMemoryContextItem = new PlanningMemoryContextItem();
+  item.memoryId = 'memory-1';
+  item.chunkId = 'memory-1:v1:c0';
+  item.memoryVersion = 1;
+  item.content = 'Prefer morning meetings';
+  item.tags = ['preference'];
+  result.items.push(item);
+  result.totalCharacters = item.content.length;
+  return result;
 }
 
 function multiPlanningRequest(): PlanningRequest {
@@ -251,9 +309,10 @@ function clarificationOutput(): string {
 
 function planner(provider: FixturePlannerProvider,
   observer: ProviderSemanticPlannerObserverPort = new FixturePlannerObserver(),
-  config: ProviderSemanticPlannerConfig = plannerConfig()): ProviderSemanticPlanner {
+  config: ProviderSemanticPlannerConfig = plannerConfig(),
+  memoryContext?: PlanningMemoryContextPort): ProviderSemanticPlanner {
   return new ProviderSemanticPlanner(provider.registered, provider, config, new FixtureRuntimeClock(),
-    new FixtureRuntimeIds(), observer);
+    new FixtureRuntimeIds(), observer, memoryContext);
 }
 
 export default function providerSemanticPlannerTest(): void {
@@ -471,6 +530,99 @@ export default function providerSemanticPlannerTest(): void {
       expect(result.status).assertEqual(PlanningStatus.REJECTED);
       expect(result.rejectionCode).assertEqual('PLANNER_ROLE_BINDING_INVALID');
       expect(provider.calls).assertEqual(0);
+    });
+
+    it('addsBoundedOwnerScopedMemoryToTheProviderPrompt', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const memory: FixturePlanningMemoryContext = new FixturePlanningMemoryContext();
+      const observer: FixturePlannerObserver = new FixturePlannerObserver();
+
+      const result: PlanningResult = await planner(
+        provider, observer, memoryPlannerConfig(), memory).plan(planningRequest());
+
+      expect(result.status).assertEqual(PlanningStatus.READY);
+      expect(memory.calls).assertEqual(1);
+      expect(memory.lastRequest?.taskId).assertEqual('task-1');
+      expect(memory.lastRequest?.ownerId).assertEqual('user-1');
+      if (memory.lastRequest !== undefined) {
+        expect(memory.lastRequest.queryTerms.indexOf('Prepare a safe typed plan') >= 0).assertTrue();
+        expect(memory.lastRequest.queryTerms.indexOf('Create the workflow') >= 0).assertTrue();
+      }
+      expect(provider.lastRequest?.messages[1].content.includes('memoryContext=')).assertTrue();
+      expect(provider.lastRequest?.messages[1].content.includes('Prefer morning meetings')).assertTrue();
+      expect(JSON.stringify(observer.traces[0]).includes('Prefer morning meetings')).assertFalse();
+    });
+
+    it('failsClosedForMemoryFailureOrIdentityMismatchBeforeProviderCall', 0, async () => {
+      const unavailableProvider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const unavailable: FixturePlanningMemoryContext = new FixturePlanningMemoryContext();
+      unavailable.fail = true;
+      const failed: PlanningResult = await planner(unavailableProvider, new FixturePlannerObserver(),
+        memoryPlannerConfig(), unavailable).plan(planningRequest());
+      expect(failed.rejectionCode).assertEqual('PLANNER_MEMORY_CONTEXT_FAILED');
+      expect(unavailableProvider.calls).assertEqual(0);
+
+      const mismatchProvider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const mismatch: FixturePlanningMemoryContext = new FixturePlanningMemoryContext();
+      mismatch.result.ownerId = 'another-user';
+      const rejected: PlanningResult = await planner(mismatchProvider, new FixturePlannerObserver(),
+        memoryPlannerConfig(), mismatch).plan(planningRequest());
+      expect(rejected.rejectionCode).assertEqual('PLANNER_MEMORY_CONTEXT_FAILED');
+      expect(mismatchProvider.calls).assertEqual(0);
+    });
+
+    it('accountsMemoryCharactersAgainstInputAndCostBudgets', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const memory: FixturePlanningMemoryContext = new FixturePlanningMemoryContext();
+      const request: PlanningRequest = planningRequest();
+      request.envelope.executionBudget.maxInputTokens = 110;
+
+      const result: PlanningResult = await planner(provider, new FixturePlannerObserver(),
+        memoryPlannerConfig(), memory).plan(request);
+
+      expect(result.rejectionCode).assertEqual('PLANNER_INPUT_BUDGET_EXCEEDED');
+      expect(provider.calls).assertEqual(0);
+    });
+
+    it('interruptsOnlyTheBoundInFlightProviderRequestAndReleasesRegistration', 0, async () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      provider.waitForCancellation = true;
+      const semantic: ProviderSemanticPlanner = planner(provider, new FixturePlannerObserver());
+      const pending: Promise<PlanningResult> = semantic.plan(planningRequest());
+      await provider.entered;
+      expect(semantic.interrupt('another-task')).assertFalse();
+      expect(semantic.interrupt('task-1')).assertTrue();
+      let rejected: boolean = false;
+      try {
+        await pending;
+      } catch (error) {
+        rejected = true;
+      }
+      expect(rejected).assertTrue();
+      expect(provider.cancellationObserved).assertTrue();
+      expect(semantic.interrupt('task-1')).assertFalse();
+    });
+
+    it('requiresMemoryPortAndBudgetsToBeConfiguredTogether', 0, () => {
+      const provider: FixturePlannerProvider = new FixturePlannerProvider(registeredModel());
+      const memory: FixturePlanningMemoryContext = new FixturePlanningMemoryContext();
+      let missingBudgetRejected: boolean = false;
+      try {
+        planner(provider, new FixturePlannerObserver(), plannerConfig(), memory);
+      } catch (error) {
+        missingBudgetRejected = error instanceof ProviderSemanticPlannerError &&
+          error.code === ProviderSemanticPlannerErrorCode.INVALID_CONFIGURATION;
+      }
+      expect(missingBudgetRejected).assertTrue();
+
+      let missingPortRejected: boolean = false;
+      try {
+        planner(provider, new FixturePlannerObserver(), memoryPlannerConfig());
+      } catch (error) {
+        missingPortRejected = error instanceof ProviderSemanticPlannerError &&
+          error.code === ProviderSemanticPlannerErrorCode.INVALID_CONFIGURATION;
+      }
+      expect(missingPortRejected).assertTrue();
     });
   });
 }

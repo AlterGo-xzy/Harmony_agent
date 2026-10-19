@@ -16,7 +16,7 @@ import {
 } from '@harmony_agent/agent-contracts';
 import { StepExecutionResult, WorkflowRuntimeSnapshot } from '@harmony_agent/agent-core';
 
-export const RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION: string = '1.1';
+export const RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION: string = '1.2';
 export const COLLABORATION_PLAN_VERSION: string = '1.0';
 
 export enum PlanningStatus {
@@ -149,7 +149,15 @@ export class OrchestrationUsage {
  * and short-lived authorization references. Durable budget and policy records
  * remain authoritative and are joined by their stable IDs during recovery.
  */
+export class CollaborationPreparationState {
+  version: string = '1.0';
+  evaluations: number = 0;
+  pending: boolean = false;
+  baselineOnly: boolean = false;
+}
+
 export class RuntimeTaskRecoveryCheckpoint {
+  collaborationPreparation: CollaborationPreparationState = new CollaborationPreparationState();
   checkpointVersion: string = RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION;
   submission: TaskSubmission = new TaskSubmission();
   envelope: TaskEnvelope = new TaskEnvelope();

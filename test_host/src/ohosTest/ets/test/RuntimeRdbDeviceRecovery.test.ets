@@ -123,6 +123,10 @@ class DeviceRuntimePlanner implements SemanticPlannerPort {
   async replan(request: PlanningRequest): Promise<PlanningResult> {
     return devicePlan(request);
   }
+
+  interrupt(taskId: string): boolean {
+    return false;
+  }
 }
 
 class DeviceRuntimeToolPreparer implements ToolInvocationPreparerPort {

@@ -101,6 +101,10 @@ export class CollaborativeProviderSemanticPlanner implements SemanticPlannerPort
     return await this.execute(ProviderPlanningPhase.REPLAN, request);
   }
 
+  interrupt(taskId: string): boolean {
+    return this.planner.interrupt(taskId);
+  }
+
   private async execute(phase: ProviderPlanningPhase, request: PlanningRequest,
     response?: ClarificationResponse): Promise<PlanningResult> {
     const plan: CollaborationPlan | undefined = request.collaborationPlan;

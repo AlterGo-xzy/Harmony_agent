@@ -1,3 +1,4 @@
+import { FakeCollaborationPreparation } from './FakeCollaborationPreparation';
 import { describe, expect, it } from '@ohos/hypium';
 import {
   AgentRuntimeEvent,
@@ -8,6 +9,7 @@ import {
   ClarificationRequest,
   ClarificationResponse,
   CollaborationMode,
+  CommandReceipt,
   ContractCodec,
   ExecutionBudget,
   IdempotencyMode,
@@ -99,12 +101,17 @@ class FixtureCollaboration implements CollaborationSelectorPort {
 }
 
 class FixturePlanner implements SemanticPlannerPort {
+  calls: number = 0;
   kind: ProductionPlanKind = ProductionPlanKind.BASIC;
   gate?: FixtureAsyncGate;
   rejectPlan: boolean = false;
   rejectResume: boolean = false;
+  interruptedTaskId: string = '';
+  activeTaskId: string = '';
 
   async plan(request: PlanningRequest): Promise<PlanningResult> {
+    this.calls++;
+    this.activeTaskId = request.envelope.taskId;
     const currentGate: FixtureAsyncGate | undefined = this.gate;
     if (currentGate !== undefined) await currentGate.wait();
     if (this.rejectPlan) throw new Error('fixture provider secret must not escape');
@@ -133,6 +140,14 @@ class FixturePlanner implements SemanticPlannerPort {
 
   async replan(request: PlanningRequest): Promise<PlanningResult> {
     return readyPlan(request, this.kind);
+  }
+
+  interrupt(taskId: string): boolean {
+    this.interruptedTaskId = taskId;
+    const currentGate: FixtureAsyncGate | undefined = this.gate;
+    if (currentGate === undefined) return false;
+    currentGate.release();
+    return true;
   }
 }
 
@@ -413,7 +428,7 @@ class ProductionFixture {
   readonly factory: FixtureAdapterFactory = new FixtureAdapterFactory(this.journal);
   readonly runtime: AgentRuntimeFacade;
 
-  constructor(kind: ProductionPlanKind = ProductionPlanKind.BASIC) {
+  constructor(kind: ProductionPlanKind = ProductionPlanKind.BASIC, preparation?: FakeCollaborationPreparation) {
     this.planner.kind = kind;
     const config: ProductionAgentRuntimeConfig = new ProductionAgentRuntimeConfig();
     config.policyVersion = 'policy-v1';
@@ -423,6 +438,8 @@ class ProductionFixture {
     ports.ids = new FixtureIds();
     ports.planner = this.planner;
     ports.collaboration = new FixtureCollaboration();
+    ports.collaborationPlan = preparation;
+    ports.collaborationPreparation = preparation;
     ports.toolPreparer = new FixtureToolPreparer();
     ports.adapterFactory = this.factory;
     ports.persistence = this.persistence;
@@ -555,6 +572,57 @@ async function subscribe(runtime: AgentRuntimeFacade, taskId: string,
 
 export default function productionAgentRuntimeTest(): void {
   describe('ProductionAgentRuntime', () => {
+    it('T53QueuedConflictingCancelCannotInterruptPreparation', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-conflict'));
+      await preparation.entered;
+      const pause = fixture.runtime.pauseTask(control('shared-id', preparation.taskId, TaskControlAction.PAUSE));
+      const conflicting = fixture.runtime.cancelTask(control('shared-id', preparation.taskId, TaskControlAction.CANCEL));
+      expect(preparation.cancelled).assertFalse();
+      const valid = fixture.runtime.cancelTask(control('unique-id', preparation.taskId, TaskControlAction.CANCEL));
+      await submitted; await pause;
+      expect((await conflicting).rejectionCode).assertEqual('COMMAND_ID_CONFLICT');
+      expect((await valid).accepted).assertTrue();
+      expect(fixture.planner.calls).assertEqual(0);
+    });
+    it('T53CancelInterruptsPreparationWithoutInvokingPlannerOrAdapter', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-cancel'));
+      await preparation.entered;
+      const cancelled = fixture.runtime.cancelTask(control('cancel-t53', preparation.taskId, TaskControlAction.CANCEL));
+      const handle = await submitted;
+      expect((await cancelled).accepted).assertTrue();
+      expect(preparation.cancelled).assertTrue(); expect(fixture.planner.calls).assertEqual(0);
+      expect((await fixture.runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.CANCELLED);
+      expect(fixture.persistence.preparedContexts.length).assertEqual(0);
+      const pending = fixture.persistence.checkpoints.find((value: RuntimeTaskRecoveryCheckpoint) => value.collaborationPreparation.pending);
+      expect(pending !== undefined).assertTrue();
+    });
+    it('T53ShutdownInterruptsPreparation', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-shutdown'));
+      await preparation.entered;
+      const shutdown = fixture.runtime.shutdown(ShutdownMode.GRACEFUL);
+      await submitted; await shutdown;
+      expect(preparation.cancelled).assertTrue(); expect(fixture.planner.calls).assertEqual(0);
+    });
+    it('T53ReservesWholePlanBeforePlannerAndRejectsUnpairedComposition', 0, async () => {
+      const preparation = new FakeCollaborationPreparation();
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      await fixture.runtime.submitTask(submission('t53-budget'));
+      expect(fixture.planner.calls).assertEqual(1);
+      const saved = fixture.persistence.checkpoints.find((value: RuntimeTaskRecoveryCheckpoint) =>
+        value.usage.agentActivations === 2 && value.snapshot.status === AgentTaskStatus.RECEIVED);
+      expect(saved !== undefined).assertTrue();
+      const config = new ProductionAgentRuntimeConfig(); config.policyVersion = 'p'; config.grantTtlMs = 10;
+      const ports = new ProductionAgentRuntimePorts(); ports.collaborationPreparation = preparation;
+      let rejected: boolean = false;
+      try { createProductionAgentRuntime(config, ports); } catch (error) { rejected = true; }
+      expect(rejected).assertTrue();
+    });
     it('persistsBeforeDispatchAndCompletesThroughBoundSink', 0, async () => {
       const fixture: ProductionFixture = new ProductionFixture();
       const handle = await fixture.runtime.submitTask(submission('production-basic'));
@@ -628,6 +696,23 @@ export default function productionAgentRuntimeTest(): void {
       await observed;
       expect(settled).assertTrue();
       expect(fixture.factory.adapter.requests.length).assertEqual(1);
+    });
+
+    it('interruptsInFlightPlannerBeforeQueuedCancellationChangesTaskState', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      const gate: FixtureAsyncGate = new FixtureAsyncGate();
+      fixture.planner.gate = gate;
+      const submitted: Promise<TaskHandle> = fixture.runtime.submitTask(submission('production-planner-cancel'));
+      for (let i: number = 0; i < 20 && !gate.entered; i++) await Promise.resolve();
+      expect(gate.entered).assertTrue();
+      const cancelled: Promise<CommandReceipt> = fixture.runtime.cancelTask(
+        control('cancel-planner', fixture.planner.activeTaskId, TaskControlAction.CANCEL));
+      const handle: TaskHandle = await submitted;
+      const receipt: CommandReceipt = await cancelled;
+      expect(receipt.accepted).assertTrue();
+      expect(fixture.planner.interruptedTaskId).assertEqual(handle.taskId);
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+      expect((await fixture.runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.CANCELLED);
     });
 
     it('failsClosedAndPersistsStableEvidenceWhenPlannerRejects', 0, async () => {

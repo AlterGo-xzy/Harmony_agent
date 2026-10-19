@@ -41,6 +41,8 @@ export interface SemanticPlannerPort {
   plan(request: PlanningRequest): Promise<PlanningResult>;
   resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult>;
   replan(request: PlanningRequest): Promise<PlanningResult>;
+  /** Interrupts in-flight computation only; task state remains owned by the Runtime queue. */
+  interrupt(taskId: string): boolean;
 }
 
 export interface ToolInvocationPreparerPort {

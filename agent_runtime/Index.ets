@@ -9,6 +9,15 @@ export {
 } from './src/main/ets/api/RuntimeApi';
 export { AgentRuntimeError } from './src/main/ets/api/AgentRuntimeError';
 export {
+  SINGLE_AGENT_HOST_COMPOSITION_VERSION,
+  SingleAgentHostErrorCode,
+  SingleAgentHostError,
+  SingleAgentHostResourcePort,
+  SingleAgentHostRuntimeFactoryPort,
+  SingleAgentHostPorts,
+  createSingleAgentHostRuntime
+} from './src/main/ets/host/SingleAgentHostRuntime';
+export {
   FakeTaskScriptKind,
   FakeTaskScript,
   FakeAgentRuntimeConfig
@@ -58,6 +67,13 @@ export {
   StepDispatchPort,
   SingleAgentCollaborationSelector
 } from './src/main/ets/orchestration/RuntimePorts';
+export {
+  PLANNING_MEMORY_CONTEXT_VERSION,
+  PlanningMemoryContextRequest,
+  PlanningMemoryContextItem,
+  PlanningMemoryContextResult,
+  PlanningMemoryContextPort
+} from './src/main/ets/orchestration/MemoryContext';
 export {
   CollaborationPlanValidationResult,
   CollaborationPlanValidator
@@ -136,6 +152,13 @@ export { ArtifactPolicyReleaseRunner, DeterministicArtifactCanaryAssignment } fr
 export { ArtifactPolicyCancellationSource, SystemArtifactPolicyTimer } from
   './src/main/ets/artifact/ArtifactPolicyExecutionControl';
 export {
+  ArtifactPolicyResourceOperationPort,
+  ArtifactBaselinePolicyLoaderPort,
+  ArtifactReleasedPolicyLoaderPort,
+  ManagedArtifactBaselinePolicy,
+  ManagedArtifactReleasedPolicy
+} from './src/main/ets/artifact/ManagedArtifactPolicyLoader';
+export {
   DeterministicRouterConfig,
   LearnedRouterPort,
   RouterResult,
@@ -154,3 +177,8 @@ export {
   DeterministicContextRouter,
   DeterministicCollaborationRouter
 } from './src/main/ets/routing/DeterministicRouters';
+
+export { CollaborationPolicyPreparationPort } from './src/main/ets/routing/CollaborationPreparation';
+export { ArtifactCollaborationPolicy, ArtifactCollaborationPolicyConfig, CollaborationPolicyLoaderPort,
+  CollaborationPolicyEvaluatorPort, CollaborationPolicyCandidate, CollaborationCandidateRole,
+  CollaborationPolicyInput } from './src/main/ets/routing/ArtifactCollaborationPolicy';

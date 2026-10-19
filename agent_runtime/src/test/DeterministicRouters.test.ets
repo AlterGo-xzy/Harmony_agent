@@ -433,7 +433,7 @@ export default function deterministicRoutersTest(): void {
       registry.register(role('verifier', 'verification'));
       const router: DeterministicCollaborationRouter = new DeterministicCollaborationRouter(
         registry, config(), new FixtureCollaborationDigest());
-      const frame = new TaskFrame();
+      const frame: TaskFrame = new TaskFrame();
       frame.taskId = 'task-plan';
       frame.capabilityCategories = ['planning', 'verification'];
       frame.canParallelize = true;

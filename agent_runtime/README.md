@@ -4,9 +4,9 @@
 
 外部宿主只能提交 `AuthorizationDecision`；`AuthorizationGrant` 由本模块内部签发并绑定 task、step、operation、tool identity、schema、arguments、policy version 和预算预留。
 
-`Index.ets` 只把 `AgentRuntimeFacade` 暴露为业务控制接口。`createProductionAgentRuntime` 接收版本化 composition config、Planner/Router/Tool preparation ports、一个启用 Adapter 的 factory 和持久化端口，返回的仍是 `AgentRuntimeFacade`。0.14.0/composition 2.5 可额外注入 `CollaborationPlanSelectorPort`；它在 Planner 前冻结 Role Registry 身份和协作决定摘要。异步 `createRecoveredProductionAgentRuntime` 继续通过只读 `ProductionRuntimeRecoverySourcePort` 枚举任务、读取 authority，并在 Facade 暴露前完成 checkpoint 重建、budget/policy authority hydration 和恢复事件持久化；遇到 active operation 时，先通过 persistence port 的专用 normalization 门把恢复 checkpoint 与 durable operation/fencing 原子对齐。恢复 source、factory、ports 和 DTO 都不能创建任务、推进状态或签发执行 grant；M03 的 `RuntimeCoordinator` 和生产实现类均保持模块内部可见。
+`Index.ets` 只把 `AgentRuntimeFacade` 暴露为业务控制接口。`createProductionAgentRuntime` 接收版本化 composition config、Planner/Router/Tool preparation ports、一个启用 Adapter 的 factory 和持久化端口，返回的仍是 `AgentRuntimeFacade`。0.14.0/composition 2.7 包含协作计划、异步准备和按 task 绑定的 Planner 中断合同；Role Registry 身份和协作决定摘要在 Planner 前冻结。异步 `createRecoveredProductionAgentRuntime` 继续通过只读 `ProductionRuntimeRecoverySourcePort` 枚举任务、读取 authority，并在 Facade 暴露前完成 checkpoint 重建、budget/policy authority hydration 和恢复事件持久化；遇到 active operation 时，先通过 persistence port 的专用 normalization 门把恢复 checkpoint 与 durable operation/fencing 原子对齐。恢复 source、factory、ports 和 DTO 都不能创建任务、推进状态或签发执行 grant；M03 的 `RuntimeCoordinator` 和生产实现类均保持模块内部可见。
 
-生产组合层按 snapshot version 暂存检查点并等待异步持久化完成。0.14.0/production composition 2.5 延续每个 checkpoint 的同状态 `RuntimeDurableAuthorityPayload`，并把 task/snapshot version、policy version、完整 task/step/provider budget scopes、全部 reservation 以及当前可证明的 policy/operation 绑定交给 persistence port。等待授权 checkpoint 携带 version 1 request；dispatch 准备 checkpoint 携带 version 3 decision/grant 和 `PREPARED` operation，`beforeDispatch(checkpoint, expectedPreviousVersion, context, authority)` 成为宿主单 CAS 原子提交边界，成功后才调用 Adapter。active recovery 使用 `normalizeRecoveredOperation` 专用门，普通 `saveCheckpoint` 仍不能创建或回退 operation；outcome/reconciliation 之后的 operation、fencing 和结算状态仍由对应 persistence 方法维护。持久化端收到独立深拷贝，不能改写 Runtime 保留的 checkpoint、协作计划或 authority。
+生产组合层按 snapshot version 暂存检查点并等待异步持久化完成。0.14.0/production composition 2.7 延续每个 checkpoint 的同状态 `RuntimeDurableAuthorityPayload`，并把 task/snapshot version、policy version、完整 task/step/provider budget scopes、全部 reservation 以及当前可证明的 policy/operation 绑定交给 persistence port。等待授权 checkpoint 携带 version 1 request；dispatch 准备 checkpoint 携带 version 3 decision/grant 和 `PREPARED` operation，`beforeDispatch(checkpoint, expectedPreviousVersion, context, authority)` 成为宿主单 CAS 原子提交边界，成功后才调用 Adapter。active recovery 使用 `normalizeRecoveredOperation` 专用门，普通 `saveCheckpoint` 仍不能创建或回退 operation；outcome/reconciliation 之后的 operation、fencing 和结算状态仍由对应 persistence 方法维护。持久化端收到独立深拷贝，不能改写 Runtime 保留的 checkpoint、协作计划或 authority。
 
 同一 Facade 实例的公共操作和异步 Adapter completion 继续进入同一个调用顺序 FIFO；前一项 durable lifecycle 未结束时，后一项不会进入协调器或提前完成，单项拒绝不会毒化队列。同步 Adapter completion 仍在当前 dispatch 生命周期内登记后应用，避免重入自等待。`RuntimeTaskRecoveryCheckpoint` 1.1 将原始 submission、公开 snapshot 与 envelope、workflow、scheduler、事件、规划状态、等待项、在途 invocation 和稳定关联 ID 放在同一个版本化保存单元；原始 submission 用于重建 requestId 的精确去重。`RuntimeCheckpointValidator` 在写入前以及持久化回读后校验版本、submission normalization、事件顺序、workflow/scheduler 和 task/request/session/dispatch 绑定；1.0 或绑定不一致的检查点 fail-closed。该检查点和 authority payload 都是敏感恢复数据，宿主必须按 privacy class 施加访问控制和加密，不能把它们作为公共事件输出。
 
@@ -27,7 +27,7 @@ T47 新增 `ArtifactPolicyReleaseRunner` 与 `DeterministicArtifactCanaryAssignm
 M03 当前提供：
 
 - `TaskSubmission -> TaskEnvelope` 规范化、ID 分配与重复提交去重；
-- `TaskAnalyzer -> CollaborationSelectorPort/CollaborationPlanSelectorPort -> SemanticPlannerPort` 两阶段规划；显式计划携带 schema 1.0、task/mode、完整 SHA-256 Role Registry/decision 摘要和互异 role identity。MULTI 没有有效计划时在 Planner 前 fail-closed；Planner 的 plan/resume/replan 均为 Promise，Facade 串行队列会等待规划完成后才允许 Tool dispatch；Promise 拒绝时任务以稳定的 `plannerInvocationFailed` 证据闭合，底层异常文本不会进入公共快照或事件；
+- `TaskAnalyzer -> CollaborationSelectorPort/CollaborationPlanSelectorPort -> SemanticPlannerPort` 两阶段规划；显式计划携带 schema 1.0、task/mode、完整 SHA-256 Role Registry/decision 摘要和互异 role identity。MULTI 没有有效计划时在 Planner 前 fail-closed；Planner 的 plan/resume/replan 均为 Promise，且必须实现按 task 绑定的 `interrupt`。Facade 串行队列会等待规划完成后才允许 Tool dispatch；取消和 shutdown 可在 FIFO 外只发计算中断信号，任务状态与持久化仍在 FIFO 内完成；非取消 Promise 拒绝时任务以稳定的 `plannerInvocationFailed` 证据闭合，底层异常文本不会进入公共快照或事件；
 - Planner 结果必须通过 M01 `WorkflowGraphValidator`，文本不能直接触发 adapter；
 - Scheduler 驱动、暂停/恢复、取消、澄清、授权等待、异步 dispatch、迟到完成拒绝和未知结果对账；
 - 受保护的成功、运行中和 `UNKNOWN_OUTCOME` 步骤不能被 partial replan 替换；
@@ -43,3 +43,11 @@ M04 当前提供：
 - Tool Router 不依赖 embedding，并保持 schema、description、retrieval relation 的版本职责分离。
 
 当前限制：M04 的 Model/Role/Tool/Workflow Registry 仍是内存实现，其 `snapshotDigest` 是由调用方提供的 entry digest 组成的确定性身份串，不声称由 Runtime 重新计算密码学哈希；M11 Artifact Registry 与 release runner 已有 durable CAS、shadow/canary/active/fallback/rollback 和通用 timeout/cancel 协议，但生产 verifier、密钥治理、policy loader、具体策略资源释放实现和 Router 接线仍由宿主与 M12–M14 完成。0.14.0 已冻结协作计划验证/恢复、异步 Facade、异步 Planner 生命周期、同实例 FIFO、checkpoint/authority 写入，以及无在途和 active operation 的启动恢复；M05-A bridge 可把 active operation 保守转入 `WAITING_RECONCILIATION`，不会在重启后重放 Adapter，具体 RDB composition 和 API 26 跨进程恢复已由 T26 验收。生产 credential store、真实 learned Router artifact 或带写副作用 Tool 仍未接入。映射和时序边界见 `docs/AGENT_RUNTIME_STORAGE_INTEGRATION.md`。
+
+T63 增加 storage-neutral 的资源型 policy loader adapter。宿主把 process、worker、IPC 或 network 调用包装为 `ArtifactPolicyResourceOperationPort`；Runtime 在成功时关闭资源，在 timeout、取消或失败时同时取消并关闭资源，且忽略迟到结果。主仓库只提供生命周期合同和 fixture，生产 verifier、密钥治理、具体 loader 及底层资源实现仍由宿主负责，见 `docs/AGENT_ARTIFACT_POLICY_LOADER_INTEGRATION.md`。
+
+P0-B 增加 storage-neutral `PlanningMemoryContextPort`。Runtime 只定义 task/owner 绑定与条目/字符预算合同；具体索引由 Storage 适配，Provider Planner 负责二次校验与预算核算。该接口不提供记忆写入或宿主加密，见 `docs/AGENT_MEMORY_CONTEXT_INTEGRATION.md`。
+
+P0-A 增加 host-neutral `createSingleAgentHostRuntime`。它只编排资源生命周期：依次打开 credential store、execution storage、memory storage 和 MCP client，随后由注入 factory 创建唯一 `AgentRuntimeFacade`；失败时逆序回滚，shutdown 时先停止 Runtime 再逆序释放资源。它不创建具体 RDB、密钥或网络对象，也不取代产品 Ability composition root，见 `docs/AGENT_SINGLE_HOST_COMPOSITION.md`。
+
+P0-D 补齐 Planner 取消传播。`SemanticPlannerPort.interrupt(taskId)` 只中断计算，不在队列外修改任务状态；`ProviderSemanticPlanner` 为每个在途请求登记独立 `ProviderCancellationSource`，只取消匹配 task，并在 Promise 结束后注销。协作 Planner 委托同一中断合同。具体时序与验收见 `docs/AGENT_PLANNER_CANCELLATION.md`。

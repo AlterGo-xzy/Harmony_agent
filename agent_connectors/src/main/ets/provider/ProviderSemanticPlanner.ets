@@ -16,6 +16,11 @@ import {
   PlanningRequest,
   PlanningResult,
   PlanningStatus,
+  PlanningMemoryContextItem,
+  PlanningMemoryContextPort,
+  PlanningMemoryContextRequest,
+  PlanningMemoryContextResult,
+  PLANNING_MEMORY_CONTEXT_VERSION,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   SemanticPlannerPort
@@ -96,6 +101,8 @@ export class ProviderSemanticPlannerConfig {
   clarificationTtlMs: number = 0;
   maxSteps: number = 0;
   maxPromptCharacters: number = 0;
+  maxMemoryItems: number = 0;
+  maxMemoryCharacters: number = 0;
 }
 
 export class ProviderPlannerTrace {
@@ -125,6 +132,11 @@ export interface ProviderSemanticPlannerObserverPort {
 class NoopProviderSemanticPlannerObserver implements ProviderSemanticPlannerObserverPort {
   onGenerationCompleted(_trace: ProviderPlannerTrace): void {
   }
+}
+
+class ActiveProviderPlanning {
+  taskId: string = '';
+  cancellation: ProviderCancellationSource = new ProviderCancellationSource();
 }
 
 function validText(value: string): boolean {
@@ -252,18 +264,22 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
   private readonly clock: RuntimeClockPort;
   private readonly ids: RuntimeIdGeneratorPort;
   private readonly observer: ProviderSemanticPlannerObserverPort;
+  private readonly memoryContext?: PlanningMemoryContextPort;
+  private readonly activePlanning: ActiveProviderPlanning[] = [];
 
   constructor(registered: RegisteredModelProvider, provider: ModelProvider,
     config: ProviderSemanticPlannerConfig, clock: RuntimeClockPort, ids: RuntimeIdGeneratorPort,
-    observer: ProviderSemanticPlannerObserverPort = new NoopProviderSemanticPlannerObserver()) {
+    observer: ProviderSemanticPlannerObserverPort = new NoopProviderSemanticPlannerObserver(),
+    memoryContext?: PlanningMemoryContextPort) {
     this.profile = registered.profileSnapshot();
     this.price = registered.priceSnapshot();
-    this.validateConfiguration(config, provider);
+    this.validateConfiguration(config, provider, memoryContext);
     this.provider = provider;
     this.config = this.copyConfig(config);
     this.clock = clock;
     this.ids = ids;
     this.observer = observer;
+    this.memoryContext = memoryContext;
   }
 
   async plan(request: PlanningRequest): Promise<PlanningResult> {
@@ -308,12 +324,25 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     return await this.invoke(ProviderPlanningPhase.REPLAN, request, undefined, role);
   }
 
+  interrupt(taskId: string): boolean {
+    let interrupted: boolean = false;
+    for (let i: number = this.activePlanning.length - 1; i >= 0; i--) {
+      if (this.activePlanning[i].taskId === taskId) {
+        interrupted = true;
+        this.activePlanning[i].cancellation.cancel();
+      }
+    }
+    return interrupted;
+  }
+
   collaborativeBudgetRejectionCode(request: PlanningRequest, activations: number): string {
     if (!Number.isSafeInteger(activations) || activations <= 0 ||
       activations > request.envelope.executionBudget.maxAgentActivations) {
       return 'COLLABORATION_AGENT_BUDGET_EXCEEDED';
     }
-    const inputTokens: number = this.config.estimatedInputTokens * activations;
+    const perActivationInputTokens: number = this.config.estimatedInputTokens +
+      this.config.maxMemoryCharacters;
+    const inputTokens: number = perActivationInputTokens * activations;
     if (!Number.isSafeInteger(inputTokens) || inputTokens > request.envelope.executionBudget.maxInputTokens) {
       return 'COLLABORATION_INPUT_BUDGET_EXCEEDED';
     }
@@ -321,7 +350,8 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     if (!Number.isSafeInteger(outputTokens) || outputTokens > request.envelope.executionBudget.maxOutputTokens) {
       return 'COLLABORATION_OUTPUT_BUDGET_EXCEEDED';
     }
-    const costMicros: number = this.estimatedCostMicros(this.config.maxOutputTokens) * activations;
+    const costMicros: number = this.estimatedCostMicros(
+      this.config.maxOutputTokens, perActivationInputTokens) * activations;
     if (!Number.isSafeInteger(costMicros) ||
       costMicros > request.envelope.executionBudget.maxMonetaryCostMicros) {
       return 'COLLABORATION_COST_BUDGET_EXCEEDED';
@@ -347,7 +377,21 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     if (this.profile.privacyClasses.indexOf(request.envelope.privacyClass) < 0) {
       return this.rejected('PLANNER_PRIVACY_NOT_SUPPORTED');
     }
-    if (this.config.estimatedInputTokens > request.envelope.executionBudget.maxInputTokens) {
+    let memory: PlanningMemoryContextResult | undefined = undefined;
+    if (this.memoryContext !== undefined) {
+      try {
+        memory = this.memoryContext.retrieve(this.memoryRequest(request));
+      } catch (error) {
+        return this.rejected('PLANNER_MEMORY_CONTEXT_FAILED');
+      }
+      if (!this.validMemoryContext(request, memory)) {
+        return this.rejected('PLANNER_MEMORY_CONTEXT_FAILED');
+      }
+    }
+    const estimatedInputTokens: number = this.config.estimatedInputTokens +
+      (memory === undefined ? 0 : memory.totalCharacters);
+    if (!Number.isSafeInteger(estimatedInputTokens) ||
+      estimatedInputTokens > request.envelope.executionBudget.maxInputTokens) {
       return this.rejected('PLANNER_INPUT_BUDGET_EXCEEDED');
     }
     const outputTokens: number = Math.min(this.config.maxOutputTokens,
@@ -356,10 +400,10 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
       return this.rejected('PLANNER_OUTPUT_BUDGET_EXHAUSTED');
     }
     const monetaryLimit: number = request.envelope.executionBudget.maxMonetaryCostMicros;
-    if (this.estimatedCostMicros(outputTokens) > monetaryLimit) {
+    if (this.estimatedCostMicros(outputTokens, estimatedInputTokens) > monetaryLimit) {
       return this.rejected('PLANNER_COST_BUDGET_EXCEEDED');
     }
-    const prompt: string = this.prompt(phase, request, response, role);
+    const prompt: string = this.prompt(phase, request, response, role, memory);
     if (prompt.length > this.config.maxPromptCharacters) {
       return this.rejected('PLANNER_PROMPT_TOO_LARGE');
     }
@@ -372,11 +416,18 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     if (role !== undefined && !validText(activationId)) {
       return this.rejected('PLANNER_AGENT_ACTIVATION_ID_INVALID');
     }
-    const generated: ModelProviderResult = await this.provider.generate(invocation,
-      new ProviderCancellationSource());
-    const result: PlanningResult = this.parseResult(phase, request, invocation, generated);
-    this.observe(phase, request, generated, result, role, activationId);
-    return result;
+    const active: ActiveProviderPlanning = new ActiveProviderPlanning();
+    active.taskId = request.envelope.taskId;
+    this.activePlanning.push(active);
+    try {
+      const generated: ModelProviderResult = await this.provider.generate(invocation, active.cancellation);
+      const result: PlanningResult = this.parseResult(phase, request, invocation, generated);
+      this.observe(phase, request, generated, result, role, activationId);
+      return result;
+    } finally {
+      const index: number = this.activePlanning.indexOf(active);
+      if (index >= 0) this.activePlanning.splice(index, 1);
+    }
   }
 
   private invocation(request: PlanningRequest, prompt: string, outputTokens: number): ModelInvocation {
@@ -408,11 +459,13 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
   }
 
   private prompt(phase: ProviderPlanningPhase, request: PlanningRequest,
-    response?: ClarificationResponse, role?: CollaborationRoleAssignment): string {
+    response?: ClarificationResponse, role?: CollaborationRoleAssignment,
+    memory?: PlanningMemoryContextResult): string {
     let value: string = 'phase=' + phase + '\ncollaborationMode=' + request.collaborationMode +
       '\nplanningRequest=' + JSON.stringify(request);
     if (role !== undefined) value += '\nactiveRole=' + JSON.stringify(role);
     if (response !== undefined) value += '\nclarificationResponse=' + JSON.stringify(response);
+    if (memory !== undefined) value += '\nmemoryContext=' + JSON.stringify(memory);
     value += '\nresponseContract=' + PLANNER_OUTPUT_SCHEMA +
       '\nReturn exactly one JSON object and no prose or markdown. For ready status, workflow must contain only ' +
       'entryStepIds and steps. The runtime assigns taskId, workflowId, workflowVersion, and createdAt; never return ' +
@@ -422,6 +475,51 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
       'retryPolicyRef, and verificationPolicyRef. For clarificationRequired, clarification must contain ' +
       'questionCode, prompt, and responseSchemaJson.';
     return value;
+  }
+
+  private memoryRequest(request: PlanningRequest): PlanningMemoryContextRequest {
+    const value: PlanningMemoryContextRequest = new PlanningMemoryContextRequest();
+    value.taskId = request.envelope.taskId;
+    value.ownerId = request.envelope.userId;
+    this.addMemoryTerm(value.queryTerms, request.envelope.userIntent);
+    this.addMemoryTerm(value.queryTerms, request.frame.goal);
+    for (let index: number = 0; index < request.frame.constraints.length; index++) {
+      this.addMemoryTerm(value.queryTerms, request.frame.constraints[index]);
+    }
+    for (let index: number = 0; index < request.frame.capabilityCategories.length; index++) {
+      this.addMemoryTerm(value.queryTerms, request.frame.capabilityCategories[index]);
+    }
+    value.maxItems = this.config.maxMemoryItems;
+    value.maxCharacters = this.config.maxMemoryCharacters;
+    return value;
+  }
+
+  private addMemoryTerm(terms: string[], value: string): void {
+    if (!validText(value) || terms.indexOf(value) >= 0) return;
+    terms.push(value);
+  }
+
+  private validMemoryContext(request: PlanningRequest, context: PlanningMemoryContextResult): boolean {
+    if (context.contextVersion !== PLANNING_MEMORY_CONTEXT_VERSION ||
+      context.taskId !== request.envelope.taskId || context.ownerId !== request.envelope.userId ||
+      !Number.isSafeInteger(context.totalCharacters) || context.totalCharacters < 0 ||
+      context.totalCharacters > this.config.maxMemoryCharacters ||
+      context.items.length > this.config.maxMemoryItems) return false;
+    let characters: number = 0;
+    const chunkIds: string[] = [];
+    for (let index: number = 0; index < context.items.length; index++) {
+      const item: PlanningMemoryContextItem = context.items[index];
+      if (!validText(item.memoryId) || !validText(item.chunkId) ||
+        !Number.isSafeInteger(item.memoryVersion) || item.memoryVersion <= 0 || !validText(item.content) ||
+        chunkIds.indexOf(item.chunkId) >= 0) return false;
+      for (let tagIndex: number = 0; tagIndex < item.tags.length; tagIndex++) {
+        if (!validText(item.tags[tagIndex])) return false;
+      }
+      chunkIds.push(item.chunkId);
+      characters += item.content.length;
+      if (!Number.isSafeInteger(characters) || characters > this.config.maxMemoryCharacters) return false;
+    }
+    return characters === context.totalCharacters;
   }
 
   private parseResult(phase: ProviderPlanningPhase, request: PlanningRequest, invocation: ModelInvocation,
@@ -704,8 +802,8 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     return value;
   }
 
-  private estimatedCostMicros(outputTokens: number): number {
-    return Math.ceil((this.config.estimatedInputTokens * this.price.inputMicrosPerMillionTokens +
+  private estimatedCostMicros(outputTokens: number, inputTokens: number): number {
+    return Math.ceil((inputTokens * this.price.inputMicrosPerMillionTokens +
       outputTokens * this.price.outputMicrosPerMillionTokens) / 1000000) + this.price.fixedCostMicros;
   }
 
@@ -739,10 +837,18 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     }
   }
 
-  private validateConfiguration(config: ProviderSemanticPlannerConfig, provider: ModelProvider): void {
+  private validateConfiguration(config: ProviderSemanticPlannerConfig, provider: ModelProvider,
+    memoryContext?: PlanningMemoryContextPort): void {
+    const memoryDisabled: boolean = config.maxMemoryItems === 0 && config.maxMemoryCharacters === 0 &&
+      memoryContext === undefined;
+    const memoryEnabled: boolean = Number.isSafeInteger(config.maxMemoryItems) && config.maxMemoryItems > 0 &&
+      config.maxMemoryItems <= 50 && Number.isSafeInteger(config.maxMemoryCharacters) &&
+      config.maxMemoryCharacters > 0 && config.maxMemoryCharacters <= 32768 && memoryContext !== undefined;
+    const maximumInputTokens: number = config.estimatedInputTokens + config.maxMemoryCharacters;
     const valid: boolean = config.configVersion === PROVIDER_SEMANTIC_PLANNER_CONFIG_VERSION &&
       validText(config.promptVersion) && Number.isSafeInteger(config.estimatedInputTokens) &&
-      config.estimatedInputTokens > 0 && config.estimatedInputTokens <= this.profile.maxInputTokens &&
+      config.estimatedInputTokens > 0 && Number.isSafeInteger(maximumInputTokens) &&
+      maximumInputTokens <= this.profile.maxInputTokens && (memoryDisabled || memoryEnabled) &&
       Number.isSafeInteger(config.maxOutputTokens) &&
       config.maxOutputTokens > 0 && config.maxOutputTokens <= this.profile.maxOutputTokens &&
       Number.isFinite(config.temperature) && config.temperature >= 0 && config.temperature <= 2 &&
@@ -758,7 +864,7 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
       throw new ProviderSemanticPlannerError(ProviderSemanticPlannerErrorCode.INVALID_CONFIGURATION,
         'Provider semantic planner configuration is invalid');
     }
-    const registry = provider.registryEntry(config.estimatedInputTokens, config.maxOutputTokens);
+    const registry = provider.registryEntry(maximumInputTokens, config.maxOutputTokens);
     if (registry.modelId !== this.profile.registryModelId || registry.providerId !== this.profile.providerId ||
       registry.modelVersion !== this.profile.modelVersion || registry.registryDigest.length === 0 ||
       registry.regions.length !== 1 || registry.regions[0] !== this.profile.region || !registry.available) {
@@ -778,6 +884,8 @@ export class ProviderSemanticPlanner implements SemanticPlannerPort {
     result.clarificationTtlMs = source.clarificationTtlMs;
     result.maxSteps = source.maxSteps;
     result.maxPromptCharacters = source.maxPromptCharacters;
+    result.maxMemoryItems = source.maxMemoryItems;
+    result.maxMemoryCharacters = source.maxMemoryCharacters;
     return result;
   }
 }

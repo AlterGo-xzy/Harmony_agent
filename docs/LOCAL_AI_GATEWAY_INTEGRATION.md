@@ -6,7 +6,7 @@
 
 2026-10-12 对 `C:\claude-gateway` 的只读核对基于 `codex/develop`、commit `21017a1e91a1`。网关公开监听基址为 `http://127.0.0.1:4000`，模型入口包括 `/v1/chat/completions`、`/v1/responses` 和 `/v1/messages`，健康入口为 `/health` 与 `/ready`。本适配选择 `/v1/chat/completions`，默认公共 alias 为 `aigw/default`。
 
-每次请求必须提供一个本地网关 token。本适配接受 `Authorization: Bearer ...` 或 `x-api-key` 中的一种，并拒绝空值、同时提供两种认证方式或附带其他 credential header。token 必须由宿主实现的 `ProviderCredentialPort` 在调用时解析；不能写入源码、Profile、任务 DTO、日志、报告或快照。
+每次请求必须提供一个本地网关 token。本适配接受 `Authorization: Bearer ...` 或 `x-api-key` 中的一种，并拒绝空值、同时提供两种认证方式或附带其他 credential header。token 必须由 `ProviderCredentialPort` 在调用时解析；API 26 产品宿主可使用仓库提供的 `AssetStoreProviderCredentialPort`。token 不能写入源码、Profile、任务 DTO、日志、报告或快照。
 
 ## 宿主装配
 
@@ -54,7 +54,9 @@ Runtime-facing 请求继续使用稳定的 `model.local.gateway`。`GenericModel
 
 ## 当前证据边界
 
-SDK 原生 Previewer/Hypium 当前运行 `agent_connectors` 55/55。T35 的 3 项覆盖具体 Provider 链经唯一 Facade 生成 typed workflow、解析一次 credential、发起一次 gateway HTTP、等待授权后完成一次 MCP Tool，以及恢复工厂和网络前 fail-closed；T37 证明显式 `CollaborationSelectorPort` 能贯穿具体网关 composition，且 Multi 激活预算不足时在 credential、HTTP 与 MCP 前拒绝；T39/T40 又把版本化 `CollaborationPlan` 接入具体 composition，并按计划为每个角色发起独立 Provider 请求、顺序修订 typed workflow。当前 Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`，包内版本 0.8.0、`debug=false`。这些主机门使用内存 credential/timer/HTTP/MCP fixture；T36 已另行取得 signed API 26 的真实 Windows 网关、上游 Provider、设备网络、唯一 Facade 和一次 MCP Tool 闭环证据。T40 没有真实 Provider 或设备证据；宿主生产 credential store、真实取消/timeout 与 S6 12×2 system Bench 仍未验证。
+T40 时 SDK 原生 Previewer/Hypium 运行 `agent_connectors` 55/55。T35 的 3 项覆盖具体 Provider 链经唯一 Facade 生成 typed workflow、解析一次 credential、发起一次 gateway HTTP、等待授权后完成一次 MCP Tool，以及恢复工厂和网络前 fail-closed；T37 证明显式 `CollaborationSelectorPort` 能贯穿具体网关 composition，且 Multi 激活预算不足时在 credential、HTTP 与 MCP 前拒绝；T39/T40 又把版本化 `CollaborationPlan` 接入具体 composition，并按计划为每个角色发起独立 Provider 请求、顺序修订 typed workflow。T40 的 Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`，包内版本 0.8.0、`debug=false`。这些主机门使用内存 credential/timer/HTTP/MCP fixture；T36 已另行取得 signed API 26 的真实 Windows 网关、上游 Provider、设备网络、唯一 Facade 和一次 MCP Tool 闭环证据。T40 没有真实 Provider 或设备证据；真实取消/timeout 与 S6 12×2 system Bench 当时仍未验证。
+
+P0-C 增加 AssetStore credential resolver 后，当前 Connector 主机套件为 65/65；Release HAR 为 67,249 bytes、SHA-256 `176DE3443BB09836D6B6B2433237127599E17441CD11F7061A1D72622C5F9F5E`。这证明只读查询适配器的 API 26 类型和打包，不证明真实 Asset 写入、轮换、锁屏策略或签名设备查询。
 
 2026-10-13 的只读查询确认已安装 `aigw.exe`，配置中已有一个完整且已选中的 Profile，并提供默认 alias `aigw/default`。
 

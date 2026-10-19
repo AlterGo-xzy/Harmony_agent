@@ -4,6 +4,7 @@ import {
   ProductionAgentRuntimeConfig,
   ProductionAgentRuntimePorts,
   ProductionRuntimeAdapterFactoryPort,
+  PlanningMemoryContextPort,
   RuntimeToolOutcomeSinkPort,
   SingleAgentCollaborationSelector,
   StepDispatchPort,
@@ -43,7 +44,8 @@ export enum McpRuntimeCompositionErrorCode {
 
 function withProviderPlanner(source: ProductionAgentRuntimePorts, registered: RegisteredModelProvider,
   provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
-  observer?: ProviderSemanticPlannerObserverPort): ProductionAgentRuntimePorts {
+  observer?: ProviderSemanticPlannerObserverPort,
+  memoryContext?: PlanningMemoryContextPort): ProductionAgentRuntimePorts {
   if (source.planner !== undefined) {
     throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.PROVIDER_PLANNER_ALREADY_CONFIGURED,
       'Provider MCP production composition owns the Semantic Planner port');
@@ -59,13 +61,13 @@ function withProviderPlanner(source: ProductionAgentRuntimePorts, registered: Re
   const value: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
   value.clock = source.clock;
   value.ids = source.ids;
-  const providerPlanner: ProviderSemanticPlanner = observer === undefined ?
-    new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids) :
-    new ProviderSemanticPlanner(registered, provider, plannerConfig, source.clock, source.ids, observer);
+  const providerPlanner: ProviderSemanticPlanner = new ProviderSemanticPlanner(
+    registered, provider, plannerConfig, source.clock, source.ids, observer, memoryContext);
   value.planner = source.collaborationPlan === undefined ? providerPlanner :
     new CollaborativeProviderSemanticPlanner(providerPlanner);
   value.collaboration = source.collaboration;
   value.collaborationPlan = source.collaborationPlan;
+  value.collaborationPreparation = source.collaborationPreparation;
   value.toolPreparer = source.toolPreparer;
   value.persistence = source.persistence;
   value.recovery = source.recovery;
@@ -115,6 +117,7 @@ function copyPorts(source: ProductionAgentRuntimePorts, adapter: McpAgentAdapter
     new SingleAgentCollaborationSelector() : source.collaboration;
   value.collaboration = collaboration;
   value.collaborationPlan = source.collaborationPlan;
+  value.collaborationPreparation = source.collaborationPreparation;
   value.toolPreparer = source.toolPreparer;
   value.adapterFactory = new McpProductionAdapterFactory(adapter);
   value.persistence = source.persistence;
@@ -184,9 +187,10 @@ export async function createRecoveredMcpProductionAgentRuntime(config: Productio
 export async function createProviderMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
   registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
-  observer?: ProviderSemanticPlannerObserverPort): Promise<AgentRuntimeFacade> {
+  observer?: ProviderSemanticPlannerObserverPort,
+  memoryContext?: PlanningMemoryContextPort): Promise<AgentRuntimeFacade> {
   const composed: ProductionAgentRuntimePorts = withProviderPlanner(
-    ports, registered, provider, plannerConfig, observer);
+    ports, registered, provider, plannerConfig, observer, memoryContext);
   return await createMcpProductionAgentRuntime(config, composed, adapter, registry);
 }
 
@@ -194,8 +198,9 @@ export async function createProviderMcpProductionAgentRuntime(config: Production
 export async function createRecoveredProviderMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
   registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
-  observer?: ProviderSemanticPlannerObserverPort): Promise<AgentRuntimeFacade> {
+  observer?: ProviderSemanticPlannerObserverPort,
+  memoryContext?: PlanningMemoryContextPort): Promise<AgentRuntimeFacade> {
   const composed: ProductionAgentRuntimePorts = withProviderPlanner(
-    ports, registered, provider, plannerConfig, observer);
+    ports, registered, provider, plannerConfig, observer, memoryContext);
   return await createRecoveredMcpProductionAgentRuntime(config, composed, adapter, registry);
 }

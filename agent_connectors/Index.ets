@@ -68,6 +68,14 @@ export {
 } from './src/main/ets/provider/ProviderLifecycle';
 export { ProviderOperationRunner } from './src/main/ets/provider/ProviderOperationRunner';
 export {
+  ASSET_CREDENTIAL_STORE_VERSION,
+  AssetCredentialHeaderKind,
+  AssetCredentialBinding,
+  AssetSecretQueryPort,
+  HarmonyAssetSecretQueryPort,
+  AssetStoreProviderCredentialPort
+} from './src/main/ets/provider/AssetStoreProviderCredentialPort';
+export {
   ModelProviderProfile,
   ProviderCatalog,
   RegisteredModelProvider,
