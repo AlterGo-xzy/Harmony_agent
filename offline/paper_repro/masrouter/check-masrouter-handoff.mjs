@@ -128,6 +128,16 @@ assert(handoffStats.isDirectory() && !handoffStats.isSymbolicLink(),
 
 const manifestPath = join(handoffRoot, contract.handoffFiles.manifestName);
 const sumsPath = join(handoffRoot, contract.handoffFiles.sumsName);
+// Bound all on-disk bytes, including metadata, before reading any handoff file.
+// Traversal also rejects links and non-regular files before parsing the manifest.
+const allDiskFiles = listFiles(handoffRoot);
+let totalHandoffBytes = 0;
+for (const path of allDiskFiles) {
+  totalHandoffBytes += lstatSync(join(handoffRoot, path)).size;
+  assert(Number.isSafeInteger(totalHandoffBytes) &&
+    totalHandoffBytes <= contract.applicationBudget.maximumHandoffBytes,
+  'handoff exceeds total size budget');
+}
 const manifest = readJson(manifestPath, 'HANDOFF.json');
 
 assertExactKeys(manifest, [
@@ -393,6 +403,10 @@ for (const file of manifest.files) {
   const stats = lstatSync(absolute);
   assert(stats.isFile() && !stats.isSymbolicLink(), `file must be regular: ${file.path}`);
   assert(stats.size === file.sizeBytes, `file size drift: ${file.path}`);
+  if (file.role === 'decisionPayload') {
+    assert(stats.size <= contract.applicationBudget.maximumDecisionPayloadBytes,
+      'decision payload exceeds application budget');
+  }
   totalBytes += stats.size;
   assert(totalBytes <= contract.applicationBudget.maximumHandoffBytes,
     'handoff exceeds total size budget');
@@ -423,6 +437,11 @@ function contentOf(role) {
 const featureSchemaFile = filesByRole.get('featureSchema')[0];
 assert(featureSchemaFile.sha256 === manifest.featureEnvelope.sourceDigests.featureSchemaSha256,
   'feature schema digest drift');
+const featureSchemaContent = contentOf('featureSchema');
+assertExactKeys(featureSchemaContent, ['schemaVersion'], 'feature schema file');
+assert(featureSchemaContent.schemaVersion === contract.featureEnvelope.schemaVersion &&
+  featureSchemaContent.schemaVersion === manifest.featureEnvelope.featureSchemaVersion,
+  'feature schema file version drift');
 const roleRegistryFile = filesByRole.get('roleRegistrySnapshot')[0];
 assert(roleRegistryFile.sha256 === manifest.featureEnvelope.sourceDigests.roleRegistrySnapshotSha256,
   'role registry snapshot digest drift');
@@ -469,7 +488,7 @@ if (manifest.trainingState === 'candidate') {
     'candidate requires a pythonReferenceReport');
 }
 
-const diskFiles = listFiles(handoffRoot)
+const diskFiles = allDiskFiles
   .filter((path) => path !== contract.handoffFiles.manifestName && path !== contract.handoffFiles.sumsName);
 assert(JSON.stringify(paths.slice().sort()) === JSON.stringify(diskFiles),
   'handoff contains unlisted or missing files');
@@ -503,6 +522,7 @@ const report = {
   },
   fileCount: manifest.files.length,
   totalListedBytes: totalBytes,
+  totalHandoffBytes,
   runtimeIntegration: manifest.runtimeIntegration,
   evidence: manifest.evidence,
   releaseEligibility: 'researchCandidateOnly'

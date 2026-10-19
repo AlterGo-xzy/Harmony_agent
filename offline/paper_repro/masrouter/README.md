@@ -58,7 +58,7 @@ T52 为未来 MasRouter research candidate 定义了主仓库可接收的结构�
 
 - `handoff-contract.json`：版本化 feature envelope、Role/Model Registry 快照、single/multi 计划、置信度、成本/激活估计、文件角色、字节预算、禁止内容和 runtime 接线边界；
 - `check-masrouter-handoff.mjs`：纯 Node checker，校验 HANDOFF.json、SHA256SUMS、逐文件大小/摘要、路径穿越/符号链接、未列文件、必需文件角色、角色/模型越界、计划顺序、source digest、encoder/runtime/dataset/训练日志混入、任务控制字段和同步网络声明；
-- `test-masrouter-handoff.mjs`：3 个正向场景（adaptation、single、official reproduction）和 18 个 fail-closed 负向场景，共 21/21；
+- `test-masrouter-handoff.mjs`：4 个正向场景（adaptation、single、official reproduction、完整大小统计）和 25 个 fail-closed 负向场景，共 29/29；
 - `fixtures/research-only-handoff/`：明确标记的 research-only 示例，不是论文 checkpoint 或可部署策略；
 - `fixtures/README.md`：fixture 边界与验证命令。
 
@@ -70,3 +70,5 @@ node offline/paper_repro/masrouter/test-masrouter-handoff.mjs
 ```
 
 边界：角色只能来自 Role Registry 快照，模型选择仅 advisory、不能视为授权；Multi 仍受 Runtime activation budget 约束；计划必须绑定 runtime-supplied task，handoff 本身不能携带任务控制、授权决定或 Provider credential；encoder/tokenizer/Python/PyTorch/optimizer state/数据集/训练日志不得进入 handoff；发布继续复用 M11 `ArtifactManifest`/`ArtifactRegistry`/`ArtifactPolicyReleaseRunner`，不创建第二套发布系统。checker 通过只表示结构准入，不证明训练、准确率、parity、包体、设备或生产发布通过。T54 继续暂停。
+
+T52 审核修复：feature schema 文件必须是仅含 `schemaVersion` 的 JSON 对象，并与合同及 envelope 的版本一致；64 MiB 限制覆盖 HANDOFF.json、SHA256SUMS 和全部文件，读取内容前先检查总大小。`totalListedBytes` 为所列文件小计，`totalHandoffBytes` 为含元数据总计。fixture 使用 `.gitattributes` 的 `-text` 保持字节不变，无需修改用户的全局 Git 配置。复验记录见 `artifacts/t52-review-fix/20261019/`。

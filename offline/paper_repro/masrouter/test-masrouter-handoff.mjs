@@ -1,5 +1,5 @@
 import { createHash } from 'node:crypto';
-import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
@@ -217,5 +217,63 @@ expectRejected('oversized decision payload', (manifest, candidateRoot) => {
   const content = Buffer.alloc(5242881, 7);
   writeFixtureFile(candidateRoot, manifest, 'decisionPayload', content);
 }, 'decision payload exceeds application budget');
+
+function replaceFeatureSchema(manifest, candidateRoot, content) {
+  const file = writeFixtureFile(candidateRoot, manifest, 'featureSchema', content);
+  manifest.featureEnvelope.sourceDigests.featureSchemaSha256 = file.sha256;
+}
+
+expectRejected('invalid feature schema JSON with matching digest', (manifest, candidateRoot) => {
+  replaceFeatureSchema(manifest, candidateRoot, 'NOT JSON');
+}, 'featureSchema is not valid JSON');
+
+expectRejected('feature schema must be an object', (manifest, candidateRoot) => {
+  replaceFeatureSchema(manifest, candidateRoot, '[]');
+}, 'feature schema file must be an object');
+
+expectRejected('incompatible feature schema version with matching digest', (manifest, candidateRoot) => {
+  replaceFeatureSchema(manifest, candidateRoot, '{"schemaVersion":"incompatible-v999"}');
+}, 'feature schema file version drift');
+
+expectRejected('unknown feature schema field with matching digest', (manifest, candidateRoot) => {
+  replaceFeatureSchema(manifest, candidateRoot, '{"schemaVersion":"masrouter-feature-v1","taskId":"forbidden"}');
+}, 'feature schema file contains missing or unknown fields');
+
+const maximumHandoffBytes = JSON.parse(readFileSync(join(root, 'handoff-contract.json'), 'utf8'))
+  .applicationBudget.maximumHandoffBytes;
+
+expectRejected('oversized manifest rejected before JSON parsing', (manifest, candidateRoot) => {
+  writeFileSync(join(candidateRoot, 'HANDOFF.json'), Buffer.alloc(maximumHandoffBytes + 1, 32));
+  return false;
+}, 'handoff exceeds total size budget');
+
+expectRejected('oversized checksum metadata', (manifest, candidateRoot) => {
+  writeFileSync(join(candidateRoot, 'SHA256SUMS'), Buffer.alloc(maximumHandoffBytes + 1, 32));
+  return false;
+}, 'handoff exceeds total size budget');
+
+expectRejected('aggregate budget includes manifest and checksums', (manifest, candidateRoot) => {
+  const file = manifest.files.find((entry) => entry.role === 'goldenFixtures');
+  const otherBytes = manifest.files.reduce((sum, entry) => sum + (entry === file ? 0 : entry.sizeBytes), 0);
+  // Listed bytes alone meet the limit; metadata pushes the package over it.
+  writeFixtureFile(candidateRoot, manifest, 'goldenFixtures', Buffer.alloc(maximumHandoffBytes - otherBytes, 32));
+}, 'handoff exceeds total size budget');
+
+{
+  const candidateRoot = fixture();
+  try {
+    const result = run(candidateRoot);
+    assert(result.status === 0, `size accounting fixture failed: ${result.stderr}`);
+    const report = JSON.parse(result.stdout);
+    const manifest = readManifest(candidateRoot);
+    const expected = manifest.files.reduce((sum, entry) => sum + entry.sizeBytes, 0) +
+      statSync(join(candidateRoot, 'HANDOFF.json')).size + statSync(join(candidateRoot, 'SHA256SUMS')).size;
+    assert(report.totalHandoffBytes === expected, 'totalHandoffBytes excludes metadata');
+    process.stdout.write('PASS: total handoff bytes include metadata\n');
+    passed++;
+  } finally {
+    rmSync(candidateRoot, { recursive: true, force: true });
+  }
+}
 
 process.stdout.write(`Tests run: ${passed}, Failure: 0, Error: 0, Pass: ${passed}, Ignore: 0\n`);

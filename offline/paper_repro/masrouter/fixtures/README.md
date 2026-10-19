@@ -11,3 +11,5 @@ node offline/paper_repro/masrouter/check-masrouter-handoff.mjs --handoff offline
 ```
 
 The checker verifies the contract identity, versioned feature envelope, Role Registry/Model Registry snapshots, ordered single/multi assignments, advisory-only candidate models, source digests, file safety, byte budgets and the absence of encoder/tokenizer/Python/PyTorch/optimizer/dataset/training-log content. Passing the checker only means the handoff is structurally admissible; it does not grant release, parity, shadow, canary or active status.
+
+T52 review fix: the feature schema file must be a JSON object with exactly `schemaVersion`, matching both the contract and feature envelope. The 64 MiB package budget includes HANDOFF.json and SHA256SUMS and is checked before reading package contents. `totalListedBytes` remains the payload-file subtotal; `totalHandoffBytes` includes metadata. Git text conversion is disabled for this fixture tree so Windows checkouts preserve the committed hashes, including the literal binary-payload fixtures.
