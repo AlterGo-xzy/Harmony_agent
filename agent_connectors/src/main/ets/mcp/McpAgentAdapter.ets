@@ -55,6 +55,91 @@ function copyFailures<T>(source: T[]): T[] {
   return source.slice();
 }
 
+class McpToolErrorProjection {
+  status: ToolOutcomeStatus = ToolOutcomeStatus.FAILED;
+  errorClass: AgentErrorClass = AgentErrorClass.PROVIDER;
+  code: string = 'MCP_TOOL_ERROR';
+  message: string = 'MCP server reported a tool error';
+}
+
+function asRecord(value: Object | undefined): Record<string, Object> | undefined {
+  if (value === undefined || value === null || typeof value !== 'object' || Array.isArray(value)) return undefined;
+  return value as Record<string, Object>;
+}
+
+function projectStructuredToolError(value: Object | undefined): McpToolErrorProjection {
+  const result: McpToolErrorProjection = new McpToolErrorProjection();
+  const envelope: Record<string, Object> | undefined = asRecord(value);
+  if (envelope === undefined) return result;
+  const schemaVersion: Object = envelope['schemaVersion'];
+  const requestId: Object = envelope['requestId'];
+  const error: Record<string, Object> | undefined = asRecord(envelope['error']);
+  if (schemaVersion !== '1.0' || typeof requestId !== 'string' || requestId.trim().length === 0 ||
+    error === undefined) return result;
+  const codeValue: Object = error['code'];
+  const messageValue: Object = error['message'];
+  if (typeof codeValue !== 'string' || typeof messageValue !== 'string' || messageValue.trim().length === 0) {
+    return result;
+  }
+  switch (codeValue) {
+    case 'INVALID_ARGUMENT':
+      result.errorClass = AgentErrorClass.INVALID_INPUT;
+      result.code = codeValue;
+      result.message = 'MCP tool rejected its arguments';
+      return result;
+    case 'CONFIGURATION':
+      result.errorClass = AgentErrorClass.CONFIGURATION;
+      result.code = codeValue;
+      result.message = 'MCP tool is not configured';
+      return result;
+    case 'AUTHENTICATION':
+      result.errorClass = AgentErrorClass.AUTHENTICATION;
+      result.code = codeValue;
+      result.message = 'MCP tool authentication failed';
+      return result;
+    case 'RATE_LIMITED':
+      result.code = codeValue;
+      result.message = 'MCP tool rate limit exceeded';
+      return result;
+    case 'QUOTA_EXCEEDED':
+      result.errorClass = AgentErrorClass.BUDGET_EXHAUSTED;
+      result.code = codeValue;
+      result.message = 'MCP tool quota exhausted';
+      return result;
+    case 'NETWORK':
+      result.errorClass = AgentErrorClass.NETWORK;
+      result.code = codeValue;
+      result.message = 'MCP tool upstream network failed';
+      return result;
+    case 'TIMEOUT':
+      result.errorClass = AgentErrorClass.TIMEOUT;
+      result.code = codeValue;
+      result.message = 'MCP tool timed out';
+      return result;
+    case 'CANCELLED':
+      result.status = ToolOutcomeStatus.CANCELLED;
+      result.errorClass = AgentErrorClass.CANCELLED;
+      result.code = codeValue;
+      result.message = 'MCP tool was cancelled';
+      return result;
+    case 'INVALID_RESPONSE':
+      result.errorClass = AgentErrorClass.SCHEMA_MISMATCH;
+      result.code = codeValue;
+      result.message = 'MCP tool returned an invalid upstream response';
+      return result;
+    case 'RESPONSE_TOO_LARGE':
+      result.code = codeValue;
+      result.message = 'MCP tool response exceeded its limit';
+      return result;
+    case 'UPSTREAM':
+      result.code = codeValue;
+      result.message = 'MCP tool upstream failed';
+      return result;
+    default:
+      return result;
+  }
+}
+
 export class McpAgentAdapter {
   private readonly client: McpClientToolPort;
   private readonly providers: McpProviderRegistry;
@@ -224,8 +309,9 @@ export class McpAgentAdapter {
 
   private success(invocationId: string, startedAt: string, result: McpToolResult): ToolOutcome {
     if (result.isError) {
-      return this.failure(invocationId, startedAt, ToolOutcomeStatus.FAILED,
-        AgentErrorClass.PROVIDER, 'MCP_TOOL_ERROR', 'MCP server reported a tool error');
+      const projection: McpToolErrorProjection = projectStructuredToolError(result.structuredContent);
+      return this.failure(invocationId, startedAt, projection.status,
+        projection.errorClass, projection.code, projection.message);
     }
     const outcome: ToolOutcome = new ToolOutcome();
     outcome.invocationId = invocationId;

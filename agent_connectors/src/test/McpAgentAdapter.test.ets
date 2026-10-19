@@ -144,6 +144,31 @@ class FixtureToolResult implements McpToolResult {
   isError: boolean = false;
 }
 
+class FixtureToolErrorDetail {
+  code: string = '';
+  message: string = '';
+}
+
+class FixtureToolErrorEnvelope {
+  schemaVersion: string = '1.0';
+  requestId: string = 'search-request-1';
+  error: FixtureToolErrorDetail = new FixtureToolErrorDetail();
+}
+
+class FixtureToolErrorCase {
+  code: string;
+  status: ToolOutcomeStatus;
+  errorClass: AgentErrorClass;
+  message: string;
+
+  constructor(code: string, status: ToolOutcomeStatus, errorClass: AgentErrorClass, message: string) {
+    this.code = code;
+    this.status = status;
+    this.errorClass = errorClass;
+    this.message = message;
+  }
+}
+
 class FixtureSchemaProperty {
   type: string = '';
 
@@ -200,6 +225,7 @@ class FixtureClient implements McpClientToolPort {
   failures: McpServerFailure[] = [];
   callCount: number = 0;
   nextError?: McpClientError;
+  nextResult?: McpToolResult;
   private readonly bridge: McpInvocationPolicyBridge;
 
   constructor(bridge: McpInvocationPolicyBridge) {
@@ -226,6 +252,8 @@ class FixtureClient implements McpClientToolPort {
     }
     const error: McpClientError | undefined = this.nextError;
     if (error !== undefined) throw error;
+    const configured: McpToolResult | undefined = this.nextResult;
+    if (configured !== undefined) return configured;
     const content: FixtureContentBlock = new FixtureContentBlock();
     content.text = '21.4 C';
     const result: FixtureToolResult = new FixtureToolResult();
@@ -329,6 +357,18 @@ function invocation(refresh: McpCatalogRefreshResult, digest: ConnectorDigestPor
   value.timeoutMs = 3000;
   value.createdAt = '2026-10-02T11:59:59.000Z';
   return value;
+}
+
+function toolError(code: string, message: string = 'upstream detail'): McpToolResult {
+  const detail: FixtureToolErrorDetail = new FixtureToolErrorDetail();
+  detail.code = code;
+  detail.message = message;
+  const envelope: FixtureToolErrorEnvelope = new FixtureToolErrorEnvelope();
+  envelope.error = detail;
+  const result: FixtureToolResult = new FixtureToolResult();
+  result.isError = true;
+  result.structuredContent = envelope;
+  return result;
 }
 
 class CompositionClock implements RuntimeClockPort {
@@ -922,6 +962,82 @@ export default function mcpAgentAdapterTest(): void {
       expect(outcome.resultJson).assertEqual('{"celsius":21.4,"station":"CN-101"}');
       expect(fixture.client.callCount).assertEqual(1);
       expect(fixture.grants.calls).assertEqual(1);
+    });
+
+    it('mapsValidatedStructuredToolErrorsToStableTaxonomy', 0, async () => {
+      const cases: FixtureToolErrorCase[] = [
+        new FixtureToolErrorCase('INVALID_ARGUMENT', ToolOutcomeStatus.FAILED, AgentErrorClass.INVALID_INPUT,
+          'MCP tool rejected its arguments'),
+        new FixtureToolErrorCase('CONFIGURATION', ToolOutcomeStatus.FAILED, AgentErrorClass.CONFIGURATION,
+          'MCP tool is not configured'),
+        new FixtureToolErrorCase('AUTHENTICATION', ToolOutcomeStatus.FAILED, AgentErrorClass.AUTHENTICATION,
+          'MCP tool authentication failed'),
+        new FixtureToolErrorCase('RATE_LIMITED', ToolOutcomeStatus.FAILED, AgentErrorClass.PROVIDER,
+          'MCP tool rate limit exceeded'),
+        new FixtureToolErrorCase('QUOTA_EXCEEDED', ToolOutcomeStatus.FAILED, AgentErrorClass.BUDGET_EXHAUSTED,
+          'MCP tool quota exhausted'),
+        new FixtureToolErrorCase('NETWORK', ToolOutcomeStatus.FAILED, AgentErrorClass.NETWORK,
+          'MCP tool upstream network failed'),
+        new FixtureToolErrorCase('TIMEOUT', ToolOutcomeStatus.FAILED, AgentErrorClass.TIMEOUT,
+          'MCP tool timed out'),
+        new FixtureToolErrorCase('CANCELLED', ToolOutcomeStatus.CANCELLED, AgentErrorClass.CANCELLED,
+          'MCP tool was cancelled'),
+        new FixtureToolErrorCase('INVALID_RESPONSE', ToolOutcomeStatus.FAILED, AgentErrorClass.SCHEMA_MISMATCH,
+          'MCP tool returned an invalid upstream response'),
+        new FixtureToolErrorCase('RESPONSE_TOO_LARGE', ToolOutcomeStatus.FAILED, AgentErrorClass.PROVIDER,
+          'MCP tool response exceeded its limit'),
+        new FixtureToolErrorCase('UPSTREAM', ToolOutcomeStatus.FAILED, AgentErrorClass.PROVIDER,
+          'MCP tool upstream failed')
+      ];
+      for (let index: number = 0; index < cases.length; index++) {
+        const fixture: FixtureAssembly = new FixtureAssembly();
+        const refresh: McpCatalogRefreshResult = await fixture.adapter.refreshCatalog();
+        fixture.client.nextResult = toolError(cases[index].code, 'secret upstream detail');
+
+        const outcome: ToolOutcome = await fixture.adapter.invoke(invocation(refresh, fixture.digest));
+
+        expect(outcome.status).assertEqual(cases[index].status);
+        expect(outcome.errorClass).assertEqual(cases[index].errorClass);
+        expect(outcome.errorCode).assertEqual(cases[index].code);
+        expect(outcome.errorMessage).assertEqual(cases[index].message);
+        expect(outcome.resultJson === undefined).assertTrue();
+      }
+    });
+
+    it('failsClosedForUnknownOrMalformedStructuredToolErrors', 0, async () => {
+      const malformed: McpToolResult[] = [];
+      const missingStructured: FixtureToolResult = new FixtureToolResult();
+      missingStructured.isError = true;
+      malformed.push(missingStructured);
+      const arrayStructured: FixtureToolResult = new FixtureToolResult();
+      arrayStructured.isError = true;
+      arrayStructured.structuredContent = [];
+      malformed.push(arrayStructured);
+      malformed.push(toolError('FUTURE_PROVIDER_ERROR', 'do not expose future detail'));
+      const wrongVersion: FixtureToolResult = toolError('TIMEOUT') as FixtureToolResult;
+      const wrongVersionEnvelope: FixtureToolErrorEnvelope = wrongVersion.structuredContent as FixtureToolErrorEnvelope;
+      wrongVersionEnvelope.schemaVersion = '2.0';
+      malformed.push(wrongVersion);
+      const missingRequest: FixtureToolResult = toolError('NETWORK') as FixtureToolResult;
+      const missingRequestEnvelope: FixtureToolErrorEnvelope = missingRequest.structuredContent as FixtureToolErrorEnvelope;
+      missingRequestEnvelope.requestId = ' ';
+      malformed.push(missingRequest);
+      const missingMessage: FixtureToolResult = toolError('AUTHENTICATION', ' ') as FixtureToolResult;
+      malformed.push(missingMessage);
+
+      for (let index: number = 0; index < malformed.length; index++) {
+        const fixture: FixtureAssembly = new FixtureAssembly();
+        const refresh: McpCatalogRefreshResult = await fixture.adapter.refreshCatalog();
+        fixture.client.nextResult = malformed[index];
+
+        const outcome: ToolOutcome = await fixture.adapter.invoke(invocation(refresh, fixture.digest));
+
+        expect(outcome.status).assertEqual(ToolOutcomeStatus.FAILED);
+        expect(outcome.errorClass).assertEqual(AgentErrorClass.PROVIDER);
+        expect(outcome.errorCode).assertEqual('MCP_TOOL_ERROR');
+        expect(outcome.errorMessage).assertEqual('MCP server reported a tool error');
+        expect(outcome.resultJson === undefined).assertTrue();
+      }
     });
 
     it('doesNotRetryNetworkFailureAndMapsTaxonomy', 0, async () => {

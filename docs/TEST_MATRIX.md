@@ -118,3 +118,5 @@ T52 审核修复增加非法/非对象/错误版本/未知字段 feature schema�
 P0-C 加密 RDB 配置新增 3 项 Storage 用例：验证 execution/memory 配置固定 `encrypt: true`、`persist: true`，文件名隔离与路径拒绝，以及两个返回配置对象相互独立；Storage 总计 57/57。更新后的 Release HAR 为 75,957 bytes、SHA-256 `9C74AEFA0B2030B62E4471475EB88A76CA107CEE51FB723AA0908E0795A32872`。该证据没有调用 `getRdbStore`，不证明设备上的数据库文件已经加密或轮换成功。
 
 P0-C AssetStore credential resolver 新增 5 项 Connector 用例：验证 Bearer 与 `x-api-key`、精确 provider/scope、未知 scope 系统调用前拒绝、重复绑定/alias 拒绝、畸形 secret、字节清零与错误脱敏；Connectors 总计 65/65。更新后的 Release HAR 为 67,249 bytes、SHA-256 `176DE3443BB09836D6B6B2433237127599E17441CD11F7061A1D72622C5F9F5E`。该证据没有写入或读取真实 Asset，不证明签名设备上的预置、轮换或锁屏策略。
+
+2026-10-20 Shuvi 搜索 MCP 结构化工具错误投影新增 2 项 Connector 用例，覆盖约定的 11 个错误码到稳定状态/分类/错误码/本地消息的映射，以及缺失结构、数组、未知错误码、错误版本、空 requestId 和空 message 的 fail-closed；服务端原始 message 不进入结果，失败不产生 `resultJson`。Connectors 总计 67/67，Failure 0、Error 0；Release HAR 为 68,329 bytes、SHA-256 `563D1A63C4EC3F1F9FF78A6EB8F46C40B85C27133BADF9B5F46C22E234211C27`。HTML coverage 报告生成器有 worktree 路径拼接警告，但原始 `test_result.txt` 和 coverage 日志完整记录执行与通过结果。本门只验证主仓库 adapter/fixture，不证明真实 Shuvi 搜索服务协议、网络、HAP/设备、来源/请求关联或引用回答闭环。
