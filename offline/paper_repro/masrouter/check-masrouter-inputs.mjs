@@ -58,12 +58,167 @@ function exact(actual, expected, message) {
   assert(JSON.stringify(actual) === JSON.stringify(expected), message);
 }
 
-function assertSchema(path, name, expectedId) {
+const ANNOTATION_KEYWORDS = new Set(['$schema', '$id', 'title', 'description', '$defs']);
+const VALIDATION_KEYWORDS = new Set([
+  'type', 'additionalProperties', 'required', 'properties', 'items', 'minItems', 'maxItems',
+  'uniqueItems', 'minLength', 'minimum', 'maximum', 'pattern', 'const', 'enum', '$ref'
+]);
+
+function checkSchemaNode(schema, path, rootSchema) {
+  assert(schema !== null && typeof schema === 'object' && !Array.isArray(schema), `invalid schema at ${path}`);
+  for (const key of Object.keys(schema)) {
+    assert(ANNOTATION_KEYWORDS.has(key) || VALIDATION_KEYWORDS.has(key),
+      `unsupported schema keyword ${key} at ${path}`);
+  }
+  if (schema.$defs !== undefined) {
+    assert(schema.$defs !== null && typeof schema.$defs === 'object' && !Array.isArray(schema.$defs),
+      `invalid $defs at ${path}`);
+    for (const name of Object.keys(schema.$defs)) {
+      checkSchemaNode(schema.$defs[name], `${path}.$defs.${name}`, rootSchema);
+    }
+  }
+  if (schema.properties !== undefined) {
+    assert(schema.properties !== null && typeof schema.properties === 'object' && !Array.isArray(schema.properties),
+      `invalid properties at ${path}`);
+    for (const name of Object.keys(schema.properties)) {
+      checkSchemaNode(schema.properties[name], `${path}.properties.${name}`, rootSchema);
+    }
+  }
+  if (schema.items !== undefined) checkSchemaNode(schema.items, `${path}.items`, rootSchema);
+  if (schema.additionalProperties !== undefined && typeof schema.additionalProperties === 'object') {
+    checkSchemaNode(schema.additionalProperties, `${path}.additionalProperties`, rootSchema);
+  }
+  if (schema.$ref !== undefined) {
+    assert(typeof schema.$ref === 'string' && schema.$ref.startsWith('#/$defs/'),
+      `unsupported $ref at ${path}`);
+  }
+}
+
+function resolveRef(ref, rootSchema) {
+  assert(ref.startsWith('#/$defs/'), `unsupported $ref: ${ref}`);
+  const name = ref.slice('#/$defs/'.length);
+  const definition = rootSchema.$defs === undefined ? undefined : rootSchema.$defs[name];
+  assert(definition !== undefined, `unresolved $ref: ${ref}`);
+  return definition;
+}
+
+function jsonTypeName(value) {
+  if (value === null) return 'null';
+  if (Array.isArray(value)) return 'array';
+  if (typeof value === 'number') return Number.isInteger(value) ? 'integer' : 'number';
+  return typeof value;
+}
+
+function matchesType(value, type) {
+  if (type === 'null') return value === null;
+  if (type === 'object') return value !== null && typeof value === 'object' && !Array.isArray(value);
+  if (type === 'array') return Array.isArray(value);
+  if (type === 'integer') return typeof value === 'number' && Number.isInteger(value);
+  if (type === 'number') return typeof value === 'number' && Number.isFinite(value);
+  if (type === 'boolean') return typeof value === 'boolean';
+  if (type === 'string') return typeof value === 'string';
+  throw new Error(`unsupported schema type: ${type}`);
+}
+
+function expectedTypeName(type) {
+  return Array.isArray(type) ? type.join(' or ') : type;
+}
+
+function validateValue(value, schema, rootSchema, path) {
+  if (schema.$ref !== undefined) {
+    validateValue(value, resolveRef(schema.$ref, rootSchema), rootSchema, path);
+    return;
+  }
+  if (schema.type !== undefined) {
+    const types = Array.isArray(schema.type) ? schema.type : [schema.type];
+    assert(types.some((type) => matchesType(value, type)),
+      `schema validation failed at ${path}: expected ${expectedTypeName(schema.type)}, got ${jsonTypeName(value)}`);
+  }
+  if (schema.const !== undefined) {
+    assert(JSON.stringify(value) === JSON.stringify(schema.const),
+      `schema validation failed at ${path}: const mismatch`);
+  }
+  if (schema.enum !== undefined) {
+    assert(schema.enum.some((entry) => JSON.stringify(entry) === JSON.stringify(value)),
+      `schema validation failed at ${path}: value is not in enum`);
+  }
+  if (value !== null && typeof value === 'object' && !Array.isArray(value)) {
+    if (schema.required !== undefined) {
+      for (const name of schema.required) {
+        assert(Object.prototype.hasOwnProperty.call(value, name),
+          `schema validation failed at ${path}: missing required property "${name}"`);
+      }
+    }
+    if (schema.properties !== undefined) {
+      for (const name of Object.keys(schema.properties)) {
+        if (Object.prototype.hasOwnProperty.call(value, name)) {
+          validateValue(value[name], schema.properties[name], rootSchema,
+            path === '$' ? `$.${name}` : `${path}.${name}`);
+        }
+      }
+    }
+    if (schema.additionalProperties === false) {
+      for (const name of Object.keys(value)) {
+        assert(schema.properties !== undefined &&
+          Object.prototype.hasOwnProperty.call(schema.properties, name),
+          `schema validation failed at ${path}.${name}: additional property is not allowed`);
+      }
+    } else if (schema.additionalProperties !== undefined && typeof schema.additionalProperties === 'object') {
+      for (const name of Object.keys(value)) {
+        if (schema.properties === undefined ||
+          !Object.prototype.hasOwnProperty.call(schema.properties, name)) {
+          validateValue(value[name], schema.additionalProperties, rootSchema, `${path}.${name}`);
+        }
+      }
+    }
+  }
+  if (Array.isArray(value)) {
+    if (schema.minItems !== undefined) {
+      assert(value.length >= schema.minItems, `schema validation failed at ${path}: fewer than ${schema.minItems} items`);
+    }
+    if (schema.maxItems !== undefined) {
+      assert(value.length <= schema.maxItems, `schema validation failed at ${path}: more than ${schema.maxItems} items`);
+    }
+    if (schema.uniqueItems === true) {
+      const seen = new Set();
+      for (const entry of value) {
+        const key = JSON.stringify(entry);
+        assert(!seen.has(key), `schema validation failed at ${path}: duplicate item`);
+        seen.add(key);
+      }
+    }
+    if (schema.items !== undefined) {
+      for (let index = 0; index < value.length; index++) {
+        validateValue(value[index], schema.items, rootSchema, `${path}[${index}]`);
+      }
+    }
+  }
+  if (typeof value === 'string') {
+    if (schema.minLength !== undefined) {
+      assert(value.length >= schema.minLength, `schema validation failed at ${path}: shorter than ${schema.minLength}`);
+    }
+    if (schema.pattern !== undefined) {
+      assert(new RegExp(schema.pattern).test(value), `schema validation failed at ${path}: pattern mismatch`);
+    }
+  }
+  if (typeof value === 'number') {
+    if (schema.minimum !== undefined) {
+      assert(value >= schema.minimum, `schema validation failed at ${path}: below minimum`);
+    }
+    if (schema.maximum !== undefined) {
+      assert(value <= schema.maximum, `schema validation failed at ${path}: above maximum`);
+    }
+  }
+}
+
+function loadSchema(path, name, expectedId) {
   const schema = json(path);
   assert(schema.$schema === 'https://json-schema.org/draft/2020-12/schema', `${name} schema draft drift`);
   assert(schema.$id === expectedId, `${name} schema id drift`);
   assert(schema.type === 'object', `${name} schema must describe an object`);
   assert(Array.isArray(schema.required) && schema.required.length > 0, `${name} schema must declare required fields`);
+  checkSchemaNode(schema, '$', schema);
+  return schema;
 }
 
 const lock = json(paths.upstreamLock);
@@ -75,10 +230,19 @@ const prices = json(paths.prices);
 const issues = json(paths.issues);
 const meta = json(paths.meta);
 
-assertSchema(paths.environmentSchema, 'environment', 'https://harmony-agent.local/schemas/masrouter-environment-lock-v1.json');
-assertSchema(paths.datasetSchema, 'dataset', 'https://harmony-agent.local/schemas/masrouter-dataset-lock-v1.json');
-assertSchema(paths.modelSchema, 'provider-model', 'https://harmony-agent.local/schemas/masrouter-provider-model-lock-v1.json');
-assertSchema(paths.priceSchema, 'price', 'https://harmony-agent.local/schemas/masrouter-price-snapshot-v1.json');
+const environmentSchema = loadSchema(paths.environmentSchema, 'environment',
+  'https://harmony-agent.local/schemas/masrouter-environment-lock-v1.json');
+const datasetSchema = loadSchema(paths.datasetSchema, 'dataset',
+  'https://harmony-agent.local/schemas/masrouter-dataset-lock-v1.json');
+const modelSchema = loadSchema(paths.modelSchema, 'provider-model',
+  'https://harmony-agent.local/schemas/masrouter-provider-model-lock-v1.json');
+const priceSchema = loadSchema(paths.priceSchema, 'price',
+  'https://harmony-agent.local/schemas/masrouter-price-snapshot-v1.json');
+
+validateValue(environment, environmentSchema, environmentSchema, '$');
+validateValue(datasets, datasetSchema, datasetSchema, '$');
+validateValue(models, modelSchema, modelSchema, '$');
+validateValue(prices, priceSchema, priceSchema, '$');
 
 assert(lock.schemaVersion === '1' && spec.schemaVersion === '1', 'T50 inputs must use schema version 1');
 assert(/^[0-9a-f]{40}$/.test(lock.repository.commit), 'upstream commit must be a full Git SHA-1');
@@ -90,6 +254,7 @@ for (const document of [environment, datasets, models, prices, issues, meta]) {
   assert(document.upstreamCommit === lock.repository.commit, 'T51 document commit drift');
 }
 assert(meta.task === 'T51' && meta.milestone === 'M13-B', 'input contract must identify T51/M13-B');
+assert(meta.contractRevision === '2', 'input contract revision must be 2 after strict schema validation');
 
 assert(environment.contractId === 'harmony-agent-masrouter-environment-candidates-v1',
   'environment candidate identity drift');
@@ -286,6 +451,9 @@ const report = {
   task: 'T51',
   milestone: 'M13-B',
   reportDate: meta.contractDate,
+  contractRevision: meta.contractRevision,
+  checkerRevision: '2',
+  validationMode: 'strict-json-schema',
   status: 'environment-input-contract-complete-reproduction-blocked',
   inputDigests: {
     upstreamLock: digest(paths.upstreamLock),

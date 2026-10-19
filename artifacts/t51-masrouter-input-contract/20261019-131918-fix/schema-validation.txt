@@ -1,0 +1,15 @@
+Strict JSON Schema validation is executed by check-masrouter-inputs.mjs before any manual invariant.
+The validator implements the schema subset used by the four contracts, rejects unsupported schema keywords,
+and enforces type, required, additionalProperties, enum, const, pattern, bounds, array and $ref constraints.
+
+Four input documents validated:
+- environment-candidates.json -> schemas/environment-lock.schema.json
+- dataset-lock.json -> schemas/dataset-lock.schema.json
+- model-pools.json -> schemas/provider-model-lock.schema.json
+- price-snapshot-candidate.json -> schemas/price-snapshot.schema.json
+
+Required negative cases (from test-masrouter-inputs.mjs):
+PASS: unknown top-level field -> additional property is not allowed
+PASS: unknown nested field -> additional property is not allowed
+PASS: nested type error -> expected integer or null, got string
+PASS: missing required field -> missing required property "currency"

@@ -38,8 +38,10 @@ T51 在固定 commit `e005f7696fe0c0412563f6cd67f4cd3712fa2822` 上只读检查�
 - `price-snapshot-candidate.json`：Claude 3.5 Haiku 的 1.0/5.0 与 0.8/4.0 冲突保持显式，`costClaimsAllowed=false`；
 - `unresolved-issues.json`：17 项未解决问题（13 项 blocking），包括缺失依赖清单/checkpoint、MMLU download 模块缺失、路径大小写、未播种 20/80 split、MBPP 未固定远端 revision、MATH 519 子集不可重建、MMLU 测试切片隐式依赖 dev 大小、环境变量漂移、DeepSeek 客户端大小写选择、tokenizer 编码固定为 gpt-4o 等；
 - `input-contract.json`：T51 claim/readiness/zero-execution 元数据；
-- `check-masrouter-inputs.mjs` 与 `test-masrouter-inputs.mjs`：确定性 checker 和 9 项 fail-closed 自测；
+- `check-masrouter-inputs.mjs` 与 `test-masrouter-inputs.mjs`：确定性 checker（本地严格 JSON Schema 校验四份输入文档）和 13 项 fail-closed 自测；
 - `reports/input-contract-v1.json`：确定性报告。
+
+checker 会拒绝 Schema 禁止的未知顶层或嵌套字段、类型错误和必填字段缺失；测试临时目录固定在工作区 `artifacts/t51-input-tests/` 下并在退出时清理，不写入系统临时目录。
 
 离线检查不访问网络、不安装依赖：
 

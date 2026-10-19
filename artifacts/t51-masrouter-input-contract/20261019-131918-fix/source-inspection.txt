@@ -1,0 +1,25 @@
+Pinned source: yanweiyue/masrouter
+Commit: e005f7696fe0c0412563f6cd67f4cd3712fa2822
+Tree: e4d618f81675a46ed6e2f5e6ee1970519f1afa5b
+Archive SHA-256 verified: 1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651
+Method: read-only download and extraction under D:\Harmony_agent\.local\t51-source-audit\work; no source execution, no dependency installation, no dataset download.
+
+Inventory:
+- 50 Python files inspected.
+- README, template.env and Experiments/run_{gsm8k,humaneval,math,mbpp,mmlu}.py inspected.
+- No requirements.txt, pyproject.toml, setup.py, setup.cfg, environment.yml, Pipfile, poetry.lock or uv.lock.
+- No .pth, .pt, .ckpt, .bin or .safetensors checkpoint.
+- Unresolved local import: Datasets.MMLU.download at Experiments/run_mmlu.py:27.
+
+Import reachability (entrypoints plus package __init__ files):
+- benchmark-entrypoint transitive third-party imports (27):
+  PyPDF2, aiohttp, astunparse, bs4, charset_normalizer, class_registry, docx, dotenv,
+  groq, langchain_community, loguru, markdown, matplotlib, numpy, openai, openpyxl,
+  pandas, pptx, pylatexenc, requests, seaborn, sentence_transformers, shortuuid,
+  tenacity, tiktoken, torch, yaml
+- tool-only imports not reachable from the five benchmark entrypoints (7):
+  arxiv, fastapi, googleapiclient, httpx, pydantic, pytube, wikipedia
+- implicit runtime requirements for MBPP hf:// parquet loading:
+  pyarrow, fsspec, huggingface-hub
+
+Static findings are unchanged from the initial inspection and remain recorded in unresolved-issues.json.

@@ -1,19 +1,25 @@
-import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
+import { cpSync, mkdirSync, mkdtempSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 const root = dirname(fileURLToPath(import.meta.url));
+const workspaceRoot = join(root, '..', '..', '..');
+const testRoot = join(workspaceRoot, 'artifacts', 't51-input-tests');
 const checker = join(root, 'check-masrouter-inputs.mjs');
 let passed = 0;
+
+process.on('exit', () => {
+  rmSync(testRoot, { recursive: true, force: true });
+});
 
 function assert(condition, message) {
   if (!condition) throw new Error(message);
 }
 
 function fixture() {
-  const candidateRoot = mkdtempSync(join(tmpdir(), 'masrouter-t51-inputs-'));
+  mkdirSync(testRoot, { recursive: true });
+  const candidateRoot = mkdtempSync(join(testRoot, 'run-'));
   for (const name of readdirSync(root)) {
     if (name.startsWith('.tmp-')) continue;
     cpSync(join(root, name), join(candidateRoot, name), { recursive: true });
@@ -43,6 +49,7 @@ function expectRejected(name, fileName, mutation, expectedMessage) {
     const result = run(candidateRoot);
     assert(result.status !== 0, `${name} unexpectedly passed`);
     assert(result.stderr.includes(expectedMessage), `${name} returned an unexpected reason: ${result.stderr}`);
+    process.stdout.write(`PASS: ${name} -> ${expectedMessage}\n`);
     passed++;
   } finally {
     rmSync(candidateRoot, { recursive: true, force: true });
@@ -53,10 +60,27 @@ const validRoot = fixture();
 try {
   const result = run(validRoot);
   assert(result.status === 0, `valid input contract failed: ${result.stderr}`);
+  process.stdout.write('PASS: valid input contract accepted\n');
   passed++;
 } finally {
   rmSync(validRoot, { recursive: true, force: true });
 }
+
+expectRejected('unknown top-level field', 'environment-candidates.json', (value) => {
+  value.unexpectedField = true;
+}, 'additional property is not allowed');
+
+expectRejected('unknown nested field', 'dataset-lock.json', (value) => {
+  value.datasets[0].unexpectedField = true;
+}, 'additional property is not allowed');
+
+expectRejected('nested type error', 'dataset-lock.json', (value) => {
+  value.datasets[0].split.trainPercent = '20';
+}, 'expected integer or null, got string');
+
+expectRejected('missing required field', 'price-snapshot-candidate.json', (value) => {
+  delete value.currency;
+}, 'missing required property "currency"');
 
 expectRejected('environment lock claim drift', 'environment-candidates.json', (value) => {
   value.lockStatus = 'locked';

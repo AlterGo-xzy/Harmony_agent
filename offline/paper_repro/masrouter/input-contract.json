@@ -1,6 +1,7 @@
 {
   "schemaVersion": "1",
   "contractId": "harmony-agent-masrouter-input-contract-v1",
+  "contractRevision": "2",
   "task": "T51",
   "milestone": "M13-B",
   "contractDate": "2026-10-19",

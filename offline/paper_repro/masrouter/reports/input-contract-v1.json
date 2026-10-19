@@ -3,6 +3,9 @@
   "task": "T51",
   "milestone": "M13-B",
   "reportDate": "2026-10-19",
+  "contractRevision": "2",
+  "checkerRevision": "2",
+  "validationMode": "strict-json-schema",
   "status": "environment-input-contract-complete-reproduction-blocked",
   "inputDigests": {
     "upstreamLock": "sha256:ac95df4add7978efc53a2d00cfe5ee7ffe12a66fbb17aa26b71394f5a550f780",
@@ -16,7 +19,7 @@
     "modelPools": "sha256:90c71c6cdf2091d9f9af1989f8ebbaa57ae4e107082d4c6c4209f50bcdabff21",
     "priceSnapshot": "sha256:5432cf0f595d5dc03bbcb95fe649f5ced7b68afe4e664c29d1fe3e6ad03c943c",
     "unresolvedIssues": "sha256:5f323d547c5fdd71a983d8ccf7f81615d18632437bc5564fd7e4a3ccd54f772e",
-    "inputContract": "sha256:d5b99628db963f85f3bc49b757d819376d77ddf35f6ff73a63cda6a15563c955"
+    "inputContract": "sha256:b74683a2dd8a1968f6ea19478c38e01c2203f985878d9ba1af21ee5d2cad55ba"
   },
   "upstream": {
     "commit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
