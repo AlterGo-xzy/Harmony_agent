@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-19。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；T43 已完成真实 12×2 双 arm Provider/system Bench（19/24 质量基线）；T51 已完成 MasRouter 环境输入合同的严格 JSON Schema 校验、离线 checker（13/13）与确定性报告。
+最后更新：2026-10-19。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；T43 已完成真实 12×2 双 arm Provider/system Bench（19/24 质量基线）；T51 已完成 MasRouter 环境输入合同的严格 JSON Schema 校验、离线 checker（13/13）与确定性报告，并于 2026-10-19 通过验收（提交 `1502f212e0c1fd75305476f5de046d1bae72aff5`，作为 T52 基线）。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|

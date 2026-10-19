@@ -2,7 +2,7 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T48、T50、T51 已完成各自记录的任务门；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入与环境输入合同**
+状态：**In progress / T01–T48、T50、T51 已完成各自记录的任务门，T51 已验收并作为 T52 基线；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入与环境输入合同**
 日期：2026-10-19
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 

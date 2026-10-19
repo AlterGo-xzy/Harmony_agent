@@ -2,7 +2,7 @@
 
 2026-10-03 已统一命名并保留原有任务划分。更名前的设备证据不作为当前命名版本复验结果；命名与兼容边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新完成门以 [PROJECT_STATUS.md](../../PROJECT_STATUS.md) 为准。
 
-状态：**In progress / T01–T48、T50、T51 当前任务门已通过；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入与环境输入合同**
+状态：**In progress / T01–T48、T50、T51 当前任务门已通过，T51 已验收并作为 T52 基线；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入与环境输入合同**
 日期：2026-10-19
 上位架构：[HARMONY_AGENT_ARCHITECTURE.md](HARMONY_AGENT_ARCHITECTURE.md)
 
