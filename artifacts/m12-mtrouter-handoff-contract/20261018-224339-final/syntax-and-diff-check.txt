@@ -1,0 +1,8 @@
+
+
+warning: in the working copy of 'PROJECT_STATUS.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'agent_connectors/BuildProfile.ets', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'agent_runtime/BuildProfile.ets', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/MTRouter_TRAINING_REPOSITORY_HANDOFF.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md', LF will be replaced by CRLF the next time Git touches it
+warning: in the working copy of 'offline/paper_repro/mtrouter/README.md', LF will be replaced by CRLF the next time Git touches it

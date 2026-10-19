@@ -1,0 +1,110 @@
+{
+  "schemaVersion": "1",
+  "specId": "harmony-agent-masrouter-source-preflight-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "paperArxivId": "2502.11133",
+  "claimState": {
+    "sourceAudit": "complete",
+    "environmentResolved": "notRun",
+    "dependenciesInstalled": "notRun",
+    "upstreamTests": "notRun",
+    "paperReproduction": "notRun",
+    "harmonyAgentAdaptation": "notRun"
+  },
+  "architectureBoundary": {
+    "targetPolicyPort": "CollaborationPlanSelectorPort",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "policyReplacementOnly": true,
+    "roleRegistryOnly": true,
+    "singleAgentAlwaysValid": true,
+    "reserveFullActivationBudgetBeforeMulti": true,
+    "maximumCollaborationReevaluations": 1,
+    "boundedByExistingAgentActivationBudget": true,
+    "lowConfidenceFallback": "SINGLE",
+    "timeoutFallback": "SINGLE",
+    "checkpointIncompatibleFallback": "SINGLE",
+    "sourceVendoredIntoRuntime": false,
+    "trainingRuntimeBundled": false,
+    "modelArtifactBundled": false,
+    "providerCredentialAccessAdded": false,
+    "secondTaskControlEntryAdded": false
+  },
+  "sourceMethod": {
+    "sentenceEncoder": "sentence-transformers/all-MiniLM-L6-v2",
+    "embeddingDimensions": 384,
+    "hiddenDimensions": 64,
+    "maximumAgents": 6,
+    "taskAndRoleTemperature": 0.5,
+    "collaborationTemperature": 0.8,
+    "llmRouterTemperature": 1.0,
+    "randomSeed": 1234,
+    "optimizer": "Adam",
+    "learningRate": 0.01,
+    "batchSize": 16,
+    "roundsPerQuery": 1,
+    "vaeLossWeight": 0.001,
+    "agentCountAdjustmentEnabled": false
+  },
+  "paperProtocol": {
+    "coreModelPool": [
+      "gpt-4o-mini-0718",
+      "claude-3.5-haiku",
+      "gemini-1.5-flash",
+      "llama-3.1-70b"
+    ],
+    "inductiveValidationModel": "deepseek-v3",
+    "temperature": 1.0,
+    "learningRate": 0.01,
+    "costPenaltyLambda": [5, 15, 25],
+    "optimizationIterations": [5, 10],
+    "maximumAgents": 6,
+    "roleProfileCount": 26,
+    "collaborationModes": [
+      "CoT",
+      "Reflection",
+      "SelfConsistency",
+      "Debate",
+      "MacNetChain",
+      "MacNetCompleteGraph"
+    ]
+  },
+  "sourceProfiles": {
+    "models": [
+      "gpt-4o-mini",
+      "claude-3-5-haiku-20241022",
+      "gemini-1.5-flash-latest",
+      "llama-3.1-70b-instruct",
+      "deepseek-chat"
+    ],
+    "collaborationModes": ["IO", "CoT", "Chain", "FullConnected", "Debate", "Reflection"]
+  },
+  "benchmarks": [
+    { "id": "mmlu", "epochs": 10, "costRate": 500.0, "datasetSplit": "repository dev/test", "paperMasRouterScorePercent": 84.25 },
+    { "id": "gsm8k", "epochs": 5, "costRate": 200.0, "datasetSplit": "seeded shuffle then 20 percent train and 80 percent test", "paperMasRouterScorePercent": 95.45 },
+    { "id": "math", "epochs": 5, "costRate": 100.0, "datasetSplit": "repository train/test; paper evaluates a stratified 519-problem subset", "paperMasRouterScorePercent": 75.42 },
+    { "id": "humaneval", "epochs": 10, "costRate": 200.0, "datasetSplit": "seeded shuffle then 20 percent train and 80 percent test", "paperMasRouterScorePercent": 90.62 },
+    { "id": "mbpp", "epochs": 10, "costRate": 400.0, "datasetSplit": "repository train/test", "paperMasRouterScorePercent": 84.0 }
+  ],
+  "acceptance": {
+    "sameUpstreamCommitRequired": true,
+    "samePaperVersionRequired": true,
+    "resolvedDependencyLockRequiredBeforeExecution": true,
+    "frozenDatasetDigestsRequiredBeforeBenchmark": true,
+    "providerModelRevisionRequiredBeforeBenchmark": true,
+    "priceSnapshotAndSourceMismatchResolutionRequiredForCostClaims": true,
+    "paperAndSourceProtocolDifferencesMustRemainExplicit": true,
+    "strictReproductionReady": false,
+    "missingEvidenceResult": "failClosed",
+    "environmentDriftResult": "nonComparable"
+  },
+  "execution": {
+    "sourceCopiedIntoRepository": false,
+    "paperCopiedIntoRepository": false,
+    "dependenciesInstalled": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "trainingRunsExecuted": 0,
+    "costIncurredUsd": 0.0
+  }
+}

@@ -1,0 +1,137 @@
+{
+  "schemaVersion": "1",
+  "specId": "harmony-agent-mtrouter-strict-reproduction-v1",
+  "upstreamCommit": "ee9e4573a128c3e54aa8c83800318bfb783c4dfe",
+  "paperArxivId": "2604.23530",
+  "claimState": {
+    "sourceAudit": "complete",
+    "environmentInstalled": "notRun",
+    "upstreamTests": "notRun",
+    "strictReproduction": "notRun",
+    "harmonyAgentAdaptation": "notRun"
+  },
+  "environment": {
+    "python": ">=3.10",
+    "baseDependencies": [
+      "pyyaml",
+      "requests",
+      "jinja2",
+      "litellm>=1.75.5",
+      "tenacity",
+      "rich",
+      "python-dotenv",
+      "typer",
+      "platformdirs",
+      "textual",
+      "prompt_toolkit",
+      "openai!=1.100.0,!=1.100.1",
+      "httpx[socks]"
+    ],
+    "researchDependencies": [
+      "numpy>=1.24.0",
+      "torch>=2.0.0",
+      "transformers>=4.30.0",
+      "sentence-transformers>=2.2.0",
+      "scienceworld>=1.1.0",
+      "scikit-learn>=1.2.0",
+      "joblib>=1.2.0",
+      "tqdm>=4.65.0",
+      "tensorboard>=2.12.0",
+      "xgboost>=2.0.0"
+    ],
+    "externalRequirements": [
+      "Java runtime for ScienceWorld",
+      "authorized model-provider credentials",
+      "Serper credential for HLE search",
+      "frozen provider model and price snapshot"
+    ]
+  },
+  "method": {
+    "runCount": 3,
+    "historyEncoder": "Qwen/Qwen3-Embedding-0.6B",
+    "historyEmbeddingDimensions": 1024,
+    "historyMaxTokens": 8192,
+    "trainingEpochs": 100,
+    "earlyStoppingPatience": 3,
+    "optimizer": "AdamW",
+    "learningRate": 0.001,
+    "weightDecay": 0.01,
+    "batchSize": 64,
+    "modelMetadataDimensions": 8,
+    "modelAttributeDimensions": 32,
+    "modelResidualDimensions": 16,
+    "modelEmbeddingDimensions": 64,
+    "residualL2Penalty": 0.001,
+    "errorSeverity": {
+      "high": 1.0,
+      "medium": 0.8,
+      "low": 0.2
+    },
+    "errorWarmup": {
+      "p0": 0.3,
+      "p1": 0.7,
+      "minimum": 0.3,
+      "maximum": 1.0
+    }
+  },
+  "modelPool": [
+    { "name": "GPT-5", "contextTokens": 400000, "inputUsdPerMillion": 1.25, "outputUsdPerMillion": 10.0 },
+    { "name": "DeepSeek-V3.2", "contextTokens": 164000, "inputUsdPerMillion": 0.27, "outputUsdPerMillion": 0.42 },
+    { "name": "MiniMax-M2", "contextTokens": 197000, "inputUsdPerMillion": 0.2, "outputUsdPerMillion": 1.0 },
+    { "name": "Kimi-K2", "contextTokens": 131000, "inputUsdPerMillion": 0.39, "outputUsdPerMillion": 1.9 },
+    { "name": "Gemini-2.5-Flash-Lite", "contextTokens": 1000000, "inputUsdPerMillion": 0.1, "outputUsdPerMillion": 0.4 },
+    { "name": "GPT-OSS-120B", "contextTokens": 131000, "inputUsdPerMillion": 0.09, "outputUsdPerMillion": 0.36 }
+  ],
+  "benchmarks": [
+    {
+      "id": "scienceworld",
+      "maximumHorizon": 50,
+      "episodeBudgetUsd": 2.0,
+      "split": {
+        "idTaskTypes": 13,
+        "oodTaskTypes": 12,
+        "variationsPerTaskTypeMaximum": 30,
+        "idTrainValidationTestPercent": [60, 20, 20],
+        "seed": 42
+      },
+      "targets": [
+        { "split": "test", "performanceMetric": "score", "mean": 53.8, "reportedStd": 3.2, "totalCostUsd": 5.7 },
+        { "split": "ood", "performanceMetric": "score", "mean": 9.9, "reportedStd": 3.9, "totalCostUsd": 16.3 }
+      ]
+    },
+    {
+      "id": "hle",
+      "maximumHorizon": 30,
+      "episodeBudgetUsd": 2.0,
+      "tools": ["search", "browse", "python", "answer"],
+      "split": {
+        "idCategories": 6,
+        "oodCategories": 2,
+        "idQuestionCount": 359,
+        "oodQuestionCount": 369
+      },
+      "targets": [
+        { "split": "test", "performanceMetric": "accuracyPercent", "mean": 26.0, "reportedStd": 2.3, "totalCostUsd": 35.0 },
+        { "split": "ood", "performanceMetric": "accuracyPercent", "mean": 38.6, "reportedStd": 3.0, "totalCostUsd": 31.2 }
+      ]
+    }
+  ],
+  "acceptance": {
+    "sameUpstreamCommitRequired": true,
+    "sameModelPoolRequired": true,
+    "sameDatasetSplitsRequired": true,
+    "samePriceSnapshotRequiredForCostClaims": true,
+    "performanceMeanAbsoluteTolerance": "reportedStd",
+    "totalCostRelativeToleranceBasisPoints": 500,
+    "allFourTargetsRequired": true,
+    "environmentDriftResult": "nonComparable",
+    "missingEvidenceResult": "failClosed"
+  },
+  "execution": {
+    "dependenciesInstalled": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "costIncurredUsd": 0.0
+  }
+}

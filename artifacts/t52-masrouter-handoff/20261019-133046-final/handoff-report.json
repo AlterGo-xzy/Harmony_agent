@@ -1,0 +1,48 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-adaptation-handoff-v1",
+  "handoffId": "research-only-masrouter-handoff-v1",
+  "accepted": true,
+  "researchOnly": true,
+  "trainingTrack": "harmony-agent-adaptation",
+  "trainingState": "smoke",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "planVersion": "1.0",
+  "mode": "multi",
+  "roleCount": 4,
+  "assignmentCount": 2,
+  "modelCount": 5,
+  "candidateModelCount": 2,
+  "decisionPayload": {
+    "path": "checkpoint/decision.bin",
+    "sizeBytes": 31,
+    "sha256": "fe82827dfdd3e27958605d42bee4f3d6382a04e9de9f16fe8b1a7eaef2d26fef"
+  },
+  "fileCount": 11,
+  "totalListedBytes": 2099,
+  "runtimeIntegration": {
+    "targetPolicyPort": "CollaborationPlanSelectorPort",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "policyReplacementOnly": true,
+    "roleRegistryOnly": true,
+    "singleAgentAlwaysValid": true,
+    "reserveFullActivationBudgetBeforeMulti": true,
+    "maximumCollaborationReevaluations": 1,
+    "lowConfidenceFallback": "SINGLE",
+    "timeoutFallback": "SINGLE",
+    "checkpointIncompatibleFallback": "SINGLE",
+    "learnedEnabledByDefault": false,
+    "networkInsideSynchronousSelectPlan": false,
+    "fallback": "deterministicSingle"
+  },
+  "evidence": {
+    "paperReproduction": "notRun",
+    "pythonReference": "notRun",
+    "arktsParity": "notRun",
+    "deviceParity": "notRun",
+    "shadow": "notRun",
+    "canary": "notRun",
+    "active": "notRun"
+  },
+  "releaseEligibility": "researchCandidateOnly"
+}

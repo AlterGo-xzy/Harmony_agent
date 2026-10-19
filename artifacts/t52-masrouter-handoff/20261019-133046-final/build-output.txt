@@ -1,0 +1,1 @@
+not run: T52 is an offline handoff-admission gate; no ArkTS/HarmonyOS HAR/HAP build is required or claimed.

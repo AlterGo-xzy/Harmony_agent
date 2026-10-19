@@ -1,0 +1,85 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmony-agent.local/schemas/masrouter-price-snapshot-v1.json",
+  "title": "MasRouter price snapshot input contract",
+  "description": "Versioned price snapshot for cost accounting. Source metadata conflicts must stay explicit; cost claims are forbidden until official prices and their digests are frozen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "contractId", "upstreamCommit", "snapshotStatus",
+    "costClaimsAllowed", "currency", "unit", "models", "conflicts"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "contractId": { "const": "harmony-agent-masrouter-price-snapshot-v1" },
+    "upstreamCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "snapshotStatus": { "enum": ["blocked", "candidate", "verified"] },
+    "costClaimsAllowed": { "type": "boolean" },
+    "currency": { "const": "USD" },
+    "unit": { "const": "per-million-tokens" },
+    "models": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/priceEntry" }
+    },
+    "conflicts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/priceConflict" }
+    }
+  },
+  "$defs": {
+    "priceEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modelId", "inputUsdPerMillion", "outputUsdPerMillion",
+        "sourceFile", "sourceLine", "sourceType", "officialSourceUrl",
+        "officialSourceSha256", "status"
+      ],
+      "properties": {
+        "modelId": { "type": "string", "minLength": 1 },
+        "inputUsdPerMillion": { "type": "number", "minimum": 0 },
+        "outputUsdPerMillion": { "type": "number", "minimum": 0 },
+        "sourceFile": { "type": "string", "minLength": 1 },
+        "sourceLine": { "type": "integer", "minimum": 1 },
+        "sourceType": { "enum": ["source-metadata", "official-price-page"] },
+        "officialSourceUrl": { "type": ["string", "null"] },
+        "officialSourceSha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "status": { "enum": ["source-metadata-only", "verified"] }
+      }
+    },
+    "priceConflict": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["modelId", "values", "resolution", "resolutionEvidence"],
+      "properties": {
+        "modelId": { "type": "string", "minLength": 1 },
+        "values": {
+          "type": "array",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": ["sourceFile", "sourceLine", "inputUsdPerMillion", "outputUsdPerMillion"],
+            "properties": {
+              "sourceFile": { "type": "string", "minLength": 1 },
+              "sourceLine": { "type": "integer", "minimum": 1 },
+              "inputUsdPerMillion": { "type": "number", "minimum": 0 },
+              "outputUsdPerMillion": { "type": "number", "minimum": 0 }
+            }
+          }
+        },
+        "resolution": { "enum": ["unresolved", "resolved"] },
+        "resolutionEvidence": {
+          "type": ["object", "null"],
+          "additionalProperties": false,
+          "required": ["url", "sha256"],
+          "properties": {
+            "url": { "type": "string", "minLength": 1 },
+            "sha256": { "type": "string", "pattern": "^[0-9a-f]{64}$" }
+          }
+        }
+      }
+    }
+  }
+}

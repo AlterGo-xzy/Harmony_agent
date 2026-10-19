@@ -7,6 +7,7 @@ import {
   WorkflowStep
 } from '@harmony_agent/agent-contracts';
 import {
+  CollaborationPlan,
   PlanningRequest,
   PlanningResult,
   PreparedToolDispatch,
@@ -26,10 +27,22 @@ export interface CollaborationSelectorPort {
   select(frame: TaskFrame): CollaborationMode;
 }
 
+/** Selects the versioned Role Registry identities used by one planning run. */
+export interface CollaborationPlanSelectorPort {
+  selectPlan(frame: TaskFrame, maxAgentActivations: number): CollaborationPlan;
+}
+
+/** Host-supplied cryptographic digest boundary used for collaboration evidence. */
+export interface CollaborationPlanDigestPort {
+  digest(value: string): string;
+}
+
 export interface SemanticPlannerPort {
-  plan(request: PlanningRequest): PlanningResult;
-  resume(request: PlanningRequest, response: ClarificationResponse): PlanningResult;
-  replan(request: PlanningRequest): PlanningResult;
+  plan(request: PlanningRequest): Promise<PlanningResult>;
+  resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult>;
+  replan(request: PlanningRequest): Promise<PlanningResult>;
+  /** Interrupts in-flight computation only; task state remains owned by the Runtime queue. */
+  interrupt(taskId: string): boolean;
 }
 
 export interface ToolInvocationPreparerPort {

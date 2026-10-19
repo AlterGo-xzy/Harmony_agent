@@ -1,0 +1,124 @@
+{
+  "schemaVersion": "1",
+  "capturedAt": "2026-10-19T16:19:19+08:00",
+  "repository": {
+    "url": "https://github.com/stormwther18/HYSET",
+    "defaultBranch": "main",
+    "commit": "d0885766a9b60f778c35e161ad91e3a0d8af6dd7",
+    "tree": "e3b0bf2a3428640ece71ec5994571544100ec5a4",
+    "commitDate": "2026-10-12T14:43:18+08:00",
+    "commitSubject": "Update news section with HYSET feature coverage",
+    "releaseTagsObserved": 0,
+    "archive": {
+      "url": "https://codeload.github.com/stormwther18/HYSET/tar.gz/d0885766a9b60f778c35e161ad91e3a0d8af6dd7",
+      "sizeBytes": 14318571,
+      "sha256": "745be2af629e11e641db1b6fd490942031c2167eed50f1424e293ab7724b2a80"
+    }
+  },
+  "license": {
+    "spdx": "MIT",
+    "path": "LICENSE",
+    "sizeBytes": 1106,
+    "sha256": "3240c54331c9c0568cea30d43cbc140c38422e1b8bc464b6d38d6389b4399c41",
+    "copyrightNotice": "Copyright (c) 2026 Xinyi Hong, Pinjun Dong, Xinyang Yu, Binyan Jiang"
+  },
+  "externalSources": [
+    {
+      "path": "external/toolbench",
+      "declaredUrl": "https://github.com/OpenBMB/ToolBench.git",
+      "actualGitMode": "040000",
+      "tree": "13e4c1d59b32ae7619a32c78b006a394533cf196",
+      "gitlinkCommit": null,
+      "licenseSpdx": "Apache-2.0",
+      "licensePath": "external/toolbench/LICENSE",
+      "licenseSizeBytes": 11357,
+      "licenseSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    },
+    {
+      "path": "external/stabletoolbench",
+      "declaredUrl": "https://github.com/THUNLP-MT/StableToolBench.git",
+      "actualGitMode": "040000",
+      "tree": "efea484becee724a898bc3b445e13e220a21cd76",
+      "gitlinkCommit": null,
+      "licenseSpdx": "Apache-2.0",
+      "licensePath": "external/stabletoolbench/LICENSE",
+      "licenseSizeBytes": 11357,
+      "licenseSha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4"
+    }
+  ],
+  "pinnedFiles": [
+    { "path": ".gitmodules", "sizeBytes": 236, "sha256": "018137ba7475c6059b622b7ff1a3855c2d385da12be49d3436305f158b7ee653" },
+    { "path": "CITATION.cff", "sizeBytes": 848, "sha256": "346b341d5486fd06eb39bd470830811a7b4ece1c72d6c7d64912ca4ea27f5a27" },
+    { "path": "README.md", "sizeBytes": 9878, "sha256": "d066a7cd71385dd4609ce56d37b25560e2508b9bd9dfa813e057111ffde1a2eb" },
+    { "path": "requirements.txt", "sizeBytes": 103, "sha256": "dc4e9014ba96ac0640727f42f27c30c516d84d70e116a4a0ec20f538e0f7b029" },
+    { "path": "HYSET.sh", "sizeBytes": 1463, "sha256": "d586a4ab17f47ebfc45e63fabcd4b13db21ba3195bd41d1eb0ff8b2c45ee95db" },
+    { "path": "train_hyset.sh", "sizeBytes": 309, "sha256": "1ae3c61a2c4dfc68bb7b00a663e2ee6f6f4eee9e4b086fde30d5882bd73c94b2" },
+    { "path": "inference_hyset.sh", "sizeBytes": 168, "sha256": "7f2216b0c16eb3e85297cfc93adf7d49489ae2bce85278ac2b0776770ee3fc71" },
+    { "path": "docs/method.md", "sizeBytes": 2233, "sha256": "3d653d8ded888475f6d56b3e6250dbef0afa813e2432263b5b72a61f94f7c669" },
+    { "path": "scripts/smoketest_load.py", "sizeBytes": 1210, "sha256": "7bc1c6fc3fca52ec654e4e695d09142ab3d963c0e78a6e3b9573d08aff70bdbb" },
+    { "path": "src/build_hyset_corpus.py", "sizeBytes": 2264, "sha256": "33ce9259cdabcab3647eaa2ad951eb2b0dfaf8cd0d29f5dcb531e1fc9cf94fca" },
+    { "path": "src/hyset_model.py", "sizeBytes": 16245, "sha256": "14b1db7d1c24c94afd242de0610052eb9c9627f78bd2bda002ce9fe0fcfd7d50" },
+    { "path": "src/train_hyset.py", "sizeBytes": 21453, "sha256": "6d4c18f721ad9fb845654c39bd4a6c910e1b95500bec04ee883fdd3b922c9318" },
+    { "path": "src/infer_hyset.py", "sizeBytes": 2825, "sha256": "de1d8b9c8b8a617dbe198f5d9e6d475145c0613046c48b133a83761091ad1717" },
+    { "path": "src/evaluate_hyset.py", "sizeBytes": 8753, "sha256": "d6a67f156bb93b01e0b4405bd74e708352c796bdee20f293599708d452e03975" },
+    { "path": "src/precompute_rewards.py", "sizeBytes": 7086, "sha256": "c1614445c21a56eed0fc713277d7014b21578348f74061759028fe4574b9c3ce" },
+    { "path": "src/summarize_results.py", "sizeBytes": 1441, "sha256": "14ae81ee34927d6cd7edd927c0159edd82c29c412d00c33b595442487a996cc6" },
+    { "path": "tests/test_hyset_core.py", "sizeBytes": 4406, "sha256": "6124e20d7ce3a48e7075ca1439a2d81e537982666d37e5f415eba14bff8501fb" },
+    { "path": "tests/test_training_components.py", "sizeBytes": 1367, "sha256": "a060b59821cfe25752234ecd76135c7995c7ff4fd51953a9dcf9c52c8210ebf2" },
+    { "path": "assets/results_table.png", "sizeBytes": 236747, "sha256": "4579dd8a007650033edbfdda3c6e0b44a07855aaf614523f9a6f49732a4ba133" },
+    { "path": "data/hyset_corpus.json", "sizeBytes": 19055394, "sha256": "3d1bb55de2e0f91d549d81d085e6e45bc2205df6d62216d13329db63e7e41b1b" },
+    { "path": "data/test_query_ids/G1_category_test_query_ids.json", "sizeBytes": 1584, "sha256": "8d11b6979d4d70ab862846d3acc2ae8a9e18aed8cba52778b915b262b5362b5b" },
+    { "path": "data/test_query_ids/G1_instruction_test_query_ids.json", "sizeBytes": 1588, "sha256": "4ff1c57bc043b2b3b1349901e740d7b484bec2fa9b2fe77eac044eb89afedcc4" },
+    { "path": "data/test_query_ids/G1_tool_test_query_ids.json", "sizeBytes": 1590, "sha256": "53d50b41b35cb95c3874aa46699e5270314d0c87fcafa5aef4a4843da156e2d7" },
+    { "path": "data/test_query_ids/G2_category_test_query_ids.json", "sizeBytes": 1589, "sha256": "4af6c93efe7c3923d265a05f252a656769febfd29b5d6453caa8cbd7f2949113" },
+    { "path": "data/test_query_ids/G2_instruction_test_query_ids.json", "sizeBytes": 1599, "sha256": "52275ba259ae65cdd01670b033c6bccd51bbf9ce2015dbc3cb899a7812114160" },
+    { "path": "data/test_query_ids/G3_instruction_test_query_ids.json", "sizeBytes": 1483, "sha256": "fe345317de1a4c2fe52665c91d645549492f81991a4652207beb17ddbe6165a5" }
+  ],
+  "paper": {
+    "title": "Tools Are Not Islands: Set-Level Tool Retrieval for LLM Agents via Query-Conditioned Hyperedge Prediction",
+    "arxivId": "2607.25718",
+    "version": "v2",
+    "submittedAt": "2026-07-28T13:45:08Z",
+    "revisedAt": "2026-07-29T16:33:21Z",
+    "pdfUrl": "https://arxiv.org/pdf/2607.25718v2",
+    "pdfSizeBytes": 1385792,
+    "pdfSha256": "f0b25a3a79294ea5503d43a7026f167a1346b3888d9a2a294c6718393c3852cd"
+  },
+  "sourceAudit": {
+    "dependencyManifestPresent": true,
+    "pythonDeclaration": ">=3.10",
+    "dependencies": ["torch==2.2.0", "transformers==4.45.2", "numpy==1.26.4", "safetensors==0.4.5", "sentencepiece==0.2.0", "openai==1.30.5"],
+    "checkpoint": {
+      "declaredName": "best.pt",
+      "declaredApproximateSize": "6.5 GB",
+      "declaredDistribution": "Hugging Face",
+      "presentInRepository": false,
+      "repositoryId": null,
+      "revision": null,
+      "sha256": null,
+      "status": "unresolved"
+    },
+    "encoders": [
+      { "configuration": "bert", "declaredName": "frozen BERT retriever", "observedCandidateRepository": null, "authoritativelyBoundByUpstream": false, "revision": null, "sha256": null, "status": "unresolved" },
+      { "configuration": "qwen", "declaredName": "ToolGen-Qwen2.5-1.5B-Tool-Retriever", "observedCandidateRepository": "reasonwang/ToolGen-Qwen2.5-1.5B-Tool-Retriever", "authoritativelyBoundByUpstream": false, "revision": null, "sha256": null, "status": "unresolved" }
+    ],
+    "data": {
+      "corpusPresent": true,
+      "corpusToolCount": 13860,
+      "testSplitCount": 6,
+      "queriesPerSplit": 100,
+      "rawToolBenchInstructionsPresent": false,
+      "ultraToolPresent": false,
+      "rewardCachePresent": false,
+      "frozenAgentTrajectoriesPresent": false
+    },
+    "externalDeclarationMatchesGitStorage": false,
+    "externalGitlinkCount": 0,
+    "externalTrackedTreeCount": 2,
+    "credentialShapedPath": {
+      "path": "external/stabletoolbench/openai_key.json",
+      "contentInspected": false,
+      "approvedCredentialSource": false
+    }
+  }
+}

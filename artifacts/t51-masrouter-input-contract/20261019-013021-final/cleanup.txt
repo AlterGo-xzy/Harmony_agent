@@ -1,0 +1,6 @@
+Deleted the isolated source extraction directory and the temporary analysis script after evidence capture.
+Verified absent:
+- C:\Users\Admin\AppData\Local\Temp/masrouter-t51-SibLjY (source archive, extracted source tree and import-analysis input)
+- C:\Users\Admin\AppData\Local\Temp/masrouter-t51-analyze.mjs
+- C:\Users\Admin\AppData\Local\Temp/masrouter-t51-path.txt
+The repository retains only derived digests, import summaries and the deterministic input contract; no upstream source, dataset, model, credential or checkpoint is retained.

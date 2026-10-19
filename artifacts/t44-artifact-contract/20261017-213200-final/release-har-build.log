@@ -1,0 +1,37 @@
+> hvigor [32mTYPE CHECK SUCCESSFUL in 154 ms [39m
+> hvigor WARN: agent_contracts: HAR modules cannot be installed independently. As a result, the "applyToProducts" configuration will not take effect. See more details.
+> hvigor [32mUP-TO-DATE :agent_contracts:default@PreBuild...  [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessOHPackageJson... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@CreateHarBuildProfile... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@CreateHarModuleInfo... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ConfigureCmake... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@MergeProfile... after 3 ms [39m
+> hvigor [32mFinished :agent_contracts:default@GeneratePkgContextInfo... after 4 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessIntegratedHsp... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessModulePrivacyProfile... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@BuildNativeWithCmake... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessProfile... after 56 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessRouterMap... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessShareConfig... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessStartupConfig... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@BuildNativeWithNinja... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessResource... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@GenerateLoaderJson... after 6 ms [39m
+> hvigor [32mUP-TO-DATE :agent_contracts:default@ProcessLibs...  [39m
+> hvigor [32mFinished :agent_contracts:default@CompileResource... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :agent_contracts:default@DoNativeStrip...  [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessObfuscationFiles... after 447 ms [39m
+> hvigor [32mUP-TO-DATE :agent_contracts:default@CacheNativeLibs...  [39m
+> hvigor [32mFinished :agent_contracts:default@HarCompileArkTS... after 1 s 868 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessHarArtifacts... after 22 ms [39m
+> hvigor WARN: If obfuscation is needed, enable obfuscation settings in this build process; failing to do so may prevent future obfuscation.
+               Properly configure obfuscation rules to avoid runtime issues.
+> hvigor [32mFinished :agent_contracts:default@PackageHar... after 14 ms [39m
+> hvigor WARN: No signingConfig found for product default
+> hvigor [32mFinished :agent_contracts:default@PackageSignHar... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@PackingCheckHar... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@CollectDebugSymbol... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:assembleHar... after 1 ms [39m
+> hvigor [32mBUILD SUCCESSFUL in 4 s 746 ms [39m
+
+29 tasks in total: 25 executed, 4 up-to-date

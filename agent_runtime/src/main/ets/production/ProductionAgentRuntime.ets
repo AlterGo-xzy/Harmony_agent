@@ -1,3 +1,4 @@
+import { ArtifactCollaborationPolicy } from '../routing/ArtifactCollaborationPolicy';
 import {
   AgentErrorClass,
   AgentRuntimeEvent,
@@ -46,6 +47,7 @@ import {
 } from '../orchestration/RuntimeCheckpointValidator';
 import { RuntimeDurableAuthorityPayload } from '../orchestration/RecoveryAuthorityTypes';
 import {
+  CollaborationPlanSelectorPort,
   CollaborationSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
@@ -398,6 +400,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   private shutdownRequested: boolean = false;
   private persistenceFaulted: boolean = false;
   private flushing: boolean = false;
+  private pendingCommandIds: string[] = [];
   private commandTail: Promise<void> = Promise.resolve();
 
   constructor(config: ProductionAgentRuntimeConfig, ports: ProductionAgentRuntimePorts) {
@@ -409,6 +412,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
     const ids: RuntimeIdGeneratorPort = ports.ids as RuntimeIdGeneratorPort;
     const planner: SemanticPlannerPort = ports.planner as SemanticPlannerPort;
     const collaboration: CollaborationSelectorPort = ports.collaboration as CollaborationSelectorPort;
+    const collaborationPlan: CollaborationPlanSelectorPort | undefined = ports.collaborationPlan;
     const toolPreparer: ToolInvocationPreparerPort = ports.toolPreparer as ToolInvocationPreparerPort;
     const adapterFactory: ProductionRuntimeAdapterFactoryPort =
       ports.adapterFactory as ProductionRuntimeAdapterFactoryPort;
@@ -425,7 +429,11 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       collaboration,
       toolPreparer,
       deferred,
-      this
+      this,
+      collaborationPlan,
+      ports.collaborationPreparation,
+      config.collaborationPreparationTimeoutMs,
+      async (): Promise<void> => { await this.flushLifecycle(); }
     );
     this.outcomeSink = new ProductionOutcomeSink(this.pendingDispatches);
     this.outcomeSink.bind(this);
@@ -476,10 +484,10 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
         'enumerated recovery checkpoint is invalid');
     }
-    if (checkpoint.activeInvocation !== undefined || checkpoint.pendingDispatchId.length > 0) {
-      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
-        'active operation recovery requires durable operation normalization');
-    }
+    const activeRecovery: boolean = checkpoint.activeInvocation !== undefined ||
+      checkpoint.pendingDispatchId.length > 0;
+    let authority: RuntimeRecoveryAuthority | undefined;
+    if (activeRecovery) authority = await this.readRecoveryAuthority(taskId, recovery);
     this.markPersisted(taskId, checkpoint.snapshot.snapshotVersion);
     const restored: CoordinatorCommandResult = this.coordinator.restoreCheckpoint(checkpoint);
     if (!restored.accepted) {
@@ -487,6 +495,20 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
         'coordinator recovery rejected: ' + restored.code);
     }
     if (restored.code === 'RESTORED_TERMINAL') return;
+    if (activeRecovery) {
+      await this.persistRecoveryNormalization(taskId, checkpoint.snapshot.snapshotVersion);
+    }
+    if (authority === undefined) authority = await this.readRecoveryAuthority(taskId, recovery);
+    const hydrated: CoordinatorCommandResult = this.coordinator.hydrateRecoveryAuthority(taskId, authority);
+    if (!hydrated.accepted) {
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'recovery authority rejected: ' + hydrated.code);
+    }
+    await this.flushLifecycle();
+  }
+
+  private async readRecoveryAuthority(taskId: string,
+    recovery: ProductionRuntimeRecoverySourcePort): Promise<RuntimeRecoveryAuthority> {
     let authority: RuntimeRecoveryAuthority | undefined;
     try {
       authority = await recovery.loadRecoveryAuthority(taskId);
@@ -498,12 +520,33 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
         'recovery authority is missing');
     }
-    const hydrated: CoordinatorCommandResult = this.coordinator.hydrateRecoveryAuthority(taskId, authority);
-    if (!hydrated.accepted) {
+    return authority;
+  }
+
+  private async persistRecoveryNormalization(taskId: string, expectedPreviousVersion: number): Promise<void> {
+    const write: PendingCheckpointWrite | undefined = this.pendingCheckpoints.shift();
+    if (write === undefined || write.checkpoint.snapshot.taskId !== taskId ||
+      write.checkpoint.snapshot.snapshotVersion !== expectedPreviousVersion + 1 ||
+      write.checkpoint.activeInvocation !== undefined || write.checkpoint.pendingDispatchId.length > 0) {
+      this.persistenceFaulted = true;
       throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
-        'recovery authority rejected: ' + hydrated.code);
+        'active recovery normalization checkpoint is invalid');
     }
-    await this.flushLifecycle();
+    let saved: RuntimePersistenceResult;
+    try {
+      saved = await this.persistence.normalizeRecoveredOperation(
+        copyCheckpoint(write.checkpoint), expectedPreviousVersion, this.clock.nowMs());
+    } catch (error) {
+      this.persistenceFaulted = true;
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'active recovery normalization failed');
+    }
+    if (!saved.accepted) {
+      this.persistenceFaulted = true;
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+        'active recovery normalization rejected: ' + saved.code);
+    }
+    this.markPersisted(taskId, write.checkpoint.snapshot.snapshotVersion);
   }
 
   async submitTask(submission: TaskSubmission): Promise<TaskHandle> {
@@ -514,7 +557,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
 
   private async submitTaskNow(submission: TaskSubmission): Promise<TaskHandle> {
     this.requireActive();
-    const accepted: OrchestrationAcceptance = this.coordinator.acceptTask(submission);
+    const accepted: OrchestrationAcceptance = await this.coordinator.acceptTask(submission);
     if (!accepted.duplicate) this.drive(accepted.handle.taskId);
     await this.flushLifecycle();
     const snapshot: AgentTaskSnapshot = this.coordinator.getSnapshot(accepted.handle.taskId);
@@ -558,19 +601,25 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   }
 
   async cancelTask(command: TaskControlCommand): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    command = ContractCodec.parseTaskControlCommand(ContractCodec.stringify(command));
+    if (ContractValidator.validateTaskControlCommand(command).valid && command.action === TaskControlAction.CANCEL &&
+      !this.shutdownRequested && !this.persistenceFaulted && this.pendingCommandIds.indexOf(command.commandId) < 0 &&
+      !this.commands.some((record: ProductionCommandRecord) => record.commandId === command.commandId)) {
+      this.coordinator.interruptPlanning(command.taskId);
+    }
+    return await this.serializeCommand(command.commandId, async (): Promise<CommandReceipt> => {
       return await this.applyControl(command, TaskControlAction.CANCEL);
     });
   }
 
   async pauseTask(command: TaskControlCommand): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    return await this.serializeCommand(command.commandId, async (): Promise<CommandReceipt> => {
       return await this.applyControl(command, TaskControlAction.PAUSE);
     });
   }
 
   async resumeTask(command: TaskControlCommand): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    return await this.serializeCommand(command.commandId, async (): Promise<CommandReceipt> => {
       return await this.resumeTaskNow(command);
     });
   }
@@ -583,7 +632,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   }
 
   async provideAuthorization(decision: AuthorizationDecision): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    return await this.serializeCommand(decision.commandId, async (): Promise<CommandReceipt> => {
       return await this.provideAuthorizationNow(decision);
     });
   }
@@ -607,7 +656,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   }
 
   async provideClarification(response: ClarificationResponse): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    return await this.serializeCommand(response.commandId, async (): Promise<CommandReceipt> => {
       return await this.provideClarificationNow(response);
     });
   }
@@ -625,7 +674,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       return this.remember(fingerprint,
         await this.rejected(response.commandId, response.taskId, 'TASK_NOT_ACTIVE'));
     }
-    const result: CoordinatorCommandResult = this.coordinator.provideClarification(response);
+    const result: CoordinatorCommandResult = await this.coordinator.provideClarification(response);
     const receipt: CommandReceipt = this.remember(fingerprint,
       this.receipt(response.commandId, response.taskId, result));
     if (receipt.accepted) this.drive(response.taskId);
@@ -634,7 +683,7 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   }
 
   async provideReconciliation(report: ReconciliationReport): Promise<CommandReceipt> {
-    return await this.serialize(async (): Promise<CommandReceipt> => {
+    return await this.serializeCommand(report.commandId, async (): Promise<CommandReceipt> => {
       return await this.provideReconciliationNow(report);
     });
   }
@@ -712,7 +761,13 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
   }
 
   async shutdown(mode: ShutdownMode): Promise<void> {
+    if (mode !== ShutdownMode.GRACEFUL && mode !== ShutdownMode.IMMEDIATE) {
+      throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT, 'invalid ShutdownMode');
+    }
+    const interrupted: string[] = this.coordinator.interruptAllPlanning();
     await this.serialize(async (): Promise<void> => {
+      for (let i: number = 0; i < interrupted.length; i++) this.coordinator.cancel(interrupted[i]);
+      await this.flushLifecycle();
       await this.shutdownNow(mode);
     });
   }
@@ -809,6 +864,17 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
       this.commandTail = this.commandTail.then(run, run);
     });
     return result;
+  }
+
+  private async serializeCommand(commandId: string, operation: () => Promise<CommandReceipt>): Promise<CommandReceipt> {
+    this.pendingCommandIds.push(commandId);
+    return await this.serialize(async (): Promise<CommandReceipt> => {
+      try { return await operation(); }
+      finally {
+        const index: number = this.pendingCommandIds.indexOf(commandId);
+        if (index >= 0) this.pendingCommandIds.splice(index, 1);
+      }
+    });
   }
 
   private async applyControl(command: TaskControlCommand,
@@ -1130,6 +1196,14 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
 }
 
 function validateComposition(config: ProductionAgentRuntimeConfig, ports: ProductionAgentRuntimePorts): void {
+  if (ports.collaborationPlan instanceof ArtifactCollaborationPolicy &&
+    ports.collaborationPreparation !== ports.collaborationPlan) {
+    throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT, 'artifact selector requires preparation');
+  }
+  if ((ports.collaborationPreparation !== undefined && ports.collaborationPreparation !== ports.collaborationPlan) ||
+    !Number.isSafeInteger(config.collaborationPreparationTimeoutMs) || config.collaborationPreparationTimeoutMs <= 0) {
+    throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT, 'invalid collaboration preparation binding');
+  }
   if (config.compositionVersion !== PRODUCTION_RUNTIME_COMPOSITION_VERSION ||
     config.policyVersion.length === 0 || !Number.isSafeInteger(config.grantTtlMs) || config.grantTtlMs <= 0 ||
     !Number.isSafeInteger(config.autoAdvanceLimit) || config.autoAdvanceLimit <= 0 ||

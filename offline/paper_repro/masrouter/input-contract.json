@@ -1,0 +1,57 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-input-contract-v1",
+  "contractRevision": "2",
+  "task": "T51",
+  "milestone": "M13-B",
+  "contractDate": "2026-10-19",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "paperArxivId": "2502.11133",
+  "claimState": {
+    "environmentInputContract": "complete",
+    "environmentResolved": "notRun",
+    "dependenciesInstalled": "notRun",
+    "datasetsDownloaded": "notRun",
+    "providerCredentialsRead": "notRun",
+    "providerCalls": "notRun",
+    "benchmarkRuns": 0,
+    "trainingRuns": 0
+  },
+  "readiness": {
+    "environmentReady": false,
+    "datasetReady": false,
+    "providerModelReady": false,
+    "priceReady": false,
+    "executionReady": false
+  },
+  "execution": {
+    "dependenciesInstalled": false,
+    "datasetsDownloaded": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "trainingRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "sourceInspection": {
+    "archiveSha256": "1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651",
+    "archiveSizeBytes": 2849986,
+    "sourceRetainedInRepository": false,
+    "method": "read-only extraction in an isolated temporary directory; only text imports, README, env template and dataset entrypoints were inspected",
+    "pythonFilesInspected": 50
+  },
+  "inputFiles": [
+    { "role": "upstream-lock", "path": "upstream-lock.json" },
+    { "role": "reproduction-spec", "path": "reproduction-spec.json" },
+    { "role": "environment-schema", "path": "schemas/environment-lock.schema.json" },
+    { "role": "dataset-schema", "path": "schemas/dataset-lock.schema.json" },
+    { "role": "provider-model-schema", "path": "schemas/provider-model-lock.schema.json" },
+    { "role": "price-schema", "path": "schemas/price-snapshot.schema.json" },
+    { "role": "environment-candidates", "path": "environment-candidates.json" },
+    { "role": "dataset-lock", "path": "dataset-lock.json" },
+    { "role": "model-pools", "path": "model-pools.json" },
+    { "role": "price-snapshot", "path": "price-snapshot-candidate.json" },
+    { "role": "unresolved-issues", "path": "unresolved-issues.json" }
+  ],
+  "nextGate": "T52 adaptation schema and handoff admission; T54 execution remains paused and requires separate authorization"
+}

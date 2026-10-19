@@ -1,0 +1,6 @@
+Host test: PASS (96 run, 96 pass, 0 failure, 0 error, 0 ignore)
+Release HAR build: PASS
+HAR metadata: version 0.14.0, debug=false, compatibleSdkVersion=26
+Device build/sign/install/run: NOT PERFORMED
+Provider/model/network/credentials: NOT USED
+Root build-profile SHA-256: 67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63

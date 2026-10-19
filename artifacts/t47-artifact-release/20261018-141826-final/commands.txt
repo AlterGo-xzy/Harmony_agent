@@ -1,0 +1,6 @@
+$env:DEVECO_SDK_HOME=<existing DevEco SDK>
+hvigorw.bat --mode module -p module=agent_runtime@default -p product=default test --no-daemon
+hvigorw.bat --mode module -p module=agent_runtime@default -p product=default -p buildMode=release assembleHar --no-daemon
+tar -tf agent_runtime.har
+Get-FileHash -Algorithm SHA256 agent_runtime.har
+git diff --check

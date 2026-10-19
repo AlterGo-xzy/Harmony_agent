@@ -1,0 +1,71 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-mtrouter-training-handoff-v1",
+  "upstreamCommit": "ee9e4573a128c3e54aa8c83800318bfb783c4dfe",
+  "upstreamTree": "6911bcf33bfdd30d6f414c09b5f5d14c5deeb913",
+  "sourceLicense": "MIT",
+  "algorithm": "MTRouter",
+  "decisionArchitecture": {
+    "baseParameterCount": 349441,
+    "perModelResidualParameterCount": 16,
+    "officialSixModelParameterCount": 349537
+  },
+  "historyEncoder": {
+    "modelId": "Qwen/Qwen3-Embedding-0.6B",
+    "dimensions": 1024,
+    "maximumTokens": 8192,
+    "deploymentMode": "external-controlled-service"
+  },
+  "applicationBudget": {
+    "maximumDecisionPayloadBytes": 5242880,
+    "maximumReleaseHapDeltaBytes": 8388608,
+    "maximumHandoffBytes": 67108864
+  },
+  "requiredFileRoles": [
+    "decisionPayload",
+    "safeDecisionExport",
+    "featureSchema",
+    "goldenFixtures",
+    "environmentReport",
+    "trainingReport",
+    "evaluationReport",
+    "sourceLicense"
+  ],
+  "allowedFileRoles": [
+    "decisionPayload",
+    "safeDecisionExport",
+    "featureSchema",
+    "goldenFixtures",
+    "environmentReport",
+    "trainingReport",
+    "evaluationReport",
+    "sourceLicense",
+    "paperReproductionReport",
+    "pythonReferenceReport",
+    "throughputReport",
+    "modelSnapshot",
+    "dataLineageReport",
+    "commands"
+  ],
+  "allowedTrainingTracks": [
+    "official-reproduction",
+    "harmony-agent-adaptation"
+  ],
+  "allowedTrainingStates": [
+    "smoke",
+    "candidate",
+    "failed"
+  ],
+  "allowedEvidenceStates": [
+    "notRun",
+    "passed",
+    "failed",
+    "nonComparable"
+  ],
+  "runtimeIntegration": {
+    "learnedPort": "LearnedRouterPort",
+    "learnedEnabledByDefault": false,
+    "networkInsideSynchronousRoute": false,
+    "fallback": "deterministicBaseline"
+  }
+}

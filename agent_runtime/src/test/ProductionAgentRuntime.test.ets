@@ -1,3 +1,4 @@
+import { FakeCollaborationPreparation } from './FakeCollaborationPreparation';
 import { describe, expect, it } from '@ohos/hypium';
 import {
   AgentRuntimeEvent,
@@ -8,6 +9,7 @@ import {
   ClarificationRequest,
   ClarificationResponse,
   CollaborationMode,
+  CommandReceipt,
   ContractCodec,
   ExecutionBudget,
   IdempotencyMode,
@@ -99,9 +101,20 @@ class FixtureCollaboration implements CollaborationSelectorPort {
 }
 
 class FixturePlanner implements SemanticPlannerPort {
+  calls: number = 0;
   kind: ProductionPlanKind = ProductionPlanKind.BASIC;
+  gate?: FixtureAsyncGate;
+  rejectPlan: boolean = false;
+  rejectResume: boolean = false;
+  interruptedTaskId: string = '';
+  activeTaskId: string = '';
 
-  plan(request: PlanningRequest): PlanningResult {
+  async plan(request: PlanningRequest): Promise<PlanningResult> {
+    this.calls++;
+    this.activeTaskId = request.envelope.taskId;
+    const currentGate: FixtureAsyncGate | undefined = this.gate;
+    if (currentGate !== undefined) await currentGate.wait();
+    if (this.rejectPlan) throw new Error('fixture provider secret must not escape');
     if (this.kind === ProductionPlanKind.CLARIFY) {
       const result: PlanningResult = new PlanningResult();
       result.status = PlanningStatus.CLARIFICATION_REQUIRED;
@@ -120,12 +133,21 @@ class FixturePlanner implements SemanticPlannerPort {
     return readyPlan(request, this.kind);
   }
 
-  resume(request: PlanningRequest, response: ClarificationResponse): PlanningResult {
+  async resume(request: PlanningRequest, response: ClarificationResponse): Promise<PlanningResult> {
+    if (this.rejectResume) throw new Error('fixture resume failure');
     return readyPlan(request, ProductionPlanKind.BASIC);
   }
 
-  replan(request: PlanningRequest): PlanningResult {
+  async replan(request: PlanningRequest): Promise<PlanningResult> {
     return readyPlan(request, this.kind);
+  }
+
+  interrupt(taskId: string): boolean {
+    this.interruptedTaskId = taskId;
+    const currentGate: FixtureAsyncGate | undefined = this.gate;
+    if (currentGate === undefined) return false;
+    currentGate.release();
+    return true;
   }
 }
 
@@ -209,6 +231,7 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
   readonly preparedAuthorities: RuntimeDurableAuthorityPayload[] = [];
   readonly rejectedContexts: DispatchPersistenceContext[] = [];
   allowBeforeDispatch: boolean = true;
+  allowRecoveryNormalization: boolean = true;
   throwBeforeDispatch: boolean = false;
   mutateContextBeforeDispatch: boolean = false;
   mutateAuthorityBeforeDispatch: boolean = false;
@@ -216,6 +239,7 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
   overrideCheckpoint?: RuntimeTaskRecoveryCheckpoint;
   recoveryTaskIds: string[] = [];
   recoveryAuthorities: RuntimeRecoveryAuthority[] = [];
+  recoveryNormalizations: number = 0;
 
   constructor(journal: FixtureJournal) {
     this.journal = journal;
@@ -256,6 +280,21 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
       }
     }
     return undefined;
+  }
+
+  async normalizeRecoveredOperation(checkpoint: RuntimeTaskRecoveryCheckpoint,
+    expectedPreviousVersion: number, nowMs: number): Promise<RuntimePersistenceResult> {
+    if (!this.allowRecoveryNormalization) {
+      return persistenceResult(false, RuntimePersistenceCode.REJECTED);
+    }
+    const authority: RuntimeDurableAuthorityPayload = new RuntimeDurableAuthorityPayload();
+    authority.taskId = checkpoint.snapshot.taskId;
+    authority.checkpointSnapshotVersion = checkpoint.snapshot.snapshotVersion;
+    authority.policyVersion = 'policy-v1';
+    const stored: RuntimePersistenceResult = this.storeCheckpoint(
+      checkpoint, expectedPreviousVersion, authority);
+    if (stored.accepted) this.recoveryNormalizations++;
+    return stored;
   }
 
   async listRecoveryTaskIds(): Promise<string[]> {
@@ -389,7 +428,7 @@ class ProductionFixture {
   readonly factory: FixtureAdapterFactory = new FixtureAdapterFactory(this.journal);
   readonly runtime: AgentRuntimeFacade;
 
-  constructor(kind: ProductionPlanKind = ProductionPlanKind.BASIC) {
+  constructor(kind: ProductionPlanKind = ProductionPlanKind.BASIC, preparation?: FakeCollaborationPreparation) {
     this.planner.kind = kind;
     const config: ProductionAgentRuntimeConfig = new ProductionAgentRuntimeConfig();
     config.policyVersion = 'policy-v1';
@@ -399,6 +438,8 @@ class ProductionFixture {
     ports.ids = new FixtureIds();
     ports.planner = this.planner;
     ports.collaboration = new FixtureCollaboration();
+    ports.collaborationPlan = preparation;
+    ports.collaborationPreparation = preparation;
     ports.toolPreparer = new FixtureToolPreparer();
     ports.adapterFactory = this.factory;
     ports.persistence = this.persistence;
@@ -531,6 +572,57 @@ async function subscribe(runtime: AgentRuntimeFacade, taskId: string,
 
 export default function productionAgentRuntimeTest(): void {
   describe('ProductionAgentRuntime', () => {
+    it('T53QueuedConflictingCancelCannotInterruptPreparation', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-conflict'));
+      await preparation.entered;
+      const pause = fixture.runtime.pauseTask(control('shared-id', preparation.taskId, TaskControlAction.PAUSE));
+      const conflicting = fixture.runtime.cancelTask(control('shared-id', preparation.taskId, TaskControlAction.CANCEL));
+      expect(preparation.cancelled).assertFalse();
+      const valid = fixture.runtime.cancelTask(control('unique-id', preparation.taskId, TaskControlAction.CANCEL));
+      await submitted; await pause;
+      expect((await conflicting).rejectionCode).assertEqual('COMMAND_ID_CONFLICT');
+      expect((await valid).accepted).assertTrue();
+      expect(fixture.planner.calls).assertEqual(0);
+    });
+    it('T53CancelInterruptsPreparationWithoutInvokingPlannerOrAdapter', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-cancel'));
+      await preparation.entered;
+      const cancelled = fixture.runtime.cancelTask(control('cancel-t53', preparation.taskId, TaskControlAction.CANCEL));
+      const handle = await submitted;
+      expect((await cancelled).accepted).assertTrue();
+      expect(preparation.cancelled).assertTrue(); expect(fixture.planner.calls).assertEqual(0);
+      expect((await fixture.runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.CANCELLED);
+      expect(fixture.persistence.preparedContexts.length).assertEqual(0);
+      const pending = fixture.persistence.checkpoints.find((value: RuntimeTaskRecoveryCheckpoint) => value.collaborationPreparation.pending);
+      expect(pending !== undefined).assertTrue();
+    });
+    it('T53ShutdownInterruptsPreparation', 0, async () => {
+      const preparation = new FakeCollaborationPreparation(); preparation.pending = true;
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      const submitted = fixture.runtime.submitTask(submission('t53-shutdown'));
+      await preparation.entered;
+      const shutdown = fixture.runtime.shutdown(ShutdownMode.GRACEFUL);
+      await submitted; await shutdown;
+      expect(preparation.cancelled).assertTrue(); expect(fixture.planner.calls).assertEqual(0);
+    });
+    it('T53ReservesWholePlanBeforePlannerAndRejectsUnpairedComposition', 0, async () => {
+      const preparation = new FakeCollaborationPreparation();
+      const fixture = new ProductionFixture(ProductionPlanKind.BASIC, preparation);
+      await fixture.runtime.submitTask(submission('t53-budget'));
+      expect(fixture.planner.calls).assertEqual(1);
+      const saved = fixture.persistence.checkpoints.find((value: RuntimeTaskRecoveryCheckpoint) =>
+        value.usage.agentActivations === 2 && value.snapshot.status === AgentTaskStatus.RECEIVED);
+      expect(saved !== undefined).assertTrue();
+      const config = new ProductionAgentRuntimeConfig(); config.policyVersion = 'p'; config.grantTtlMs = 10;
+      const ports = new ProductionAgentRuntimePorts(); ports.collaborationPreparation = preparation;
+      let rejected: boolean = false;
+      try { createProductionAgentRuntime(config, ports); } catch (error) { rejected = true; }
+      expect(rejected).assertTrue();
+    });
     it('persistsBeforeDispatchAndCompletesThroughBoundSink', 0, async () => {
       const fixture: ProductionFixture = new ProductionFixture();
       const handle = await fixture.runtime.submitTask(submission('production-basic'));
@@ -582,6 +674,63 @@ export default function productionAgentRuntimeTest(): void {
       expect(fixture.factory.adapter.requests.length).assertEqual(1);
       expect(fixture.journal.values.indexOf('beforeDispatch') <
         fixture.journal.values.indexOf('adapterDispatch')).assertTrue();
+    });
+
+    it('doesNotDispatchUntilAsyncPlannerResolves', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      const gate: FixtureAsyncGate = new FixtureAsyncGate();
+      fixture.planner.gate = gate;
+      let settled: boolean = false;
+      const pending: Promise<TaskHandle> = fixture.runtime.submitTask(
+        submission('production-planner-async-gate'));
+      const observed: Promise<TaskHandle> = pending.then((handle: TaskHandle): TaskHandle => {
+        settled = true;
+        return handle;
+      });
+      for (let i: number = 0; i < 20 && !gate.entered; i++) await Promise.resolve();
+      expect(gate.entered).assertTrue();
+      expect(settled).assertFalse();
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+
+      gate.release();
+      await observed;
+      expect(settled).assertTrue();
+      expect(fixture.factory.adapter.requests.length).assertEqual(1);
+    });
+
+    it('interruptsInFlightPlannerBeforeQueuedCancellationChangesTaskState', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      const gate: FixtureAsyncGate = new FixtureAsyncGate();
+      fixture.planner.gate = gate;
+      const submitted: Promise<TaskHandle> = fixture.runtime.submitTask(submission('production-planner-cancel'));
+      for (let i: number = 0; i < 20 && !gate.entered; i++) await Promise.resolve();
+      expect(gate.entered).assertTrue();
+      const cancelled: Promise<CommandReceipt> = fixture.runtime.cancelTask(
+        control('cancel-planner', fixture.planner.activeTaskId, TaskControlAction.CANCEL));
+      const handle: TaskHandle = await submitted;
+      const receipt: CommandReceipt = await cancelled;
+      expect(receipt.accepted).assertTrue();
+      expect(fixture.planner.interruptedTaskId).assertEqual(handle.taskId);
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+      expect((await fixture.runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.CANCELLED);
+    });
+
+    it('failsClosedAndPersistsStableEvidenceWhenPlannerRejects', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture();
+      fixture.planner.rejectPlan = true;
+      const handle: TaskHandle = await fixture.runtime.submitTask(
+        submission('production-planner-reject'));
+      const snapshot: AgentTaskSnapshot = await fixture.runtime.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(snapshot.resultJson).assertEqual('{"reason":"plannerInvocationFailed"}');
+      expect(snapshot.resultJson.indexOf('secret')).assertEqual(-1);
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+      expect(fixture.persistence.checkpoints.length > 0).assertTrue();
+      const checkpoint: RuntimeTaskRecoveryCheckpoint =
+        fixture.persistence.checkpoints[fixture.persistence.checkpoints.length - 1];
+      expect(checkpoint.snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(checkpoint.events[checkpoint.events.length - 1].payloadJson)
+        .assertEqual('{"reason":"plannerInvocationFailed"}');
     });
 
     it('serializesOverlappingFacadeCommandsBehindDurableLifecycle', 0, async () => {
@@ -799,6 +948,29 @@ export default function productionAgentRuntimeTest(): void {
       expect(fixture.factory.adapter.requests.length).assertEqual(1);
     });
 
+    it('failsClosedWhenAsyncClarificationResumeRejects', 0, async () => {
+      const fixture: ProductionFixture = new ProductionFixture(ProductionPlanKind.CLARIFY);
+      const handle: TaskHandle = await fixture.runtime.submitTask(
+        submission('production-clarification-reject'));
+      const observer: FixtureObserver = new FixtureObserver();
+      await subscribe(fixture.runtime, handle.taskId, observer);
+      fixture.planner.rejectResume = true;
+      const response: ClarificationResponse = new ClarificationResponse();
+      response.commandId = 'clarify-reject-1';
+      response.clarificationId = observer.clarifications[0].clarificationId;
+      response.taskId = handle.taskId;
+      response.answerJson = '{"target":"team"}';
+      response.respondedAt = '1970-01-01T00:00:01.000Z';
+      response.respondedAtMs = 1000;
+      const receipt = await fixture.runtime.provideClarification(response);
+      expect(receipt.accepted).assertFalse();
+      expect(receipt.rejectionCode).assertEqual('PLANNER_INVOCATION_FAILED');
+      const snapshot: AgentTaskSnapshot = await fixture.runtime.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.FAILED);
+      expect(snapshot.resultJson).assertEqual('{"reason":"plannerInvocationFailed"}');
+      expect(fixture.factory.adapter.requests.length).assertEqual(0);
+    });
+
     it('persistsUnknownOutcomeAndReconciliationBeforeCompletion', 0, async () => {
       const fixture: ProductionFixture = new ProductionFixture(ProductionPlanKind.SIDE_EFFECT);
       const handle = await fixture.runtime.submitTask(submission('production-reconcile'));
@@ -862,7 +1034,7 @@ export default function productionAgentRuntimeTest(): void {
       expect(source.factory.adapter.requests.length).assertEqual(0);
     });
 
-    it('failsClosedWhenStartupFindsAnActiveOperation', 0, async () => {
+    it('normalizesActiveOperationBeforeExposingRecoveredFacade', 0, async () => {
       const source: ProductionFixture = new ProductionFixture(ProductionPlanKind.TOOL);
       const handle: TaskHandle = await source.runtime.submitTask(submission('production-recovery-active'));
       const observer: FixtureObserver = new FixtureObserver();
@@ -877,6 +1049,32 @@ export default function productionAgentRuntimeTest(): void {
       decision.decidedAtMs = 1000;
       await source.runtime.provideAuthorization(decision);
       enableRecovery(source, handle.taskId);
+      const restored: AgentRuntimeFacade = await recoveredRuntime(source);
+      const snapshot: AgentTaskSnapshot = await restored.getTaskSnapshot(handle.taskId);
+      expect(snapshot.status).assertEqual(AgentTaskStatus.WAITING_RECONCILIATION);
+      expect(source.persistence.recoveryNormalizations).assertEqual(1);
+      const normalized: RuntimeTaskRecoveryCheckpoint | undefined =
+        await source.persistence.loadCheckpoint(handle.taskId);
+      expect(normalized?.activeInvocation === undefined).assertTrue();
+      expect(normalized?.pendingDispatchId).assertEqual('');
+    });
+
+    it('failsClosedWhenActiveOperationNormalizationIsRejected', 0, async () => {
+      const source: ProductionFixture = new ProductionFixture(ProductionPlanKind.TOOL);
+      const handle: TaskHandle = await source.runtime.submitTask(submission('production-recovery-active-rejected'));
+      const observer: FixtureObserver = new FixtureObserver();
+      await subscribe(source.runtime, handle.taskId, observer);
+      const decision: AuthorizationDecision = new AuthorizationDecision();
+      decision.commandId = 'recovery-active-rejected-decision';
+      decision.policyRequestId = observer.policies[0].requestId;
+      decision.userId = 'user-1';
+      decision.taskId = handle.taskId;
+      decision.decision = AuthorizationDecisionType.APPROVED;
+      decision.decidedAt = '1970-01-01T00:00:01.000Z';
+      decision.decidedAtMs = 1000;
+      await source.runtime.provideAuthorization(decision);
+      enableRecovery(source, handle.taskId);
+      source.persistence.allowRecoveryNormalization = false;
       let rejected: boolean = false;
       try {
         await recoveredRuntime(source);

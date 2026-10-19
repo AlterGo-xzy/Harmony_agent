@@ -1,0 +1,17 @@
+{
+  "priceSnapshotId": "deepseek-flash-peak-cache-miss-2026-10-17",
+  "frozenAt": "2026-10-17T00:00:00+08:00",
+  "currency": "USD_MICROS",
+  "gatewayProviderId": "local-ai-gateway",
+  "gatewayModelId": "aigw/default",
+  "upstreamProviderId": "deepseek",
+  "upstreamModelId": "deepseek-flash",
+  "upstreamModelVersion": "DeepSeek-V4.1-Flash",
+  "upstreamRegion": "global",
+  "pricingTier": "peak-cache-miss",
+  "inputMicrosPerMillionTokens": 300000,
+  "outputMicrosPerMillionTokens": 1200000,
+  "fixedCostMicros": 0,
+  "sourceUrl": "https://api-docs.deepseek.com/quick_start/pricing/",
+  "notes": "Worst-case public peak price with no input cache hit. Recheck the official source and active gateway profile before every real run."
+}

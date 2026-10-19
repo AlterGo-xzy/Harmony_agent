@@ -1,0 +1,41 @@
+{
+  "task": "T47",
+  "milestone": "M11-D",
+  "branch": "codex/module-artifact-release-t47",
+  "baseCommit": "c27ec0084934cfc2a063301a11832dd2e3a3dfd1",
+  "hostTests": {
+    "module": "agent_runtime",
+    "run": 89,
+    "pass": 89,
+    "failure": 0,
+    "error": 0,
+    "ignore": 0
+  },
+  "releaseHar": {
+    "file": "agent_runtime.har",
+    "sizeBytes": 118685,
+    "sha256": "B377C9EF22FAB96EC5993F662DFF83CD46293A30A49C529AC7BFCE079C36840A",
+    "package": "@harmony_agent/agent-runtime",
+    "version": "0.14.0",
+    "debug": false,
+    "compatibleSdkVersion": 26
+  },
+  "acceptance": [
+    "baseline validated before registry candidates",
+    "shadow observations bounded and never selected",
+    "deterministic 0..10000 basis-point canary assignment",
+    "canary failure falls back to active",
+    "active or registry failure falls back to baseline",
+    "invalid decisions fail closed",
+    "request artifact and decision values are copied",
+    "durable registry rollback changes selection from B to A"
+  ],
+  "boundary": {
+    "hapBuilt": false,
+    "signingUsed": false,
+    "deviceInstalled": false,
+    "deviceRun": false,
+    "taskControlEntry": "AgentRuntimeFacade"
+  },
+  "rootBuildProfileSha256": "67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63"
+}

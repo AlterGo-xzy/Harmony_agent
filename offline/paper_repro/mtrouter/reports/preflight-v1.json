@@ -1,0 +1,35 @@
+{
+  "reportSchemaVersion": "1",
+  "task": "T48",
+  "milestone": "M12-A",
+  "generatedAt": "2026-10-18T14:24:00+08:00",
+  "status": "source-frozen-reproduction-not-run",
+  "inputDigests": {
+    "upstreamLock": "sha256:fb50776f0367c221a60fb5d4c88a22d45b424aad70844abc3081ce874d7d3468",
+    "reproductionSpec": "sha256:639eafcabd90e39193cc4f375474f3b2dca9eea04b614ff07a71562d8c9ab554"
+  },
+  "upstream": {
+    "commit": "ee9e4573a128c3e54aa8c83800318bfb783c4dfe",
+    "tree": "6911bcf33bfdd30d6f414c09b5f5d14c5deeb913",
+    "license": "MIT",
+    "sourceArchiveSha256": "fb54221173ee047e94ebec06eee154486fce152472c2206d2fd32cce80ad5ed5",
+    "paper": "2604.23530v1",
+    "paperPdfSha256": "339973fb8e766c652aa9f990e90197db735a01e6ee574ab6178db7ddec7d0581"
+  },
+  "preregistration": {
+    "runCount": 3,
+    "modelCount": 6,
+    "benchmarkCount": 2,
+    "targetCount": 4,
+    "performanceTolerance": "reportedStd",
+    "costToleranceBasisPoints": 500
+  },
+  "execution": {
+    "dependenciesInstalled": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "nextGate": "isolated environment installation and upstream smoke tests require separate authorization"
+}

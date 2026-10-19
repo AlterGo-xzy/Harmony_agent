@@ -1,0 +1,71 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmony-agent.local/schemas/masrouter-provider-model-lock-v1.json",
+  "title": "MasRouter provider and model revision lock input contract",
+  "description": "Separates the paper's core and inductive-validation pools from the implementation's source profile. Model revisions, providers and regions must remain unresolved until independently frozen.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion", "contractId", "upstreamCommit", "lockStatus",
+    "poolsSeparate", "paperCoreModelPool", "paperInductiveValidationModel",
+    "sourceModelPool", "modelArtifacts"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "contractId": { "const": "harmony-agent-masrouter-model-pools-v1" },
+    "upstreamCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "lockStatus": { "enum": ["candidate-unresolved", "partially-resolved", "locked"] },
+    "poolsSeparate": { "const": true },
+    "paperCoreModelPool": {
+      "type": "array",
+      "minItems": 4,
+      "maxItems": 4,
+      "items": { "$ref": "#/$defs/modelEntry" }
+    },
+    "paperInductiveValidationModel": { "$ref": "#/$defs/modelEntry" },
+    "sourceModelPool": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/modelEntry" }
+    },
+    "modelArtifacts": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/modelArtifact" }
+    }
+  },
+  "$defs": {
+    "modelEntry": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "modelId", "provider", "providerModelId", "revision", "region",
+        "transportClass", "status", "evidence"
+      ],
+      "properties": {
+        "modelId": { "type": "string", "minLength": 1 },
+        "provider": { "type": "string", "minLength": 1 },
+        "providerModelId": { "type": ["string", "null"] },
+        "revision": { "type": ["string", "null"] },
+        "region": { "type": ["string", "null"] },
+        "transportClass": { "type": "string", "minLength": 1 },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "modelArtifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["artifactId", "kind", "revision", "sha256", "status", "packaging", "evidence"],
+      "properties": {
+        "artifactId": { "type": "string", "minLength": 1 },
+        "kind": { "enum": ["sentence-encoder", "router-checkpoint"] },
+        "revision": { "type": ["string", "null"] },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "packaging": { "enum": ["forbidden-in-har-hap", "runtime-artifact-allowed", "not-yet-classified"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}

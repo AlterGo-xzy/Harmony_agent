@@ -1,0 +1,34 @@
+Pinned source: yanweiyue/masrouter
+Commit: e005f7696fe0c0412563f6cd67f4cd3712fa2822
+Tree: e4d618f81675a46ed6e2f5e6ee1970519f1afa5b
+Archive SHA-256 verified: 1d17aacbe2c380facbfd5bb2e7879213aeca7df2bd40d5fd86c45c1a25c0b651
+Method: read-only extraction in an isolated temporary directory; no source execution, no dependency installation, no dataset download.
+
+Inventory:
+- 50 Python files inspected.
+- README, template.env and Experiments/run_{gsm8k,humaneval,math,mbpp,mmlu}.py inspected.
+- No requirements.txt, pyproject.toml, setup.py, setup.cfg, environment.yml, Pipfile, poetry.lock or uv.lock.
+- No .pth, .pt, .ckpt, .bin or .safetensors checkpoint.
+- 26 role profile JSON files excluding FinalNode.
+- Unresolved local import: Datasets.MMLU.download at Experiments/run_mmlu.py:27 (Datasets/MMLU/download.py absent).
+
+Import reachability (entrypoints plus package __init__ files):
+- benchmark-entrypoint transitive third-party imports (27):
+  PyPDF2, aiohttp, astunparse, bs4, charset_normalizer, class_registry, docx, dotenv,
+  groq, langchain_community, loguru, markdown, matplotlib, numpy, openai, openpyxl,
+  pandas, pptx, pylatexenc, requests, seaborn, sentence_transformers, shortuuid,
+  tenacity, tiktoken, torch, yaml
+- tool-only imports not reachable from the five benchmark entrypoints (7):
+  arxiv, fastapi, googleapiclient, httpx, pydantic, pytube, wikipedia
+- implicit runtime requirements for MBPP hf:// parquet loading:
+  pyarrow, fsspec, huggingface-hub
+
+Key static findings:
+- PEP 604 syntax `str | None` in MAR/Agent/agent.py:17 implies Python 3.10 minimum; no exact version is declared.
+- GSM8K/HumanEval split_list uses Python random.shuffle; fix_random_seed(1234) seeds torch only, not the random module (MAR/Utils/utils.py:94-99, 171-180).
+- MBPP loads a mutable hf:// dataset without revision or digest (Datasets/mbpp_dataset.py:5-9).
+- MATH paper subset of 519 is reconstructed by Datasets/sample_MATH.py with hard-coded paths and no ID manifest.
+- MMLU test evaluation skips the first train_batch test batches (Experiments/run_mmlu.py:147-150).
+- Claude 3.5 Haiku price conflict: 1.0/5.0 in MAR/LLM/llm_profile.py:11 vs 0.8/4.0 in MAR/LLM/price.py:53-56.
+- LLMRegistry selects Deepseek only for the case-sensitive substring DeepSeek-V3; deepseek-chat and deepseek-v3 use ALLChat (MAR/LLM/llm_registry.py:19-25).
+- tiktoken always uses the gpt-4o encoding (MAR/LLM/price.py:7-9).

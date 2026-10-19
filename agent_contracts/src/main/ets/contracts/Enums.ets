@@ -129,3 +129,15 @@ export enum ArtifactLifecycleStatus {
   ACTIVE = 'active',
   ROLLED_BACK = 'rolledBack'
 }
+
+export enum ArtifactKind {
+  CHECKPOINT = 'checkpoint',
+  POLICY = 'policy',
+  WORKFLOW = 'workflow'
+}
+
+export enum ArtifactApprovalStatus {
+  UNREVIEWED = 'unreviewed',
+  APPROVED = 'approved',
+  REJECTED = 'rejected'
+}

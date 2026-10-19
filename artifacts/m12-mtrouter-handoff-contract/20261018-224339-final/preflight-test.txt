@@ -1,0 +1,1 @@
+Tests run: 5, Failure: 0, Error: 0, Pass: 5, Ignore: 0

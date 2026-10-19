@@ -1,0 +1,76 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-price-snapshot-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "snapshotStatus": "blocked",
+  "costClaimsAllowed": false,
+  "currency": "USD",
+  "unit": "per-million-tokens",
+  "models": [
+    {
+      "modelId": "gpt-4o-mini",
+      "inputUsdPerMillion": 0.15,
+      "outputUsdPerMillion": 0.6,
+      "sourceFile": "MAR/LLM/price.py",
+      "sourceLine": 49,
+      "sourceType": "source-metadata",
+      "officialSourceUrl": null,
+      "officialSourceSha256": null,
+      "status": "source-metadata-only"
+    },
+    {
+      "modelId": "gemini-1.5-flash-latest",
+      "inputUsdPerMillion": 0.15,
+      "outputUsdPerMillion": 0.6,
+      "sourceFile": "MAR/LLM/price.py",
+      "sourceLine": 61,
+      "sourceType": "source-metadata",
+      "officialSourceUrl": null,
+      "officialSourceSha256": null,
+      "status": "source-metadata-only"
+    },
+    {
+      "modelId": "llama-3.1-70b-instruct",
+      "inputUsdPerMillion": 0.2,
+      "outputUsdPerMillion": 0.2,
+      "sourceFile": "MAR/LLM/price.py",
+      "sourceLine": 77,
+      "sourceType": "source-metadata",
+      "officialSourceUrl": null,
+      "officialSourceSha256": null,
+      "status": "source-metadata-only"
+    },
+    {
+      "modelId": "deepseek-chat",
+      "inputUsdPerMillion": 0.27,
+      "outputUsdPerMillion": 1.1,
+      "sourceFile": "MAR/LLM/price.py",
+      "sourceLine": 81,
+      "sourceType": "source-metadata",
+      "officialSourceUrl": null,
+      "officialSourceSha256": null,
+      "status": "source-metadata-only"
+    }
+  ],
+  "conflicts": [
+    {
+      "modelId": "claude-3-5-haiku-20241022",
+      "values": [
+        {
+          "sourceFile": "MAR/LLM/llm_profile.py",
+          "sourceLine": 11,
+          "inputUsdPerMillion": 1.0,
+          "outputUsdPerMillion": 5.0
+        },
+        {
+          "sourceFile": "MAR/LLM/price.py",
+          "sourceLine": 53,
+          "inputUsdPerMillion": 0.8,
+          "outputUsdPerMillion": 4.0
+        }
+      ],
+      "resolution": "unresolved",
+      "resolutionEvidence": null
+    }
+  ]
+}

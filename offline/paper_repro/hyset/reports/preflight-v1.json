@@ -1,0 +1,56 @@
+{
+  "reportSchemaVersion": "1",
+  "task": "T56",
+  "milestone": "M14-A",
+  "generatedAt": "2026-10-19T16:19:19+08:00",
+  "status": "source-frozen-reproduction-blocked-on-artifact-and-data-identities",
+  "inputDigests": {
+    "upstreamLock": "sha256:b85f0f967ec8eb646ecf109a876f9b67fd4d01e590253a6373e6369477056662",
+    "reproductionSpec": "sha256:3598859cad6c2e73ce681d7bf370dc0e11332d02e2c6d024df10da018c43275a"
+  },
+  "upstream": {
+    "commit": "d0885766a9b60f778c35e161ad91e3a0d8af6dd7",
+    "tree": "e3b0bf2a3428640ece71ec5994571544100ec5a4",
+    "license": "MIT",
+    "sourceArchiveSha256": "745be2af629e11e641db1b6fd490942031c2167eed50f1424e293ab7724b2a80",
+    "paper": "2607.25718v2",
+    "paperPdfSha256": "f0b25a3a79294ea5503d43a7026f167a1346b3888d9a2a294c6718393c3852cd"
+  },
+  "sourceAudit": {
+    "pinnedFileCount": 26,
+    "externalTrackedTreeCount": 2,
+    "externalGitlinkCount": 0,
+    "corpusToolCount": 13860,
+    "testSplitCount": 6,
+    "totalTestQueries": 600,
+    "checkpointStatus": "unresolved",
+    "encoderStatuses": [
+      "unresolved",
+      "unresolved"
+    ],
+    "reproductionBlockerCount": 10
+  },
+  "adaptationBoundary": {
+    "targetPolicyPort": "LearnedRouterPort",
+    "integrationOwner": "DeterministicToolRouter",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "fallback": "DETERMINISTIC_TOP_K",
+    "strictReproductionReady": false
+  },
+  "execution": {
+    "sourceVendoredIntoRepository": false,
+    "paperVendoredIntoRepository": false,
+    "dependenciesInstalled": false,
+    "checkpointDownloaded": false,
+    "encoderDownloaded": false,
+    "rawDatasetDownloaded": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "upstreamTestsExecuted": false,
+    "inferenceRunsExecuted": 0,
+    "trainingRunsExecuted": 0,
+    "benchmarkRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "nextGate": "T57 may define the research-only tool-set handoff and scale harness; T58 remains blocked until checkpoint, encoder, raw data and reward identities are frozen under separate authorization"
+}

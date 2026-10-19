@@ -2,8 +2,8 @@
 
 2026-10-02 已按项目所有者要求统一命名，模块引用按当前名称展示。更名前的设备验收和原始产物不变，当前名称、数据兼容及复验边界见 [HARMONY_AGENT_NAMING.md](../HARMONY_AGENT_NAMING.md)，最新进度见 [PROJECT_STATUS.md](../../PROJECT_STATUS.md)。
 
-状态：**In progress / T01–T11 当前任务门已通过；T11/M08 首个只读 Native Tool 已完成签名 API 26 设备验收**  
-日期：2026-10-07  
+状态：**In progress / T01–T48、T50–T52 已完成各自记录的任务门，T51 已验收并作为 T52 基线；S6、S7 已关闭，S8 暂缓，S9 已完成来源冻结、复现准入、环境输入合同与 adaptation handoff 结构门**
+日期：2026-10-19
 适用范围：无 UI 的 OpenHarmony / HarmonyOS harmony_agent Agent Runtime、MCP/系统能力接入、远程 LLM，以及与在线 Runtime 严格隔离的离线算法实验域。产品 UI、ArkUI 页面、Entry Ability 和产品 HAP 明确不在本项目交付范围内。
 
 ## 1. 结论
@@ -44,29 +44,35 @@ Context Routing 与 Verification / Recovery 暂时使用确定性 baseline，并
 ### 2.1 当前仓库中已经存在的事实
 
 - `agent_contracts/` 是独立的 `@harmony_agent/agent-contracts` HAR，已经定义版本化 Task、Workflow、Router、Tool、Policy、Trace 和 Artifact 契约，并通过 host 侧契约测试与 Release HAR 构建。
+- T44 已把 Artifact 契约收紧为可审计的 checkpoint/policy/workflow manifest：完整 source commit、许可证、数据 lineage、模型/Provider 快照、runtime compatibility、通用 payload digest、三类独立结果、审批、签名和 rollback target 均有显式字段与 fail-closed 校验。T45 以 canonical JSON package 和 Ed25519 完成 payload/manifest/signature/key-ID 验证及篡改拒绝；T46 增加 compatibility evaluator、宿主验签端口、durable CAS Registry 和按 digest 的 active/canary 选择与回滚；T47 又完成 baseline-first shadow/canary/active/fallback runner、deterministic basis-point assignment 和 durable rollback 后策略选择恢复演练。M11-E 为每次策略调用补充有界 timeout、外部取消和协作资源释放信号，超时按 shadow/canary/active/baseline 边界稳定观察或回退，并忽略迟到结果。S7 通用策略供应链门已关闭；生产密钥治理、policy loader、具体策略资源释放实现和 learned Router 属于宿主与 M12–M14。
+- T48 已在 `offline/paper_repro/mtrouter/` 冻结 MTRouter 官方 commit/tree、MIT license、arXiv v1、Python/research 依赖边界和论文实验协议，并预注册三次运行、六模型池、两个 benchmark 四项结果的容差。该门只证明来源锁与准入 spec 可离线复验；尚未安装原环境、运行官方测试或 benchmark，也没有形成 checkpoint、parity 或在线 Router 质量证据。
+- T50 已在 `offline/paper_repro/masrouter/` 冻结 MasRouter 官方 commit/tree、Apache-2.0 license、15 个关键源码文件和 arXiv v1，并分别记录论文与源码的模型池、协作模式、训练参数和五项 benchmark 目标。上游没有依赖清单或 checkpoint，入口路径大小写及价格元数据还有冲突，所以当前结论是来源审计完成、严格复现尚不可执行；没有修改在线 Runtime。
+- T51 在同一目录新增环境、数据集、Provider/model revision 和价格快照四类版本化 schema，以及 34 个直接依赖候选（全部 unresolved）、五个 benchmark 的数据集锁定骨架、严格分离的 4+1 论文模型池/5 模型源码 profile、Claude 价格冲突记录和 17 项未解决问题。checker 使用本地严格 JSON Schema 校验四份输入文档（未知字段、类型错误和必填缺失均 fail-closed），报告 `sha256:0f4367d6de077b0a6df712ff41d1e45af3681e7338f13cbe9973e8ee73440fa3`，13/13 fail-closed 自测通过。该门只完成环境输入合同，不证明依赖可安装、数据已下载、Provider 可调用或论文可复现；T54 继续暂停。
+- T52 在同一目录新增 MasRouter adaptation handoff 合同、纯 Node checker、21/21 fail-closed 自测和 research-only fixture。合同把 feature envelope、Role/Model Registry 快照、single/multi 有序角色分配、advisory-only 模型集合、source digest 和文件预算固定为结构准入门；encoder/tokenizer/Python/PyTorch/optimizer state/数据集/训练日志、任务控制字段和同步网络声明均 fail-closed。发布继续复用 M11 `ArtifactManifest`/`ArtifactRegistry`/`ArtifactPolicyReleaseRunner`；checker 通过不证明训练、parity、包体或生产发布。
+- T56 已在 `offline/paper_repro/hyset/` 固定 HYSET 官方 commit/tree、MIT 根许可证、ToolBench/StableToolBench 的 Apache-2.0 tracked-tree 边界、arXiv v2、26 个关键文件、13,860-tool corpus、六个 100-query split、论文参数与结果表。上游 `.gitmodules` 声明与实际普通 tree 存储不一致，checkpoint、encoder/Agent/DFSDT revision/digest、raw ToolBench/UltraTool、reward/trajectory 和 judge snapshot 仍 unresolved；因此当前只完成来源审计，严格复现、ArkTS adaptation 和质量结论均未运行。离线 checker 以 11/11 fail-closed 自测覆盖来源、执行和架构边界漂移。
 - `agent_core/` 是独立的 `@harmony_agent/agent-core` HAR，已经实现语义 DAG 校验、确定性状态机与调度、deadline/取消传播、operation journal、有界恢复决策及 `UNKNOWN_OUTCOME` 对账边界，并通过 host 侧内核测试与 Release HAR 构建。
 - `agent_core/` 已增加 task、step、provider 三层 Budget Ledger；预留、结算、释放和未知费用保留均为同步确定性状态转换。
 - `agent_runtime/` 已建立 `@harmony_agent/agent-runtime` HAR，并实现 M02 的确定性资格过滤、Policy Gateway、内部 grant 签发/校验/撤回和 secret 脱敏。
 - `agent_runtime/` 已实现 M09-A 的 `AgentRuntimeFacade` 接口、observer/subscription、明确标记的 headless fake runtime 与 fake consumer。
-- `agent_runtime/` 0.11.0 已用 M09-B production factory 把 M03 内部 Session/Task Analyzer/Planner/RuntimeCoordinator 包装到唯一 Promise-based `AgentRuntimeFacade`；composition 2.3 在 checkpoint/authority 写入之外新增只读恢复源和异步 recovered factory，在 Facade 暴露前完成无在途 operation 任务的枚举、重建、authority hydration 与恢复事件持久化。内部 coordinator 与生产实现类均不从公共入口导出。
+- `agent_runtime/` 0.14.0 已用 M09-B production factory 把 M03 内部 Session/Task Analyzer/Planner/RuntimeCoordinator 包装到唯一 Promise-based `AgentRuntimeFacade`；T32 将 Semantic Planner 的 plan/resume/replan 统一为 Promise，并在 Planner 完成前阻止 workflow drive 与 Tool dispatch。composition 2.5 新增可选的版本化 `CollaborationPlanSelectorPort`，计划固定 Role Registry/decision 摘要与角色身份并进入 Planner/checkpoint；模式标签式 Multi 会在 Provider 前失败。原 checkpoint 1.1、authority 写入、只读恢复源、异步 recovered factory 和 active operation durable normalization 边界继续保留。内部 coordinator 与生产实现类均不从公共入口导出。
 - `agent_runtime/` 已实现 M04 的 Model/Role/Tool/Workflow Registry 与确定性 Model、Collaboration、Context、Tool Router；硬资格过滤先于评分，learned Model/Tool policy 可关闭并在低置信度、异常或越界输出时回退。
 - `agent_storage/` 已建立 `@harmony_agent/agent-storage` HAR：当前包含执行恢复 Repository ports、纯 ArkTS 恢复协议 Store、完整快照 integrity/migration 边界、snapshot CAS durable session、Runtime persistence bridge，以及接收宿主已打开 `RdbStore` 的 API 26 RDB backend；主机测试与 Release HAR 构建已通过。
-- `agent_storage/` 0.6.0/schema 1.2 保存版本化 opaque Runtime checkpoint 并提供任务枚举；`RuntimeExecutionRecoveryBridge` 用一次 backend CAS 保存 checkpoint、Policy、完整预算、operation 和 lease/fencing，并从这些 durable 记录组装严格验证的恢复 authority。T24 本地主机 45/45 与 Release HAR 已通过；更新版本尚无设备运行，T07 的 7/7 是旧 schema 设备证据，不能替代 0.6.0。
+- `agent_storage/` 0.8.0/schema 1.2 保存版本化 opaque Runtime checkpoint 并提供任务枚举；`RuntimeExecutionRecoveryBridge` 用 backend CAS 保存 checkpoint、Policy、完整预算、operation 和 lease/fencing，并从这些 durable 记录组装严格验证的恢复 authority。T25 新增 `openForRuntimeRecovery` 与单 CAS active normalization；T26 新增只返回唯一 Facade 的 `createRdbRecoveredAgentRuntime`。主机 47/47 与 Release HAR 已通过，签名 API 26 设备验收进一步完成 seed 就绪/PID、force-stop、recover 1/1、UNKNOWN 归一化、Adapter 零重放和卸载核对。
 - `agent_storage/` 0.2.0 已新增 M05-B 的类型化 Memory/Artifact/Index/Transfer ports、纯 ArkTS `DeterministicMemoryStore`、完整快照 `DurableMemoryStore` 和宿主注入式 API 26 `RdbMemorySnapshotBackend`；主机证据验证受控导入、分块检索、隐私默认值、脱敏导出、级联失效、CAS/并发、重开重建、损坏与迁移；当前命名签名主 HAP/ohosTest HAP 已在 API 26 通过 `MemoryDeviceRecovery` 3/3，并完成卸载清理。
 - `mcp_client/` 是独立的 `@harmony_agent/mcp-client` HAR，提供多 Server MCP Streamable HTTP 客户端。
 - 公共 MCP 能力以 `{ serverId, kind, name }` 标识，避免跨 Server 同名冲突。
 - MCP 工具调用已采用默认拒绝的 `McpInvocationPolicy`；宿主负责认证秘密和授权策略。
 - MCP 客户端已把安全查询和有副作用的工具调用区分开：安全查询可在特定传输失败下有界重试，工具调用不自动重试。
-- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试源码。
-- `agent_connectors/` 0.2.0 已完成 M06 MCP adapter 和 M07 Provider connector 本地实现门。M07 提供通用 Model/Embedding/Remote API ports、版本/region/price snapshot、streaming、usage/cost、credential、取消/timeout 和 `UNKNOWN_OUTCOME` 边界；15 项 M07 contract test 与 M06 合并运行 28/28，Release HAR 构建通过。
+- `test_host/` 是无页面的 MCP/Agent HAR 设备测试宿主，不是 harmony_agent 产品宿主；当前已包含 MCP 网络、M05 RDB 恢复和 M08 battery status 设备测试。T30 已在 API 26 通过 unsigned `McpFacadeDevice` 1/1。T36 的 signed `LocalAIGatewayFacadeDevice` 又把真实 Provider Planner、唯一 Facade、显式授权和一次 MCP 调用串成同一设备闭环，并在 API 26 实际通过 1/1。T43 继续通过 signed 主/ohosTest HAP 完成 12×2 真实 Provider/system Bench；各次验收后 bundle、反向映射、bridge、fixture 和网关均已清理。
+- `agent_connectors/` 0.8.0 已完成 M06/M07、Local AI Gateway transport、MCP Production Facade、Provider Semantic Planner、具体 production composition 与 T37–T40 协作接线/逐角色规划的本地主机门。composition 保留宿主显式注入的 `CollaborationPlanSelectorPort`，也保留旧 `CollaborationSelectorPort` 的 Strong Single/兼容路径；有效计划会为每个角色产生独立 Provider request/activation trace，并顺序修订 typed workflow，模式标签式 Multi、计划外角色和累计预算越界会在 Provider 前失败。外部仍只获得 `AgentRuntimeFacade`。合并 connector 主机套件为 55/55；Release HAR 为 61,831 bytes、SHA-256 `120A65A82BA87CB7A79C948C1963A2070CA2E678ABC8F54134156A94BA10A540`。T36 的单任务真实 Provider Planner → Facade → MCP signed API 26 证据继续有效；T40 没有运行真实 Provider 或设备，也不等于 S6 的十二类任务双 arm system Bench。
 - `native_tools/` 0.1.0 已实现首个 API 26 只读 battery status Tool Adapter，包含 capability、grant、参数/identity、后台和取消边界，并通过 M03 `StepDispatchPort` 接线；主机 12/12、Release HAR、签名主/ohosTest HAP 验证与安装、`BatteryStatusDevice` 设备运行 1/1 和卸载清理均已通过。
-- 当前仓库仍没有真实语义 Planner、具体 Provider HTTP transport、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、真实 learned Router artifact 或离线 Router 工程；Runtime 0.11.0 与 Storage 0.6.0 已接通 Promise lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入，以及无在途 operation 的跨实例启动恢复和 event replay。active operation 的 durable 归一化/lease 接管与 RDB composition 尚未接入 production factory。产品 Entry HAP 属于外部调用方范围，不是本仓库待办。
-- 截至 2026-10-01，当前工作区尚无 Git `HEAD` 和已跟踪文件；因此现有结果是本地实现状态，不是可按 commit/tag 交接的发布状态。
+- 当前仓库已完成 Local AI Gateway Provider Planner 的具体 production composition，并以 signed API 26 设备用例验证真实 Facade Planner → MCP 闭环。Runtime 0.14.0 与 Storage 0.8.0 已接通版本化协作计划、异步 Planner/Facade lifecycle、checkpoint/authority、单 CAS dispatch gate、lease/fencing、outcome/reconciliation 写入、启动恢复和具体 RDB composition；T46 完成 Artifact Registry 的 compatibility/verifier/durable CAS/rollback 数据面，T47 完成 baseline-first shadow/canary/active/fallback 运行与 durable rollback 后选择恢复，M11-E 完成通用 policy timeout/cancel 控制。connector 0.8.0 已实现按计划逐角色 Provider 规划与结果修订。T43 已在真实设备完成 12×2 双 arm Provider/system Bench，形成 19/24 质量通过、38 次请求和 US$0.031083 的基线。宿主生产 credential store、具体 Provider/Tool/learned policy 的取消资源释放、需要系统权限或带写副作用的 Native Kit 工具、宿主长期记忆加密接线、生产 Artifact key/verifier/policy loader 治理、真实 learned Router artifact 和离线 Router 工程仍未完成。产品 Entry HAP 属于外部调用方范围。
+- 当前仓库已有首个 source snapshot commit，并按模块维护远端分支；每个任务仍须以对应 commit、构建日志和设备证据分别判断，不能把分支存在当作发布完成。
 
 ### 2.2 本文提出、但尚未实现的内容
 
-- `agent_connectors` 的 M06/M07 本地门与 M09-B 主机 composition 门不代表真实 Provider/设备网络、生产 credential store、具体 Adapter 的生产装配或 S2 真实远端任务闭环；`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
-- 真实 Semantic Planner、learned Router artifact、活动任务恢复启动装配、durable RDB composition、具体生产 adapter composition、持久化 Registry 的生产接线及 Artifact Registry。
+- `agent_connectors` 的 M06/M07 本地门与 T29 M09-B MCP Facade composition 门已由 T30 的 API 26 `McpFacadeDevice` 1/1 补齐受控只读 S2 设备闭环；T36 又以 signed 测试包和真实 Provider Planner 补齐一次生产 composition → 唯一 Facade → MCP 的设备闭环。发布签名、宿主生产 credential store、真实取消/timeout 及第三方远端 MCP 兼容性仍待各自验收。`native_tools` 首个 permission-free battery adapter 已完成签名 API 26 设备运行和卸载验收，需要权限/写能力的 Kit、`agent_storage` 宿主加密接线及后续 Runtime 能力仍待后续任务。
+- 宿主生产 credential store、Artifact key/verifier/policy loader 治理，以及 M12–M14 learned Router artifact 到具体 Model/Collaboration/Tool Router 的接线。
 - Strong Single Agent baseline、MTRouter / MasRouter / HYSET 端口和 AFlow 离线流水线。
 - harmony_agent Bench、shadow routing、端侧 parity test 和生产 Go/No-Go 门。
 
@@ -209,7 +215,11 @@ v1 baseline 使用确定性规则：默认 `SINGLE`；只有可独立分解、�
 
 MasRouter 进入时只能替换该策略实现，不能修改角色注册表、预算上限或权限边界。低置信度、超时、checkpoint 不兼容统一回退到 single-agent。
 
+T50/M13-A 又把这一边界写入可离线复验的预注册：目标端口是 `CollaborationPlanSelectorPort`，Multi 在选择后必须受现有 Agent activation budget 约束并先保留完整预算，一次任务最多重判一次；研究源码、Python runtime、sentence encoder 和模型 artifact 都不进入 HAR/HAP。该门只冻结来源与实验协议，没有声明 learned collaboration policy 已实现或论文结果已复现。
+
 ### 5.4 Semantic Planner 与 Typed Workflow
+
+Planner port 的 `plan`、`resume` 与 `replan` 均为异步 Promise 边界。生产 Facade 的同实例 FIFO 会等待该 Promise 完成，之后才能推进 Scheduler 或调用 Adapter；Promise 拒绝以稳定的 `plannerInvocationFailed` 事件和快照闭合，Provider/transport 异常文本不进入公共证据。该边界允许后续 Provider-backed Planner 接入，同时保持 `AgentRuntimeFacade` 为唯一任务控制入口。
 
 Planner 输出不可执行的声明式图。每个步骤至少声明：
 
@@ -575,7 +585,7 @@ Agent 输出 PolicyRequest
 
 写前保存失败时不得调用工具；系统可能已经执行但结果未可靠落盘时必须进入对账，不能当作普通失败重放。恢复过程通过 lease/fencing 或等价机制避免多个执行者同时处理同一 operation。内存 journal 的测试只证明状态语义，不替代持久化、崩溃点和多执行者恢复验证。
 
-当前 M05-A 实现采用三层结构：`ExecutionRecoveryStore` 负责同步、确定性的恢复状态转换；`DurableExecutionRecoveryStore` 在隔离副本上执行转换，并在完整 snapshot 的 revision CAS 成功后才发布结果；`RuntimeExecutionRecoveryBridge` 把 Runtime persistence port 映射到 checkpoint、Policy/Budget、operation 与 lease/fencing 的原子事务，并实现只读 recovery source。`RdbSnapshotBackend` 再把 CAS 映射到宿主注入的 API 26 `RdbStore` 单槽表。bridge 不接收 `Context`，不打开数据库，也不控制 Ability 或任务；实际预算和确认型对账结算由宿主窄端口提供。当前接口会在 Adapter 调用前 durable 标记 `IN_FLIGHT`。0.6.0 主机 45/45 和 HAR 构建已通过，无在途 operation 的 durable reopen 恢复链路已验证；设备套件仅完成 unsigned HAP 编译。T07 的 7/7 继续证明当时版本的真实 RDB close/reopen、损坏 fail-closed 和 session 竞争，但不自动覆盖 0.6.0 bridge。active operation 的 lease/状态归一化和具体 Adapter 仍需各自验收。
+当前 M05-A 实现采用三层结构：`ExecutionRecoveryStore` 负责同步、确定性的恢复状态转换；`DurableExecutionRecoveryStore` 在隔离副本上执行转换，并在完整 snapshot 的 revision CAS 成功后才发布结果；`RuntimeExecutionRecoveryBridge` 把 Runtime persistence port 映射到 checkpoint、Policy/Budget、operation 与 lease/fencing 的原子事务，并实现只读 recovery source。`RdbSnapshotBackend` 再把 CAS 映射到宿主注入的 API 26 `RdbStore` 单槽表。bridge 不接收 `Context`，不打开数据库，也不控制 Ability 或任务；实际预算和确认型对账结算由宿主窄端口提供。当前接口会在 Adapter 调用前 durable 标记 `IN_FLIGHT`。0.8.0 的 `createRdbRecoveredAgentRuntime` 固定组合 deferred runtime reopen、RDB backend、bridge 和 recovered Runtime，并只返回 Facade。T26 已在签名 API 26 包上用存活 seed 进程、明确 force-stop 和新进程 recover 1/1 验证真实 RDB 跨进程归一化，Adapter 调用为 0，卸载清理完成。
 
 当前 M05-B 使用 `DeterministicMemoryStore` 实现 owner 隔离、版本写入、受控导入、确定性分块/词法索引、隐私过滤、脱敏导出和派生数据级联失效。`DurableMemoryStore` 只持久化权威记录与非索引 artifact，以完整快照 revision CAS 发布；chunk 与词法索引在重开后从权威记录重建。`RdbMemorySnapshotBackend` 把 CAS 映射到独立的 API 26 RDB 单槽表，并继续由宿主负责数据库打开、加密、备份和关闭。主机已验证 CAS、并发、损坏与显式迁移；当前命名签名 HAP 的 `MemoryDeviceRecovery` 3/3 已验证真实 RDB close/reopen/索引重建、stale session CAS 单胜者和损坏 fail-closed，最终卸载并独立确认 bundle 不存在，证据位于 `artifacts/t08-signed-device-acceptance/20261002-195000/`。T08 已关闭；宿主加密接线仍属于单独未验证边界。
 
@@ -679,6 +689,7 @@ Harmony Agent/
   agent_runtime/         # HAR：会话编排、planner、router/policy coordination
   agent_connectors/      # HAR：MCP、LLM 与 Remote API adapters
   agent_storage/         # HAR：task/operation/budget/trace/registry/memory repositories
+  agent_testkit/         # HAR：确定性故障注入、共用 fixtures 与 benchmark 评估
   mcp_client/            # 已存在 HAR：MCP 协议和传输
   native_tools/          # HAR：HarmonyOS/OpenHarmony Kit adapters
   test_host/             # 无页面 test-only HAP，仅用于 MCP/Agent HAR 设备测试
@@ -706,11 +717,13 @@ external_consumer (out of scope)
       -> agent_contracts
   -> native_tools（通过端口注入）
       -> agent_contracts
+  -> agent_testkit（仅测试与评估调用方）
+      -> agent_contracts
 ```
 
-`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
+`agent_core` 不依赖 ArkUI、Ability、产品页面、具体 MCP Server、具体模型 Provider 或论文 Python 包。`agent_runtime` 只依赖抽象端口，并提供 headless `AgentRuntimeFacade`；外部 composition root 通过这些端口注入 connector、storage 和 native tool。`agent_testkit` 只产生故障决策、fixture 描述、评估报告与脱敏证据校验结果，不能提交、控制或恢复任务。所有 Agent 在线交付物保持 HAR 形态，不创建产品 Entry HAP。离线目录不成为 Hvigor 在线模块。
 
-源码交接与运行证据分别管理。一个可交接版本至少绑定 source commit/tag、模块版本、锁文件、SDK/系统要求、构建命令、HAR digest、测试报告和已知限制；host test、HAR build、test HAP build、安装、模拟器和真机证据不能相互替代。当前本地 HAR 与测试记录在建立首个 source commit 前不标记为“发布可交接”。
+源码交接与运行证据分别管理。一个可交接版本至少绑定 source commit/tag、模块版本、锁文件、SDK/系统要求、构建命令、HAR digest、测试报告和已知限制；host test、HAR build、test HAP build、安装、模拟器和真机证据不能相互替代。当前已有版本化 source commit 与模块分支，但尚无 release tag；各阶段仍按自身证据边界报告。
 
 ## 14. 分阶段实施与验收门
 
@@ -752,6 +765,8 @@ external_consumer (out of scope)
 交付：首批十二类任务、故障注入、成本/延迟/质量采集、32/128/512 工具规模测试。
 
 验收：baseline 可重复，模型、价格、region、schema 与日期全部冻结到报告。
+
+当前进度：TestKit 0.6.0 已冻结十二种 pilot task、32/128/512 Tool Registry fixture、零成本本地 fixture 价格、双 arm 公平策略和可重复 JSON 报告，并以 schema 2 固定真实 System Bench 证据合同。合同要求完整 source/environment/Provider/价格身份、真实单调时钟、12×2 完整覆盖、case expected evidence，以及每次 Agent 激活的唯一角色、独立 Provider 请求和轨迹摘要；T41 Recorder 会在追加前验证并防御性复制单条脱敏证据，只在完整 24 条 run 通过 validator 后封存。T42 又增加无任务控制权的执行前检：活动网关 Profile/revision、上游模型/价格、显式批量授权、最多一轮澄清、39 次 Provider 请求、每请求 4096/8192 Token 与 US$0.43134 最坏费用必须同时匹配才准入。T43 在提交 `a1ac9df`、harness 1.2.0 和 revision 13 `deepseek` Profile 上完成 signed API 26 真实双 arm 批次：设备套件 1/1，通过 Recorder 封存 24 条记录，38/39 次请求、US$0.031083/US$0.43134，Strong Single 10/12、Multi 9/12、总计 19/24 质量通过。请求正文、响应正文和凭据均未写入证据；应用、转发、bridge 与网关已清理。S6 Bench Pilot 至此关闭，实际质量结果作为后续 Router、策略供应链与工作流优化的基线。
 
 ### Phase 3：MTRouter
 

@@ -1,0 +1,108 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmony-agent.local/schemas/masrouter-environment-lock-v1.json",
+  "title": "MasRouter environment lock input contract",
+  "description": "Versioned input contract for the isolated MasRouter research environment. A locked environment requires concrete versions and artifact digests; unresolved candidates must stay explicit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schemaVersion",
+    "contractId",
+    "upstreamCommit",
+    "lockStatus",
+    "python",
+    "torch",
+    "accelerator",
+    "dependencies",
+    "implicitRuntimeDependencies"
+  ],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "contractId": { "const": "harmony-agent-masrouter-environment-candidates-v1" },
+    "upstreamCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "lockStatus": { "enum": ["candidate-unresolved", "partially-resolved", "locked"] },
+    "python": { "$ref": "#/$defs/python" },
+    "torch": { "$ref": "#/$defs/runtimeComponent" },
+    "accelerator": { "$ref": "#/$defs/accelerator" },
+    "dependencies": {
+      "type": "array",
+      "minItems": 1,
+      "items": { "$ref": "#/$defs/dependency" }
+    },
+    "implicitRuntimeDependencies": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/implicitDependency" }
+    }
+  },
+  "$defs": {
+    "python": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["implementation", "minimumVersion", "version", "status", "evidence"],
+      "properties": {
+        "implementation": { "const": "CPython" },
+        "minimumVersion": { "type": "string", "pattern": "^[0-9]+\\.[0-9]+$" },
+        "version": { "type": ["string", "null"] },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "runtimeComponent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "version", "build", "status", "evidence"],
+      "properties": {
+        "name": { "type": "string" },
+        "version": { "type": ["string", "null"] },
+        "build": { "type": ["string", "null"] },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "accelerator": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["supportedModes", "selectedMode", "cudaVersion", "cudnnVersion", "status", "evidence"],
+      "properties": {
+        "supportedModes": {
+          "type": "array",
+          "minItems": 2,
+          "uniqueItems": true,
+          "items": { "enum": ["cpu", "cuda"] }
+        },
+        "selectedMode": { "enum": [null, "cpu", "cuda"] },
+        "cudaVersion": { "type": ["string", "null"] },
+        "cudnnVersion": { "type": ["string", "null"] },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "dependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "importNames", "scope", "version", "versionConstraint", "sha256", "status", "evidence"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "importNames": { "type": "array", "minItems": 1, "uniqueItems": true, "items": { "type": "string" } },
+        "scope": { "enum": ["benchmark-entrypoint-transitive", "tool-only-not-imported-by-benchmark-entrypoints"] },
+        "version": { "type": ["string", "null"] },
+        "versionConstraint": { "type": "string" },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "implicitDependency": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["name", "reason", "version", "status", "evidence"],
+      "properties": {
+        "name": { "type": "string", "minLength": 1 },
+        "reason": { "type": "string", "minLength": 1 },
+        "version": { "type": ["string", "null"] },
+        "status": { "enum": ["unresolved", "resolved"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}

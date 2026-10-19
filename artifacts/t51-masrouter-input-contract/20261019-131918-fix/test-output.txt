@@ -1,0 +1,14 @@
+PASS: valid input contract accepted
+PASS: unknown top-level field -> additional property is not allowed
+PASS: unknown nested field -> additional property is not allowed
+PASS: nested type error -> expected integer or null, got string
+PASS: missing required field -> missing required property "currency"
+PASS: environment lock claim drift -> unresolved dependency cannot be marked locked
+PASS: dataset digest claim drift -> locked dataset requires positive sizeBytes, recordCount, and sha256
+PASS: dataset execution readiness drift -> dataset executionReady must remain false at T51
+PASS: paper/source pool merge -> paper and source model pools must remain separate
+PASS: model revision drift -> model revision must remain unresolved at T51
+PASS: price conflict silently resolved -> price conflict must remain explicit and unresolved
+PASS: zero-execution claim drift -> T51 must remain a zero-execution input contract
+PASS: required issue removed -> required unresolved issue missing: mmlu-download-module-missing
+Tests run: 13, Failure: 0, Error: 0, Pass: 13, Ignore: 0

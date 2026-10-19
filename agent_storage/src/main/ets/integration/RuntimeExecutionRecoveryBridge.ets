@@ -1,10 +1,12 @@
 import {
+  AgentTaskStatus,
   ContractCodec,
   ContractValidator,
   ReconciliationReport,
   ReconciliationStatus,
   ToolOutcome,
-  ToolOutcomeStatus
+  ToolOutcomeStatus,
+  ToolInvocation
 } from '@harmony_agent/agent-contracts';
 import {
   BudgetAmount,
@@ -212,6 +214,45 @@ function sameStoredOperation(operation: StoredOperation, context: DispatchPersis
     intent.budgetReservationId === context.budgetReservationId;
 }
 
+function operationMatchesInvocation(operation: StoredOperation, invocation: ToolInvocation): boolean {
+  const intent: StoredOperationIntent = operation.intent;
+  const expectedKey: string = invocation.idempotencyKey === undefined ?
+    'attempt:' + invocation.attemptId : invocation.idempotencyKey as string;
+  return intent.operationId === invocation.operationId && intent.invocationId === invocation.invocationId &&
+    intent.taskId === invocation.taskId && intent.stepId === invocation.stepId &&
+    intent.attemptId === invocation.attemptId && intent.toolId === invocation.toolId &&
+    intent.toolIdentityVersion === invocation.toolIdentityVersion &&
+    intent.schemaDigest === invocation.schemaDigest && intent.argumentsDigest === invocation.argumentsDigest &&
+    intent.idempotencyKey === expectedKey;
+}
+
+function validRecoveryNormalization(source: RuntimeTaskRecoveryCheckpoint,
+  normalized: RuntimeTaskRecoveryCheckpoint, operation: StoredOperation): boolean {
+  const active: ToolInvocation | undefined = source.activeInvocation;
+  if (!RuntimeCheckpointValidator.validate(source).valid ||
+    !RuntimeCheckpointValidator.validate(normalized).valid || active === undefined ||
+    source.pendingDispatchId.length === 0 || source.pendingOperationId.length === 0 ||
+    normalized.activeInvocation !== undefined || normalized.pendingDispatchId.length > 0 ||
+    normalized.pendingInvocation !== undefined || normalized.pendingPolicyRequest !== undefined ||
+    normalized.snapshot.status !== AgentTaskStatus.WAITING_RECONCILIATION ||
+    normalized.snapshot.snapshotVersion !== source.snapshot.snapshotVersion + 1 ||
+    normalized.snapshot.taskId !== source.snapshot.taskId ||
+    normalized.envelope.taskId !== source.envelope.taskId ||
+    normalized.pendingStepId !== source.pendingStepId ||
+    normalized.pendingOperationId !== source.pendingOperationId || normalized.paused ||
+    normalized.events.length !== source.events.length + 1 ||
+    normalized.snapshot.lastEventSequence !== source.snapshot.lastEventSequence + 1 ||
+    !operationMatchesInvocation(operation, active) ||
+    operation.intent.operationId !== source.pendingOperationId || operation.outcome !== undefined ||
+    (operation.state !== OperationJournalState.IN_FLIGHT &&
+      operation.state !== OperationJournalState.UNKNOWN_OUTCOME) ||
+    operation.fencingToken <= 0 || operation.dispatchCount <= 0) return false;
+  for (let i: number = 0; i < source.events.length; i++) {
+    if (ContractCodec.stringify(source.events[i]) !== ContractCodec.stringify(normalized.events[i])) return false;
+  }
+  return true;
+}
+
 function saveTask(store: ExecutionRecoveryStore, checkpoint: RuntimeTaskRecoveryCheckpoint,
   expectedPreviousVersion: number, nowMs: number, tracker: MutationTracker): StorageWriteResult | undefined {
   return tracker.observe(store.saveTask(checkpoint.snapshot, checkpoint.checkpointVersion,
@@ -302,6 +343,68 @@ class BeforeDispatchTransaction implements ExecutionRecoveryTransaction {
     this.fencingToken = lease.lease.fencingToken;
     rejected = tracker.observe(store.markOperationInFlight(this.context.operationId,
       this.ownerId, this.fencingToken, this.nowMs));
+    return rejected === undefined ? tracker.complete() : rejected;
+  }
+}
+
+class RecoveryNormalizationTransaction implements ExecutionRecoveryTransaction {
+  private readonly checkpoint: RuntimeTaskRecoveryCheckpoint;
+  private readonly expectedPreviousVersion: number;
+  private readonly ownerId: string;
+  private readonly leaseTtlMs: number;
+  private readonly nowMs: number;
+
+  constructor(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
+    ownerId: string, leaseTtlMs: number, nowMs: number) {
+    this.checkpoint = checkpoint;
+    this.expectedPreviousVersion = expectedPreviousVersion;
+    this.ownerId = ownerId;
+    this.leaseTtlMs = leaseTtlMs;
+    this.nowMs = nowMs;
+  }
+
+  apply(store: ExecutionRecoveryStore): StorageWriteResult {
+    const storedTask = store.getTask(this.checkpoint.snapshot.taskId);
+    if (storedTask === undefined || storedTask.snapshotVersion !== this.expectedPreviousVersion) {
+      return rejectedWrite(StorageWriteCode.VERSION_CONFLICT);
+    }
+    let source: RuntimeTaskRecoveryCheckpoint;
+    try {
+      source = JSON.parse(storedTask.checkpointJson) as RuntimeTaskRecoveryCheckpoint;
+    } catch (error) {
+      return rejectedWrite();
+    }
+    const operation: StoredOperation | undefined = store.getOperation(source.pendingOperationId);
+    if (operation === undefined || !validRecoveryNormalization(source, this.checkpoint, operation)) {
+      return rejectedWrite(StorageWriteCode.STATE_CONFLICT);
+    }
+
+    const tracker: MutationTracker = new MutationTracker();
+    const oldLease: RecoveryLease | undefined = store.getLease(source.snapshot.taskId);
+    if (operation.state === OperationJournalState.IN_FLIGHT && oldLease === undefined) {
+      return rejectedWrite(StorageWriteCode.STATE_CONFLICT);
+    }
+    if (oldLease !== undefined) {
+      if (oldLease.fencingToken !== operation.fencingToken) {
+        return rejectedWrite(StorageWriteCode.STALE_FENCE);
+      }
+      let rejected: StorageWriteResult | undefined = tracker.observe(store.releaseLease(
+        oldLease.resourceId, oldLease.ownerId, oldLease.fencingToken));
+      if (rejected !== undefined) return rejected;
+    }
+
+    const takeover = store.acquireLease(source.snapshot.taskId, this.ownerId, this.leaseTtlMs, this.nowMs);
+    let rejected: StorageWriteResult | undefined = tracker.observe(takeover);
+    if (rejected !== undefined || takeover.lease === undefined) {
+      return rejected === undefined ? rejectedWrite() : rejected;
+    }
+    rejected = tracker.observe(store.normalizeOperationForRecovery(
+      operation.intent.operationId, takeover.lease.fencingToken, this.nowMs));
+    if (rejected !== undefined) return rejected;
+    rejected = tracker.observe(store.releaseLease(
+      source.snapshot.taskId, this.ownerId, takeover.lease.fencingToken));
+    if (rejected !== undefined) return rejected;
+    rejected = saveTask(store, this.checkpoint, this.expectedPreviousVersion, this.nowMs, tracker);
     return rejected === undefined ? tracker.complete() : rejected;
   }
 }
@@ -499,6 +602,17 @@ export class RuntimeExecutionRecoveryBridge implements ProductionRuntimePersiste
     const stored = this.store.getTask(taskId);
     if (stored === undefined) return undefined;
     return JSON.parse(stored.checkpointJson) as RuntimeTaskRecoveryCheckpoint;
+  }
+
+  async normalizeRecoveredOperation(checkpoint: RuntimeTaskRecoveryCheckpoint,
+    expectedPreviousVersion: number, nowMs: number): Promise<RuntimePersistenceResult> {
+    if (!RuntimeCheckpointValidator.validate(checkpoint).valid ||
+      checkpoint.activeInvocation !== undefined || checkpoint.pendingDispatchId.length > 0) {
+      return runtimeResult(false, false, RuntimePersistenceCode.REJECTED);
+    }
+    return mapWrite(await this.store.transact(new RecoveryNormalizationTransaction(
+      copyCheckpoint(checkpoint), expectedPreviousVersion,
+      this.config.ownerId, this.config.leaseTtlMs, nowMs)));
   }
 
   async listRecoveryTaskIds(): Promise<string[]> {

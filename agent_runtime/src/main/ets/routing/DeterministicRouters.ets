@@ -13,7 +13,15 @@ import {
   SideEffect,
   TaskFrame
 } from '@harmony_agent/agent-contracts';
-import { CollaborationSelectorPort } from '../orchestration/RuntimePorts';
+import {
+  CollaborationPlanDigestPort,
+  CollaborationPlanSelectorPort,
+  CollaborationSelectorPort
+} from '../orchestration/RuntimePorts';
+import {
+  CollaborationPlan,
+  CollaborationRoleAssignment
+} from '../orchestration/OrchestrationTypes';
 import { ModelRegistry, RoleRegistry, ToolRegistry } from '../registry/Registries';
 import { ModelRegistryEntry, RoleRegistryEntry, ToolRegistryEntry } from '../registry/RegistryTypes';
 import {
@@ -501,17 +509,56 @@ function findRole(roles: RoleRegistryEntry[], roleId: string): RoleRegistryEntry
   return undefined;
 }
 
-export class DeterministicCollaborationRouter implements CollaborationSelectorPort {
+export class DeterministicCollaborationRouter implements CollaborationSelectorPort, CollaborationPlanSelectorPort {
   private registry: RoleRegistry;
   private config: DeterministicRouterConfig;
+  private digest?: CollaborationPlanDigestPort;
 
-  constructor(registry: RoleRegistry, config: DeterministicRouterConfig) {
+  constructor(registry: RoleRegistry, config: DeterministicRouterConfig,
+    digest?: CollaborationPlanDigestPort) {
     this.registry = registry;
     this.config = config;
+    this.digest = digest;
   }
 
   select(frame: TaskFrame): CollaborationMode {
     return CollaborationMode.SINGLE;
+  }
+
+  selectPlan(frame: TaskFrame, maxAgentActivations: number): CollaborationPlan {
+    const digestPort: CollaborationPlanDigestPort | undefined = this.digest;
+    if (digestPort === undefined) throw new Error('collaboration plan digest port is required');
+    const request: CollaborationRouteRequest = new CollaborationRouteRequest();
+    request.requestId = frame.taskId + ':collaboration-plan';
+    request.taskId = frame.taskId;
+    request.frame = frame;
+    request.maxAgentActivations = maxAgentActivations;
+    request.inputFeatureDigest = digestPort.digest('collaboration-frame|' + JSON.stringify(frame));
+    request.createdAt = '1970-01-01T00:00:00.000Z';
+    const routed: CollaborationRouteResult = this.route(request);
+    if (!routed.accepted) throw new Error('collaboration route was rejected');
+    const roles: RoleRegistryEntry[] = this.registry.activeEntries();
+    const registryIdentity: string = this.registry.snapshot().snapshotDigest;
+    const value: CollaborationPlan = new CollaborationPlan();
+    value.taskId = frame.taskId;
+    value.mode = routed.mode;
+    value.roleRegistryDigest = digestPort.digest('collaboration-registry|' + registryIdentity);
+    let decisionIdentity: string = 'collaboration-decision|' + this.config.policyVersion + '|' +
+      this.config.artifactDigest + '|' + value.roleRegistryDigest + '|' + value.mode;
+    for (let i: number = 0; i < routed.selectedRoleIds.length; i++) {
+      const role: RoleRegistryEntry | undefined = findRole(roles, routed.selectedRoleIds[i]);
+      if (role === undefined) throw new Error('collaboration route selected an unregistered role');
+      const assignment: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+      assignment.roleId = role.roleId;
+      assignment.roleVersion = role.roleVersion;
+      assignment.roleRegistryDigest = digestPort.digest('collaboration-role|' + role.roleId + '|' +
+        role.roleVersion + '|' + role.registryDigest);
+      value.assignments.push(assignment);
+      decisionIdentity += '|' + assignment.roleId + '@' + assignment.roleVersion + ':' +
+        assignment.roleRegistryDigest;
+    }
+    value.decisionDigest = digestPort.digest(decisionIdentity);
+    return value;
   }
 
   route(request: CollaborationRouteRequest): CollaborationRouteResult {

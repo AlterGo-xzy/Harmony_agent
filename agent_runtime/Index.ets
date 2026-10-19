@@ -1,4 +1,4 @@
-export const AGENT_RUNTIME_VERSION: string = '0.11.0';
+export const AGENT_RUNTIME_VERSION: string = '0.14.0';
 export {
   ShutdownMode,
   AgentRuntimeErrorCode,
@@ -8,6 +8,15 @@ export {
   AgentRuntimeFacade
 } from './src/main/ets/api/RuntimeApi';
 export { AgentRuntimeError } from './src/main/ets/api/AgentRuntimeError';
+export {
+  SINGLE_AGENT_HOST_COMPOSITION_VERSION,
+  SingleAgentHostErrorCode,
+  SingleAgentHostError,
+  SingleAgentHostResourcePort,
+  SingleAgentHostRuntimeFactoryPort,
+  SingleAgentHostPorts,
+  createSingleAgentHostRuntime
+} from './src/main/ets/host/SingleAgentHostRuntime';
 export {
   FakeTaskScriptKind,
   FakeTaskScript,
@@ -31,6 +40,9 @@ export {
   createRecoveredProductionAgentRuntime
 } from './src/main/ets/production/ProductionAgentRuntime';
 export {
+  COLLABORATION_PLAN_VERSION,
+  CollaborationRoleAssignment,
+  CollaborationPlan,
   PlanningStatus,
   PlanningRequest,
   PlanningResult,
@@ -48,11 +60,24 @@ export {
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   CollaborationSelectorPort,
+  CollaborationPlanSelectorPort,
+  CollaborationPlanDigestPort,
   SemanticPlannerPort,
   ToolInvocationPreparerPort,
   StepDispatchPort,
   SingleAgentCollaborationSelector
 } from './src/main/ets/orchestration/RuntimePorts';
+export {
+  PLANNING_MEMORY_CONTEXT_VERSION,
+  PlanningMemoryContextRequest,
+  PlanningMemoryContextItem,
+  PlanningMemoryContextResult,
+  PlanningMemoryContextPort
+} from './src/main/ets/orchestration/MemoryContext';
+export {
+  CollaborationPlanValidationResult,
+  CollaborationPlanValidator
+} from './src/main/ets/orchestration/CollaborationPlanValidator';
 export { WorkflowReplanController } from './src/main/ets/orchestration/WorkflowReplanController';
 export {
   RuntimeCheckpointValidationResult,
@@ -84,6 +109,56 @@ export {
   WorkflowRegistry
 } from './src/main/ets/registry/Registries';
 export {
+  ARTIFACT_REGISTRY_SCHEMA_VERSION,
+  ArtifactRegistryWriteCode,
+  ArtifactRegistryWriteResult,
+  ArtifactRuntimeEnvironment,
+  ArtifactCompatibilityResult,
+  ArtifactRegistryEntry,
+  ArtifactRegistryChannel,
+  ArtifactRegistrySnapshot,
+  ArtifactRegistrySnapshotEnvelope,
+  ArtifactPackageVerifierPort,
+  ArtifactRegistryDigestPort,
+  ArtifactRegistryPersistencePort
+} from './src/main/ets/artifact/ArtifactRegistryTypes';
+export { ArtifactRuntimeCompatibilityEvaluator } from
+  './src/main/ets/artifact/ArtifactRuntimeCompatibility';
+export { ArtifactRegistryOpenResult, ArtifactRegistry } from
+  './src/main/ets/artifact/ArtifactRegistry';
+export {
+  ARTIFACT_POLICY_RELEASE_VERSION,
+  ArtifactPolicyRunCode,
+  ArtifactPolicyExecutionMode,
+  ArtifactPolicyFallbackCode,
+  ArtifactShadowObservationCode,
+  ArtifactPolicyReleaseConfig,
+  ArtifactPolicyRequest,
+  ArtifactPolicyDecision,
+  ArtifactShadowObservation,
+  ArtifactPolicyRunResult,
+  ArtifactBaselinePolicyPort,
+  ArtifactReleasedPolicyPort,
+  ArtifactPolicyCancellationSubscriptionPort,
+  ArtifactPolicyCancellationSignalPort,
+  ArtifactPolicyTimerHandlePort,
+  ArtifactPolicyTimerPort,
+  ArtifactCanaryAssignmentPort,
+  ArtifactCanaryBucketPort,
+  ArtifactReleaseRegistryViewPort
+} from './src/main/ets/artifact/ArtifactPolicyReleaseTypes';
+export { ArtifactPolicyReleaseRunner, DeterministicArtifactCanaryAssignment } from
+  './src/main/ets/artifact/ArtifactPolicyReleaseRunner';
+export { ArtifactPolicyCancellationSource, SystemArtifactPolicyTimer } from
+  './src/main/ets/artifact/ArtifactPolicyExecutionControl';
+export {
+  ArtifactPolicyResourceOperationPort,
+  ArtifactBaselinePolicyLoaderPort,
+  ArtifactReleasedPolicyLoaderPort,
+  ManagedArtifactBaselinePolicy,
+  ManagedArtifactReleasedPolicy
+} from './src/main/ets/artifact/ManagedArtifactPolicyLoader';
+export {
   DeterministicRouterConfig,
   LearnedRouterPort,
   RouterResult,
@@ -102,3 +177,8 @@ export {
   DeterministicContextRouter,
   DeterministicCollaborationRouter
 } from './src/main/ets/routing/DeterministicRouters';
+
+export { CollaborationPolicyPreparationPort } from './src/main/ets/routing/CollaborationPreparation';
+export { ArtifactCollaborationPolicy, ArtifactCollaborationPolicyConfig, CollaborationPolicyLoaderPort,
+  CollaborationPolicyEvaluatorPort, CollaborationPolicyCandidate, CollaborationCandidateRole,
+  CollaborationPolicyInput } from './src/main/ets/routing/ArtifactCollaborationPolicy';

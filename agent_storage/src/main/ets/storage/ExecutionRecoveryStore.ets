@@ -600,6 +600,39 @@ export class ExecutionRecoveryStore implements TaskRepository, OperationReposito
     return writeResult(true, false, StorageWriteCode.UPDATED);
   }
 
+  /**
+   * Normalizes a persisted active operation during startup recovery. The
+   * enclosing durable transaction must validate the checkpoint and lease
+   * binding before calling this method; backend CAS provides the final fence.
+   */
+  normalizeOperationForRecovery(operationId: string, fencingToken: number,
+    nowMs: number): StorageWriteResult {
+    const index: number = this.findOperation(operationId);
+    if (index < 0) return writeResult(false, false, StorageWriteCode.NOT_FOUND);
+    if (!validPositiveCount(fencingToken) || !validCount(nowMs)) {
+      return writeResult(false, false, StorageWriteCode.INVALID_INPUT);
+    }
+    const operation: StoredOperation = this.operations[index];
+    const budget: StoredBudgetReservation = this.requireBudget(operation.intent.budgetReservationId);
+    if (operation.state === OperationJournalState.UNKNOWN_OUTCOME &&
+      operation.fencingToken === fencingToken && budget.snapshot.state === BudgetReservationState.UNKNOWN) {
+      return writeResult(true, true, StorageWriteCode.UNCHANGED);
+    }
+    if ((operation.state !== OperationJournalState.IN_FLIGHT &&
+      operation.state !== OperationJournalState.UNKNOWN_OUTCOME) ||
+      (budget.snapshot.state !== BudgetReservationState.RESERVED &&
+        budget.snapshot.state !== BudgetReservationState.UNKNOWN)) {
+      return writeResult(false, false, StorageWriteCode.STATE_CONFLICT);
+    }
+    operation.state = OperationJournalState.UNKNOWN_OUTCOME;
+    operation.fencingToken = fencingToken;
+    operation.updatedAtMs = nowMs;
+    budget.snapshot.state = BudgetReservationState.UNKNOWN;
+    budget.updatedAtMs = nowMs;
+    this.revision++;
+    return writeResult(true, false, StorageWriteCode.UPDATED);
+  }
+
   reconcileOperation(operationId: string, committed: boolean, outcome: ToolOutcome | undefined,
     actual: BudgetAmount | undefined,
     ownerId: string, fencingToken: number, nowMs: number): StorageWriteResult {
@@ -959,7 +992,7 @@ export class ExecutionRecoveryStore implements TaskRepository, OperationReposito
   }
 
   static restore(source: StorageSnapshotEnvelope, integrity: SnapshotIntegrityPort,
-    migration?: StorageMigrationPort): ExecutionStoreRestoreResult {
+    migration?: StorageMigrationPort, normalizeInFlight: boolean = true): ExecutionStoreRestoreResult {
     const result: ExecutionStoreRestoreResult = new ExecutionStoreRestoreResult();
     let envelope: StorageSnapshotEnvelope = source;
     if (envelope.schemaVersion !== AGENT_STORAGE_SCHEMA_VERSION) {
@@ -988,7 +1021,7 @@ export class ExecutionRecoveryStore implements TaskRepository, OperationReposito
       for (let i: number = 0; i < payload.tasks.length; i++) store.tasks.push(copyTask(payload.tasks[i]));
       for (let i: number = 0; i < payload.operations.length; i++) {
         const operation: StoredOperation = copyOperation(payload.operations[i]);
-        if (operation.state === OperationJournalState.IN_FLIGHT) {
+        if (normalizeInFlight && operation.state === OperationJournalState.IN_FLIGHT) {
           operation.state = OperationJournalState.UNKNOWN_OUTCOME;
           const budgetIndex: number = store.findBudgetIn(payload.budgets, operation.intent.budgetReservationId);
           payload.budgets[budgetIndex].snapshot.state = BudgetReservationState.UNKNOWN;

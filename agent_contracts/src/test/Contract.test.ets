@@ -2,6 +2,8 @@ import { describe, expect, it } from '@ohos/hypium';
 import {
   AGENT_CONTRACT_SCHEMA_VERSION,
   AGENT_CONTRACTS_VERSION,
+  ArtifactApprovalStatus,
+  ArtifactKind,
   ArtifactLifecycleStatus,
   ArtifactManifest,
   AgentRuntimeEvent,
@@ -95,6 +97,38 @@ function validWorkflow(): WorkflowGraph {
   graph.entryStepIds = [step.stepId];
   graph.steps = [step];
   return graph;
+}
+
+function validArtifact(status: ArtifactLifecycleStatus = ArtifactLifecycleStatus.SHADOW): ArtifactManifest {
+  const artifact: ArtifactManifest = new ArtifactManifest();
+  artifact.artifactId = 'mtrouter-policy-2026-10';
+  artifact.artifactKind = ArtifactKind.POLICY;
+  artifact.algorithm = 'MTRouter';
+  artifact.artifactVersion = '0.1.0';
+  artifact.sourceCommit = '0123456789abcdef0123456789abcdef01234567';
+  artifact.sourceLicense = 'MIT';
+  artifact.trainingDataLineage = ['harmony-agent-bench:system-live:20261017'];
+  artifact.modelAndProviderSnapshotJson = '{"provider":"fixture","model":"mtrouter-v1"}';
+  artifact.featureSchemaVersion = 'harmony_agent-router-features-1';
+  artifact.runtimeCompatibility = ['harmony_agent-runtime>=2.7.0', 'api>=26'];
+  artifact.artifactDigest = 'sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+  artifact.paperReproductionResultsJson = '{"quality":0.75}';
+  artifact.portParityResultsJson = '{"matched":12,"total":12}';
+  artifact.harmonyAgentBenchResultsJson = '{"passed":true}';
+  artifact.lifecycleStatus = status;
+  return artifact;
+}
+
+function approveAndSignArtifact(artifact: ArtifactManifest): void {
+  artifact.approvalStatus = ArtifactApprovalStatus.APPROVED;
+  artifact.approvedBy = 'artifact-release-policy-v1';
+  artifact.approvedAt = '2026-10-17T22:00:00+08:00';
+  artifact.signedManifestDigest =
+    'sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+  artifact.signatureAlgorithm = 'SHA256withECDSA';
+  artifact.signingKeyId = 'release-key-fixture';
+  artifact.signatureBase64 = 'AQIDBA==';
+  artifact.signedAt = '2026-10-17T22:01:00+08:00';
 }
 
 export default function contractTest(): void {
@@ -195,21 +229,91 @@ export default function contractTest(): void {
     });
 
     it('requiresAuditableArtifactIdentity', 0, () => {
-      const artifact: ArtifactManifest = new ArtifactManifest();
-      artifact.artifactId = 'mtrouter-shadow-2026-09';
-      artifact.algorithm = 'MTRouter';
-      artifact.artifactVersion = '0.1.0-shadow';
-      artifact.sourceCommit = '0123456789abcdef';
-      artifact.sourceLicense = 'MIT';
-      artifact.featureSchemaVersion = 'harmony_agent-router-features-1';
-      artifact.checkpointDigest = 'sha256:checkpoint';
-      artifact.harmonyAgentBenchResultsJson = '{"passed":true}';
-      artifact.lifecycleStatus = ArtifactLifecycleStatus.SHADOW;
+      const artifact: ArtifactManifest = validArtifact();
       const decodedArtifact: ArtifactManifest = ContractCodec.parseArtifactManifest(ContractCodec.stringify(artifact));
       expect(decodedArtifact.harmonyAgentBenchResultsJson).assertEqual('{"passed":true}');
       expect(ContractValidator.validateArtifactManifest(artifact).valid).assertTrue();
+      artifact.checkpointDigest = artifact.artifactDigest;
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertTrue();
+      artifact.checkpointDigest =
+        'sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd';
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+      artifact.checkpointDigest = '';
       artifact.sourceLicense = '';
       expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+    });
+
+    it('defaultsMissingArtifactFieldsAndFailsClosed', 0, () => {
+      const artifact: ArtifactManifest = ContractCodec.parseArtifactManifest('{"artifactId":"partial"}');
+      expect(artifact.contractType).assertEqual('ArtifactManifest');
+      expect(artifact.trainingDataLineage.length).assertEqual(0);
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+    });
+
+    it('rejectsTruncatedArtifactIdentityAndDigest', 0, () => {
+      const artifact: ArtifactManifest = validArtifact();
+      artifact.sourceCommit = '0123456789abcdef';
+      artifact.artifactDigest = 'sha256:checkpoint';
+      const result: ContractValidationResult = ContractValidator.validateArtifactManifest(artifact);
+      expect(result.valid).assertFalse();
+      expect(result.issues.length).assertEqual(2);
+    });
+
+    it('keepsPaperParityAndAdaptationEvidenceSeparate', 0, () => {
+      const artifact: ArtifactManifest = validArtifact();
+      artifact.portParityResultsJson = artifact.paperReproductionResultsJson;
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertTrue();
+      artifact.portParityResultsJson = '{}';
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+      artifact.portParityResultsJson = '{broken';
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+    });
+
+    it('allowsUnsignedShadowAndRejectsUnsignedActive', 0, () => {
+      const shadow: ArtifactManifest = validArtifact(ArtifactLifecycleStatus.SHADOW);
+      expect(ContractValidator.validateArtifactManifest(shadow).valid).assertTrue();
+      shadow.signatureAlgorithm = 'SHA256withECDSA';
+      expect(ContractValidator.validateArtifactManifest(shadow).valid).assertFalse();
+      shadow.signatureAlgorithm = '';
+      shadow.lifecycleStatus = ArtifactLifecycleStatus.ACTIVE;
+      expect(ContractValidator.validateArtifactManifest(shadow).valid).assertFalse();
+      approveAndSignArtifact(shadow);
+      expect(ContractValidator.validateArtifactManifest(shadow).valid).assertTrue();
+    });
+
+    it('enforcesArtifactLifecycleTransitions', 0, () => {
+      expect(ContractValidator.validateArtifactLifecycleTransition(
+        ArtifactLifecycleStatus.DISABLED, ArtifactLifecycleStatus.SHADOW).valid).assertTrue();
+      expect(ContractValidator.validateArtifactLifecycleTransition(
+        ArtifactLifecycleStatus.SHADOW, ArtifactLifecycleStatus.ACTIVE).valid).assertFalse();
+      expect(ContractValidator.validateArtifactLifecycleTransition(
+        ArtifactLifecycleStatus.CANARY, ArtifactLifecycleStatus.ACTIVE).valid).assertTrue();
+      expect(ContractValidator.validateArtifactLifecycleTransition(
+        ArtifactLifecycleStatus.ACTIVE, ArtifactLifecycleStatus.ROLLED_BACK).valid).assertTrue();
+      expect(ContractValidator.validateArtifactLifecycleTransition(
+        ArtifactLifecycleStatus.ROLLED_BACK, ArtifactLifecycleStatus.ACTIVE).valid).assertFalse();
+    });
+
+    it('rejectsIncompleteLineageCompatibilityAndSignatureMetadata', 0, () => {
+      const artifact: ArtifactManifest = validArtifact(ArtifactLifecycleStatus.CANARY);
+      approveAndSignArtifact(artifact);
+      artifact.trainingDataLineage = [];
+      artifact.runtimeCompatibility = ['api>=26', 'api>=26'];
+      artifact.signatureBase64 = 'not-base64!';
+      const result: ContractValidationResult = ContractValidator.validateArtifactManifest(artifact);
+      expect(result.valid).assertFalse();
+      expect(result.issues.length).assertEqual(3);
+    });
+
+    it('requiresDifferentRollbackTargetDigest', 0, () => {
+      const artifact: ArtifactManifest = validArtifact(ArtifactLifecycleStatus.ROLLED_BACK);
+      approveAndSignArtifact(artifact);
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+      artifact.rollbackTargetDigest = artifact.artifactDigest;
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertFalse();
+      artifact.rollbackTargetDigest =
+        'sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc';
+      expect(ContractValidator.validateArtifactManifest(artifact).valid).assertTrue();
     });
 
     it('roundTripsAndValidatesRoutingPolicyInvocationOutcomeAndTrace', 0, () => {

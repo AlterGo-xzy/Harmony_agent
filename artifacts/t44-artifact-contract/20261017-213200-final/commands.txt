@@ -1,0 +1,3 @@
+$env:DEVECO_SDK_HOME=<existing DevEco SDK>
+hvigorw.bat --mode module -p module=agent_contracts@default -p product=default test --no-daemon
+hvigorw.bat --mode module -p module=agent_contracts@default -p product=default -p buildMode=release assembleHar --no-daemon

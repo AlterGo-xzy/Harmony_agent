@@ -1,0 +1,49 @@
+{
+  "task": "T44",
+  "module": "M11-A Artifact contract and fail-closed validation",
+  "branch": "codex/module-artifact-tooling-t44",
+  "baseCommit": "ff755c334bc8c6c928e2e7a05269e7324459a703",
+  "hostTest": {
+    "tests": 21,
+    "pass": 21,
+    "failure": 0,
+    "error": 0,
+    "result": "passed"
+  },
+  "releaseHar": {
+    "file": "agent_contracts-0.3.0-release.har",
+    "bytes": 28939,
+    "sha256": "49553DB2CA8FFB077C892639D45FC05C0FCAC807055A07AE098065AC555A549F",
+    "build": "passed"
+  },
+  "review": {
+    "mode": "same-agent",
+    "status": "passed",
+    "blockingFindings": 0
+  },
+  "verified": [
+    "public artifact kind and approval enums",
+    "full commit and SHA-256 digest syntax",
+    "separate reproduction parity and adaptation evidence objects",
+    "lineage and runtime compatibility completeness",
+    "unsigned shadow and signed canary active rolledBack admission",
+    "controlled lifecycle transitions",
+    "rollback target digest",
+    "missing-field JSON defaults then fail-closed validation",
+    "public declarations packaged in Release HAR"
+  ],
+  "pending": [
+    "cryptographic signature verification and deterministic packager are T45",
+    "runtime compatibility evaluation and durable lifecycle integration are later M11 slices",
+    "no HAP build signing install or device run was performed"
+  ],
+  "rootBuildProfileSha256": "67E5EAD71D95E1EBA36F84F9B0E91EBDEC2225AD4EB2B76AB9FD2ACDD04C6C63",
+  "preservedUserDiffs": [
+    "agent_connectors/BuildProfile.ets",
+    "agent_connectors/oh-package-lock.json5",
+    "agent_runtime/BuildProfile.ets",
+    "agent_storage/oh-package-lock.json5",
+    "native_tools/oh-package-lock.json5",
+    "test_host/oh-package-lock.json5"
+  ]
+}

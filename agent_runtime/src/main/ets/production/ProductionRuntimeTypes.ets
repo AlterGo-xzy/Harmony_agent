@@ -1,9 +1,11 @@
+import { CollaborationPolicyPreparationPort } from '../routing/CollaborationPreparation';
 import {
   ReconciliationReport,
   ToolOutcome
 } from '@harmony_agent/agent-contracts';
 import {
   CollaborationSelectorPort,
+  CollaborationPlanSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
   SemanticPlannerPort,
@@ -19,8 +21,8 @@ import {
   RuntimeRecoveryAuthority
 } from '../orchestration/RecoveryAuthorityTypes';
 
-/** 2.3 adds fail-closed startup discovery and recovery authority hydration. */
-export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.3';
+/** 2.7 adds task-bound interruption for every Semantic Planner invocation. */
+export const PRODUCTION_RUNTIME_COMPOSITION_VERSION: string = '2.7';
 
 export enum RuntimePersistenceCode {
   SAVED = 'SAVED',
@@ -59,6 +61,8 @@ export interface ProductionRuntimePersistencePort {
   saveCheckpoint(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
     authority: RuntimeDurableAuthorityPayload, nowMs: number): Promise<RuntimePersistenceResult>;
   loadCheckpoint(taskId: string): Promise<RuntimeTaskRecoveryCheckpoint | undefined>;
+  normalizeRecoveredOperation(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
+    nowMs: number): Promise<RuntimePersistenceResult>;
   beforeDispatch(checkpoint: RuntimeTaskRecoveryCheckpoint, expectedPreviousVersion: number,
     context: DispatchPersistenceContext | undefined, authority: RuntimeDurableAuthorityPayload,
     nowMs: number): Promise<RuntimePersistenceResult>;
@@ -91,6 +95,7 @@ export class ProductionAgentRuntimeConfig {
   policyVersion: string = '';
   grantTtlMs: number = 0;
   autoAdvanceLimit: number = 32;
+  collaborationPreparationTimeoutMs: number = 5000;
 }
 
 export class ProductionAgentRuntimePorts {
@@ -98,6 +103,8 @@ export class ProductionAgentRuntimePorts {
   ids?: RuntimeIdGeneratorPort;
   planner?: SemanticPlannerPort;
   collaboration?: CollaborationSelectorPort;
+  collaborationPlan?: CollaborationPlanSelectorPort;
+  collaborationPreparation?: CollaborationPolicyPreparationPort;
   toolPreparer?: ToolInvocationPreparerPort;
   adapterFactory?: ProductionRuntimeAdapterFactoryPort;
   persistence?: ProductionRuntimePersistencePort;

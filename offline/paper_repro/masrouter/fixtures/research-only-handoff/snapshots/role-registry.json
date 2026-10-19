@@ -1,0 +1,25 @@
+{
+  "roleCount": 4,
+  "roles": [
+    {
+      "roleId": "ProjectManager",
+      "roleVersion": "1.0.0",
+      "registryDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+    },
+    {
+      "roleId": "AlgorithmDesigner",
+      "roleVersion": "1.0.0",
+      "registryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+    },
+    {
+      "roleId": "MathSolver",
+      "roleVersion": "1.0.0",
+      "registryDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+    },
+    {
+      "roleId": "Critic",
+      "roleVersion": "1.0.0",
+      "registryDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+    }
+  ]
+}

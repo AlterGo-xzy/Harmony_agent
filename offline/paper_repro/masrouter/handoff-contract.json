@@ -1,0 +1,141 @@
+{
+  "schemaVersion": "1",
+  "contractId": "harmony-agent-masrouter-adaptation-handoff-v1",
+  "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+  "upstreamTree": "e4d618f81675a46ed6e2f5e6ee1970519f1afa5b",
+  "sourceLicense": "Apache-2.0",
+  "algorithm": "MasRouter",
+  "researchOnlyMarker": "research-only-not-a-paper-checkpoint",
+  "featureEnvelope": {
+    "schemaVersion": "masrouter-feature-v1",
+    "encoderModelId": "sentence-transformers/all-MiniLM-L6-v2",
+    "encoderDimensions": 384,
+    "deploymentMode": "external-controlled-service"
+  },
+  "applicationBudget": {
+    "maximumDecisionPayloadBytes": 5242880,
+    "maximumReleaseHapDeltaBytes": 8388608,
+    "maximumHandoffBytes": 67108864
+  },
+  "requiredFileRoles": [
+    "decisionPayload",
+    "safeDecisionExport",
+    "featureSchema",
+    "goldenFixtures",
+    "environmentReport",
+    "trainingReport",
+    "evaluationReport",
+    "sourceLicense",
+    "roleRegistrySnapshot",
+    "modelPoolSnapshot",
+    "priceSnapshot"
+  ],
+  "allowedFileRoles": [
+    "decisionPayload",
+    "safeDecisionExport",
+    "featureSchema",
+    "goldenFixtures",
+    "environmentReport",
+    "trainingReport",
+    "evaluationReport",
+    "sourceLicense",
+    "roleRegistrySnapshot",
+    "modelPoolSnapshot",
+    "priceSnapshot",
+    "paperReproductionReport",
+    "pythonReferenceReport",
+    "throughputReport",
+    "dataLineageReport",
+    "commands"
+  ],
+  "forbiddenFileRoles": [
+    "encoderWeights",
+    "tokenizerAssets",
+    "pythonRuntime",
+    "pytorchRuntime",
+    "optimizerState",
+    "dataset",
+    "trainingLog",
+    "credential",
+    "taskControl",
+    "authorizationGrant"
+  ],
+  "forbiddenPathSegments": [
+    "encoder",
+    "tokenizer",
+    "site-packages",
+    "__pycache__",
+    ".venv",
+    "optimizer",
+    "datasets",
+    "logs"
+  ],
+  "forbiddenExtensions": [
+    ".pt",
+    ".pth",
+    ".ckpt",
+    ".safetensors",
+    ".whl",
+    ".py",
+    ".pyc",
+    ".pkl",
+    ".onnx"
+  ],
+  "allowedTrainingTracks": [
+    "official-reproduction",
+    "harmony-agent-adaptation"
+  ],
+  "allowedTrainingStates": [
+    "smoke",
+    "candidate",
+    "failed"
+  ],
+  "allowedEvidenceStates": [
+    "notRun",
+    "passed",
+    "failed",
+    "nonComparable"
+  ],
+  "runtimeIntegration": {
+    "targetPolicyPort": "CollaborationPlanSelectorPort",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "policyReplacementOnly": true,
+    "roleRegistryOnly": true,
+    "singleAgentAlwaysValid": true,
+    "reserveFullActivationBudgetBeforeMulti": true,
+    "maximumCollaborationReevaluations": 1,
+    "lowConfidenceFallback": "SINGLE",
+    "timeoutFallback": "SINGLE",
+    "checkpointIncompatibleFallback": "SINGLE",
+    "learnedEnabledByDefault": false,
+    "networkInsideSynchronousSelectPlan": false,
+    "fallback": "deterministicSingle"
+  },
+  "planConstraints": {
+    "planVersion": "1.0",
+    "allowedModes": ["single", "multi"],
+    "singleAssignmentCount": 1,
+    "minimumMultiAssignments": 2,
+    "maximumAssignments": 6,
+    "confidenceBasisPointsMinimum": 0,
+    "confidenceBasisPointsMaximum": 10000,
+    "taskBinding": "runtime-supplied",
+    "selectionIsNotAuthorization": true,
+    "maximumAgentActivationBudgetSource": "ExecutionBudget.maxAgentActivations"
+  },
+  "releaseBoundary": {
+    "artifactKind": "policy",
+    "artifactManifest": "ArtifactManifest",
+    "registry": "ArtifactRegistry",
+    "releaseRunner": "ArtifactPolicyReleaseRunner",
+    "secondReleaseSystem": false,
+    "researchCandidateOnly": true,
+    "activeReleaseAllowedByThisContract": false
+  },
+  "handoffFiles": {
+    "manifestName": "HANDOFF.json",
+    "sumsName": "SHA256SUMS",
+    "pathRule": "relative-posix-no-traversal-no-symlink",
+    "digest": "sha256"
+  }
+}

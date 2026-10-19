@@ -1,0 +1,106 @@
+{
+  "reportSchemaVersion": "1",
+  "task": "T51",
+  "milestone": "M13-B",
+  "reportDate": "2026-10-19",
+  "contractRevision": "2",
+  "checkerRevision": "2",
+  "validationMode": "strict-json-schema",
+  "status": "environment-input-contract-complete-reproduction-blocked",
+  "inputDigests": {
+    "upstreamLock": "sha256:ac95df4add7978efc53a2d00cfe5ee7ffe12a66fbb17aa26b71394f5a550f780",
+    "reproductionSpec": "sha256:8dd03a8b54fbe86bae8560e47e6a58f58c60b9d12d28c437a3df8d4cabcf6d53",
+    "environmentSchema": "sha256:bcb7735fdeadfc13bcc4b22c1973eb4e5f36e22ab349e6f9d5ec65fa68f7e443",
+    "datasetSchema": "sha256:a8518df84995dbceb436d36b72141c3726c0b7c99e513ab4f32595138cf2dadd",
+    "providerModelSchema": "sha256:57a2c675818dcbdd841d0f7c18e3ebffffabe2e98d7009847b088fb269027136",
+    "priceSchema": "sha256:9c7f6b17f5124e0de1d9bf10df7f28f5c9c4b4dc47a9ae4750fc69937ff545e3",
+    "environmentCandidates": "sha256:8f7ccbdbfad83d79f0fff81d420b151207a7666d99abfa2bb35442a67f8c61da",
+    "datasetLock": "sha256:35b3a8ab082fefacfeb4293ac90a6409defe3388695cf0e5cd94699d796a1464",
+    "modelPools": "sha256:90c71c6cdf2091d9f9af1989f8ebbaa57ae4e107082d4c6c4209f50bcdabff21",
+    "priceSnapshot": "sha256:5432cf0f595d5dc03bbcb95fe649f5ced7b68afe4e664c29d1fe3e6ad03c943c",
+    "unresolvedIssues": "sha256:5f323d547c5fdd71a983d8ccf7f81615d18632437bc5564fd7e4a3ccd54f772e",
+    "inputContract": "sha256:b74683a2dd8a1968f6ea19478c38e01c2203f985878d9ba1af21ee5d2cad55ba"
+  },
+  "upstream": {
+    "commit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+    "tree": "e4d618f81675a46ed6e2f5e6ee1970519f1afa5b",
+    "license": "Apache-2.0",
+    "paper": "2502.11133v1"
+  },
+  "environment": {
+    "lockStatus": "candidate-unresolved",
+    "pythonMinimum": "3.10",
+    "pythonVersion": null,
+    "torchVersion": null,
+    "acceleratorModes": [
+      "cpu",
+      "cuda"
+    ],
+    "dependencyCandidateCount": 34,
+    "unresolvedDependencyCount": 34,
+    "implicitDependencyCount": 3,
+    "environmentReady": false
+  },
+  "datasets": {
+    "lockStatus": "candidate-unresolved",
+    "executionReady": false,
+    "datasetCount": 5,
+    "statuses": [
+      {
+        "id": "gsm8k",
+        "status": "unresolved"
+      },
+      {
+        "id": "humaneval",
+        "status": "unresolved"
+      },
+      {
+        "id": "math",
+        "status": "unresolved"
+      },
+      {
+        "id": "mbpp",
+        "status": "unresolved"
+      },
+      {
+        "id": "mmlu",
+        "status": "unresolved"
+      }
+    ],
+    "digestCount": 0,
+    "mathPaperSubsetCount": 519,
+    "mathPaperSubsetManifestPresent": false
+  },
+  "modelPools": {
+    "poolsSeparate": true,
+    "paperCoreCount": 4,
+    "paperInductiveCount": 1,
+    "sourceCount": 5,
+    "unresolvedModelCount": 10,
+    "encoderStatus": "unresolved",
+    "encoderPackaging": "forbidden-in-har-hap",
+    "checkpointStatus": "unresolved"
+  },
+  "price": {
+    "snapshotStatus": "blocked",
+    "conflictCount": 1,
+    "conflictModel": "claude-3-5-haiku-20241022",
+    "conflictResolution": "unresolved",
+    "costClaimsAllowed": false
+  },
+  "issues": {
+    "issueCount": 17,
+    "blockingCount": 13,
+    "requiredOpenCount": 15
+  },
+  "execution": {
+    "dependenciesInstalled": false,
+    "datasetsDownloaded": false,
+    "credentialsRead": false,
+    "providerCallsExecuted": false,
+    "benchmarkRunsExecuted": 0,
+    "trainingRunsExecuted": 0,
+    "costIncurredUsd": 0
+  },
+  "nextGate": "T52 adaptation schema and handoff admission; T54 execution remains paused and requires separate authorization"
+}

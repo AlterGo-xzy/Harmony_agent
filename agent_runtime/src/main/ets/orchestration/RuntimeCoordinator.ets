@@ -1,3 +1,7 @@
+import { ArtifactPolicyCancellationSource } from '../artifact/ArtifactPolicyExecutionControl';
+import { CollaborationPolicyPreparationPort, CollaborationPreparationOutcome,
+  prepareCollaboration } from '../routing/CollaborationPreparation';
+import { CollaborationPreparationState } from './OrchestrationTypes';
 import {
   AgentErrorClass,
   AgentRuntimeEvent,
@@ -11,6 +15,7 @@ import {
   CollaborationMode,
   ContractCodec,
   ContractValidator,
+  ExecutionBudget,
   IdempotencyMode,
   PolicyRequest,
   ReconciliationReport,
@@ -45,6 +50,8 @@ import { AgentRuntimeErrorCode } from '../api/RuntimeApi';
 import { PolicyGateway } from '../policy/PolicyGateway';
 import { PolicyDecisionResult } from '../policy/PolicyTypes';
 import {
+  CollaborationPlan,
+  CollaborationRoleAssignment,
   CoordinatorCommandResult,
   DispatchPersistenceContext,
   OrchestrationAcceptance,
@@ -60,6 +67,7 @@ import {
   StepDispatchRequest
 } from './OrchestrationTypes';
 import {
+  CollaborationPlanSelectorPort,
   CollaborationSelectorPort,
   RuntimeClockPort,
   RuntimeIdGeneratorPort,
@@ -73,6 +81,7 @@ import { SessionController } from './SessionController';
 import { TaskAnalyzer } from './TaskAnalyzer';
 import { WorkflowReplanController } from './WorkflowReplanController';
 import { RuntimeCheckpointValidator } from './RuntimeCheckpointValidator';
+import { CollaborationPlanValidator } from './CollaborationPlanValidator';
 import {
   RuntimeDurableAuthorityPayload,
   RuntimeRecoveryAuthority,
@@ -87,6 +96,11 @@ export class RuntimeCoordinatorConfig {
 }
 
 class RuntimeTaskRecord {
+  collaborationPreparation: CollaborationPreparationState = new CollaborationPreparationState();
+  preparationCancellation?: ArtifactPolicyCancellationSource;
+  preparationInterrupted: boolean = false;
+  planningActive: boolean = false;
+  planningInterrupted: boolean = false;
   submission: TaskSubmission = new TaskSubmission();
   envelope: TaskEnvelope = new TaskEnvelope();
   frame: TaskFrame = new TaskFrame();
@@ -225,6 +239,10 @@ export class RuntimeCoordinator {
   private ids: RuntimeIdGeneratorPort;
   private planner: SemanticPlannerPort;
   private collaboration: CollaborationSelectorPort;
+  private collaborationPlan?: CollaborationPlanSelectorPort;
+  private preparation?: CollaborationPolicyPreparationPort;
+  private preparationTimeoutMs: number;
+  private planningCheckpoint?: () => Promise<void>;
   private toolPreparer: ToolInvocationPreparerPort;
   private dispatcher: StepDispatchPort;
   private stateObserver: RuntimeStateObserverPort;
@@ -238,7 +256,10 @@ export class RuntimeCoordinator {
   constructor(config: RuntimeCoordinatorConfig, clock: RuntimeClockPort, ids: RuntimeIdGeneratorPort,
     planner: SemanticPlannerPort, collaboration: CollaborationSelectorPort,
     toolPreparer: ToolInvocationPreparerPort, dispatcher: StepDispatchPort,
-    stateObserver: RuntimeStateObserverPort = new NoopRuntimeStateObserver()) {
+    stateObserver: RuntimeStateObserverPort = new NoopRuntimeStateObserver(),
+    collaborationPlan?: CollaborationPlanSelectorPort,
+    preparation?: CollaborationPolicyPreparationPort, preparationTimeoutMs: number = 5000,
+    planningCheckpoint?: () => Promise<void>) {
     if (config.policyVersion.length === 0 || !Number.isSafeInteger(config.grantTtlMs) || config.grantTtlMs <= 0) {
       throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT,
         'invalid RuntimeCoordinator configuration');
@@ -247,6 +268,13 @@ export class RuntimeCoordinator {
     this.ids = ids;
     this.planner = planner;
     this.collaboration = collaboration;
+    if (preparation !== undefined && preparation !== collaborationPlan) {
+      throw new Error('collaboration preparation and selector must share an instance');
+    }
+    this.collaborationPlan = collaborationPlan;
+    this.preparation = preparation;
+    this.preparationTimeoutMs = preparationTimeoutMs;
+    this.planningCheckpoint = planningCheckpoint;
     this.toolPreparer = toolPreparer;
     this.dispatcher = dispatcher;
     this.stateObserver = stateObserver;
@@ -255,7 +283,7 @@ export class RuntimeCoordinator {
     this.policy = new PolicyGateway(config.policyVersion, config.grantTtlMs, this.ledger);
   }
 
-  acceptTask(submission: TaskSubmission): OrchestrationAcceptance {
+  async acceptTask(submission: TaskSubmission): Promise<OrchestrationAcceptance> {
     const accepted: SessionAcceptance = this.sessions.accept(submission);
     const existing: number = this.findTask(accepted.handle.taskId);
     if (existing >= 0) {
@@ -274,13 +302,16 @@ export class RuntimeCoordinator {
     this.tasks.push(record);
     this.ledger.registerTask(record.envelope.taskId, record.envelope.executionBudget);
     this.emit(record, AgentRuntimeEventType.TASK_ACCEPTED, '{"status":"received"}');
-    this.beginPlanning(record, false);
+    await this.beginPlanning(record, false);
     return this.acceptance(record, false);
   }
 
   restoreCheckpoint(checkpoint: RuntimeTaskRecoveryCheckpoint): CoordinatorCommandResult {
     const validation = RuntimeCheckpointValidator.validate(checkpoint);
     if (!validation.valid) return this.reconstruction(false, 'CHECKPOINT_INVALID', 0);
+    if (checkpoint.checkpointVersion === '1.2' && checkpoint.collaborationPreparation.pending) {
+      return this.reconstruction(false, 'PREPARATION_REQUIRES_RECONCILIATION', 0);
+    }
     const existing: number = this.findTask(checkpoint.envelope.taskId);
     if (existing >= 0) return this.command(false, 'TASK_ALREADY_EXISTS', this.tasks[existing]);
 
@@ -314,6 +345,12 @@ export class RuntimeCoordinator {
       record.events.push(copyEvent(checkpoint.events[i]));
     }
     record.usage = copyUsage(checkpoint.usage);
+    if (checkpoint.checkpointVersion === '1.1') {
+      record.collaborationPreparation.baselineOnly = true;
+      record.collaborationPreparation.evaluations = 2;
+    } else {
+      record.collaborationPreparation = JSON.parse(JSON.stringify(checkpoint.collaborationPreparation));
+    }
     record.planningRequest = this.copyPlanningRequest(checkpoint.planningRequest);
     record.workflow = workflow;
     record.scheduler = scheduler;
@@ -369,6 +406,7 @@ export class RuntimeCoordinator {
         record.paused = false;
         record.pendingPolicyRequest = undefined;
         record.pendingInvocation = undefined;
+        record.activeInvocation = undefined;
         this.transition(record, AgentTaskStatus.WAITING_RECONCILIATION,
           AgentRuntimeEventType.RECONCILIATION_REQUIRED,
           '{"reason":"restartRequiresReconciliation","stepId":' + quoted(record.pendingStepId) +
@@ -511,7 +549,7 @@ export class RuntimeCoordinator {
     return this.dispatch(record, this.requireStep(record, pending.stepId), invocation, pending, result.grant);
   }
 
-  provideClarification(response: ClarificationResponse): CoordinatorCommandResult {
+  async provideClarification(response: ClarificationResponse): Promise<CoordinatorCommandResult> {
     if (!ContractValidator.validateClarificationResponse(response).valid) {
       throw new AgentRuntimeError(AgentRuntimeErrorCode.INVALID_CONTRACT, 'invalid ClarificationResponse');
     }
@@ -533,11 +571,27 @@ export class RuntimeCoordinator {
     if (!this.consumePlannerCall(record, false)) {
       return this.command(false, 'PLANNER_BUDGET_EXHAUSTED', record);
     }
-    record.pendingClarification = undefined;
     const isolatedResponse: ClarificationResponse =
       ContractCodec.parseClarificationResponse(ContractCodec.stringify(response));
-    const planned: PlanningResult = this.planner.resume(this.copyPlanningRequest(record.planningRequest),
-      isolatedResponse);
+    let planned: PlanningResult;
+    record.planningActive = true;
+    record.planningInterrupted = false;
+    try {
+      if (this.preparation !== undefined && !await this.reservePlanning(record)) {
+        record.planningActive = false;
+        return this.command(false, 'AGENT_ACTIVATION_BUDGET_EXHAUSTED', record);
+      }
+      planned = await this.planner.resume(this.copyPlanningRequest(record.planningRequest), isolatedResponse);
+    } catch (error) {
+      record.planningActive = false;
+      if (record.planningInterrupted) return this.command(false, 'PLANNING_INTERRUPTED', record);
+      record.pendingClarification = undefined;
+      this.failPlannerInvocation(record);
+      return this.command(false, 'PLANNER_INVOCATION_FAILED', record);
+    }
+    record.planningActive = false;
+    if (record.planningInterrupted) return this.command(false, 'PLANNING_INTERRUPTED', record);
+    record.pendingClarification = undefined;
     this.applyPlanningResult(record, planned);
     return this.command(true, 'CLARIFICATION_APPLIED', record);
   }
@@ -582,7 +636,7 @@ export class RuntimeCoordinator {
     return this.command(true, 'RECONCILED', record);
   }
 
-  requestReplan(taskId: string, affectedStepIds: string[]): CoordinatorCommandResult {
+  async requestReplan(taskId: string, affectedStepIds: string[]): Promise<CoordinatorCommandResult> {
     const record: RuntimeTaskRecord = this.requireTask(taskId);
     if (record.recoveryBlocked) return this.command(false, 'RECOVERY_AUTHORITY_REQUIRED', record);
     const current: WorkflowGraph | undefined = record.workflow;
@@ -601,7 +655,23 @@ export class RuntimeCoordinator {
     record.planningRequest.previousWorkflow =
       ContractCodec.parseWorkflowGraph(ContractCodec.stringify(current));
     record.planningRequest.affectedStepIds = affected.slice();
-    const planned: PlanningResult = this.planner.replan(this.copyPlanningRequest(record.planningRequest));
+    record.planningActive = true;
+    record.planningInterrupted = false;
+    if (this.preparation !== undefined && !await this.preparePlanning(record)) {
+      record.planningActive = false;
+      return this.command(false, 'COLLABORATION_PREPARATION_STOPPED', record);
+    }
+    let planned: PlanningResult;
+    try {
+      planned = await this.planner.replan(this.copyPlanningRequest(record.planningRequest));
+    } catch (error) {
+      record.planningActive = false;
+      if (record.planningInterrupted) return this.command(false, 'PLANNING_INTERRUPTED', record);
+      this.failPlannerInvocation(record);
+      return this.command(false, 'PLANNER_INVOCATION_FAILED', record);
+    }
+    record.planningActive = false;
+    if (record.planningInterrupted) return this.command(false, 'PLANNING_INTERRUPTED', record);
     if (planned.status !== PlanningStatus.READY || planned.workflow === undefined) {
       return this.command(false, 'INVALID_REPLAN_RESULT', record);
     }
@@ -661,7 +731,7 @@ export class RuntimeCoordinator {
   cancel(taskId: string): CoordinatorCommandResult {
     const record: RuntimeTaskRecord = this.requireTask(taskId);
     if (record.recoveryBlocked) return this.command(false, 'RECOVERY_AUTHORITY_REQUIRED', record);
-    if (this.isTerminal(record.snapshot.status)) {
+    if (!record.preparationInterrupted && this.isTerminal(record.snapshot.status)) {
       return this.command(false, 'TASK_TERMINAL', record);
     }
     const scheduler: WorkflowScheduler | undefined = record.scheduler;
@@ -718,6 +788,7 @@ export class RuntimeCoordinator {
       value.events.push(copyEvent(record.events[i]));
     }
     value.usage = copyUsage(record.usage);
+    value.collaborationPreparation = JSON.parse(JSON.stringify(record.collaborationPreparation));
     value.planningRequest = this.copyPlanningRequest(record.planningRequest);
     if (record.workflow !== undefined) {
       value.workflow = ContractCodec.parseWorkflowGraph(ContractCodec.stringify(record.workflow));
@@ -819,27 +890,202 @@ export class RuntimeCoordinator {
     return value === undefined ? undefined : copyClarification(value);
   }
 
-  private beginPlanning(record: RuntimeTaskRecord, replan: boolean): void {
+  private async beginPlanning(record: RuntimeTaskRecord, replan: boolean): Promise<void> {
+    record.planningActive = true;
+    record.planningInterrupted = false;
+    try {
     if (!this.consumePlannerCall(record, replan)) {
       this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
         '{"reason":"plannerBudgetExhausted"}');
       return;
     }
     record.frame = this.analyzer.analyze(record.envelope);
-    record.collaborationMode = this.collaboration.select(copyFrame(record.frame));
+    record.planningRequest.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope));
+    record.planningRequest.frame = copyFrame(record.frame);
+    record.planningRequest.collaborationPlan = undefined;
+    if (this.preparation !== undefined) {
+      if (!await this.preparePlanning(record)) return;
+    }
+    const planSelector: CollaborationPlanSelectorPort | undefined = this.preparation === undefined ?
+      this.collaborationPlan : undefined;
+    if (planSelector === undefined && this.preparation === undefined) {
+      record.collaborationMode = this.collaboration.select(copyFrame(record.frame));
+    } else if (planSelector !== undefined) {
+      let selectedPlan: CollaborationPlan;
+      try {
+        selectedPlan = planSelector.selectPlan(copyFrame(record.frame),
+          record.envelope.executionBudget.maxAgentActivations);
+      } catch (error) {
+        this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+          '{"reason":"collaborationPlanSelectionFailed"}');
+        return;
+      }
+      if (!CollaborationPlanValidator.validate(selectedPlan, record.frame,
+        record.envelope.executionBudget.maxAgentActivations).valid) {
+        this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+          '{"reason":"collaborationPlanInvalid"}');
+        return;
+      }
+      record.collaborationMode = selectedPlan.mode;
+      record.planningRequest.collaborationPlan = this.copyCollaborationPlan(selectedPlan);
+    }
+    record.planningRequest.collaborationMode = record.collaborationMode;
     if (record.collaborationMode === CollaborationMode.MULTI &&
       record.envelope.executionBudget.maxAgentActivations < 2) {
       this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
         '{"reason":"agentActivationBudgetExhausted"}');
       return;
     }
-    record.usage.agentActivations = record.collaborationMode === CollaborationMode.MULTI ? 2 : 1;
-    record.planningRequest.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope));
-    record.planningRequest.frame = copyFrame(record.frame);
-    record.planningRequest.collaborationMode = record.collaborationMode;
+    if (record.collaborationMode === CollaborationMode.MULTI &&
+      record.planningRequest.collaborationPlan === undefined) {
+      this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+        '{"reason":"collaborationPlanRequired"}');
+      return;
+    }
+    const collaborationPlan: CollaborationPlan | undefined = record.planningRequest.collaborationPlan;
+    if (this.preparation === undefined) {
+      record.usage.agentActivations = collaborationPlan === undefined ? 1 : collaborationPlan.assignments.length;
+    }
     const isolated: PlanningRequest = this.copyPlanningRequest(record.planningRequest);
-    const result: PlanningResult = replan ? this.planner.replan(isolated) : this.planner.plan(isolated);
+    let result: PlanningResult;
+    try {
+      if (record.planningInterrupted) return;
+      result = replan ? await this.planner.replan(isolated) : await this.planner.plan(isolated);
+    } catch (error) {
+      if (record.planningInterrupted) return;
+      this.failPlannerInvocation(record);
+      return;
+    }
+    if (record.planningInterrupted) return;
     this.applyPlanningResult(record, result);
+    } finally {
+      record.planningActive = false;
+    }
+  }
+
+  /** Signals only computation; all task state changes remain inside the Facade queue. */
+  interruptPreparation(taskId: string): boolean {
+    const index: number = this.findTask(taskId);
+    if (index < 0) return false;
+    const source: ArtifactPolicyCancellationSource | undefined = this.tasks[index].preparationCancellation;
+    if (source === undefined) return false;
+    this.tasks[index].preparationInterrupted = true;
+    source.cancel();
+    return true;
+  }
+
+  /** Signals preparation and Provider work without mutating task state outside the Facade FIFO. */
+  interruptPlanning(taskId: string): boolean {
+    const index: number = this.findTask(taskId);
+    if (index < 0 || !this.tasks[index].planningActive) return false;
+    const record: RuntimeTaskRecord = this.tasks[index];
+    record.planningInterrupted = true;
+    this.interruptPreparation(taskId);
+    this.planner.interrupt(taskId);
+    return true;
+  }
+
+  interruptAllPlanning(): string[] {
+    const ids: string[] = [];
+    for (let i: number = 0; i < this.tasks.length; i++) {
+      const taskId: string = this.tasks[i].envelope.taskId;
+      if (this.interruptPlanning(taskId)) ids.push(taskId);
+    }
+    return ids;
+  }
+
+  interruptAllPreparations(): string[] {
+    const ids: string[] = [];
+    for (let i: number = 0; i < this.tasks.length; i++) {
+      const taskId: string = this.tasks[i].envelope.taskId;
+      if (this.interruptPreparation(taskId)) ids.push(taskId);
+    }
+    return ids;
+  }
+
+  private async preparePlanning(record: RuntimeTaskRecord): Promise<boolean> {
+    const port: CollaborationPolicyPreparationPort | undefined = this.preparation;
+    if (port === undefined) return true;
+    const remaining: number = record.envelope.executionBudget.maxAgentActivations - record.usage.agentActivations;
+    if (remaining < 1) {
+      this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+        '{"reason":"agentActivationBudgetExhausted"}');
+      return false;
+    }
+    const budget: ExecutionBudget =
+      ContractCodec.parseTaskEnvelope(ContractCodec.stringify(record.envelope)).executionBudget;
+    budget.maxAgentActivations = remaining;
+    let fallback: boolean = record.collaborationPreparation.baselineOnly ||
+      record.collaborationPreparation.evaluations >= 2;
+    const cancellation: ArtifactPolicyCancellationSource = new ArtifactPolicyCancellationSource();
+    record.preparationCancellation = cancellation;
+    if (!fallback) {
+      record.collaborationPreparation.evaluations++;
+      record.collaborationPreparation.pending = true;
+      try {
+        await this.persistPlanning(record);
+        const outcome: CollaborationPreparationOutcome = await prepareCollaboration(port,
+          copyFrame(record.frame), budget, cancellation, this.preparationTimeoutMs);
+        if (outcome === CollaborationPreparationOutcome.INTERRUPTED) {
+          record.collaborationPreparation.pending = false;
+          record.preparationCancellation = undefined;
+          return false;
+        }
+        fallback = outcome !== CollaborationPreparationOutcome.READY;
+      } catch (error) {
+        record.preparationCancellation = undefined;
+        throw new AgentRuntimeError(AgentRuntimeErrorCode.PERSISTENCE_FAILURE,
+          'collaboration preparation checkpoint could not be saved');
+      }
+      record.collaborationPreparation.pending = false;
+    }
+    try {
+      const plan: CollaborationPlan = fallback ? port.selectBaselinePlan(copyFrame(record.frame), remaining) :
+        port.selectPlan(copyFrame(record.frame), remaining);
+      if (!CollaborationPlanValidator.validate(plan, record.frame, remaining).valid) {
+        throw new Error('invalid prepared collaboration plan');
+      }
+      record.collaborationMode = plan.mode;
+      record.planningRequest.collaborationMode = plan.mode;
+      record.planningRequest.collaborationPlan = this.copyCollaborationPlan(plan);
+    } catch (error) {
+      record.preparationCancellation = undefined;
+      this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+        '{"reason":"collaborationPlanInvalid"}');
+      return false;
+    }
+    try {
+      const reserved: boolean = await this.reservePlanning(record);
+      return reserved && !record.preparationInterrupted;
+    } finally {
+      record.preparationCancellation = undefined;
+    }
+  }
+
+  private async reservePlanning(record: RuntimeTaskRecord): Promise<boolean> {
+    const plan: CollaborationPlan | undefined = record.planningRequest.collaborationPlan;
+    const required: number = plan === undefined ? 1 : plan.assignments.length;
+    if (record.usage.agentActivations + required > record.envelope.executionBudget.maxAgentActivations) {
+      record.pendingClarification = undefined;
+      this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+        '{"reason":"agentActivationBudgetExhausted"}');
+      return false;
+    }
+    // Conservatively consume the complete planned activation set before any provider invocation.
+    record.usage.agentActivations += required;
+    await this.persistPlanning(record);
+    return true;
+  }
+
+  private async persistPlanning(record: RuntimeTaskRecord): Promise<void> {
+    this.bump(record, AgentRuntimeEventType.TASK_STATE_CHANGED, '{"collaborationPreparation":true}');
+    const persist: (() => Promise<void>) | undefined = this.planningCheckpoint;
+    if (persist !== undefined) await persist();
+  }
+
+  private failPlannerInvocation(record: RuntimeTaskRecord): void {
+    this.transition(record, AgentTaskStatus.FAILED, AgentRuntimeEventType.TASK_FAILED,
+      '{"reason":"plannerInvocationFailed"}');
   }
 
   private applyPlanningResult(record: RuntimeTaskRecord, result: PlanningResult): void {
@@ -1176,10 +1422,30 @@ export class RuntimeCoordinator {
     result.envelope = ContractCodec.parseTaskEnvelope(ContractCodec.stringify(value.envelope));
     result.frame = copyFrame(value.frame);
     result.collaborationMode = value.collaborationMode;
+    if (value.collaborationPlan !== undefined) {
+      result.collaborationPlan = this.copyCollaborationPlan(value.collaborationPlan);
+    }
     if (value.previousWorkflow !== undefined) {
       result.previousWorkflow = ContractCodec.parseWorkflowGraph(ContractCodec.stringify(value.previousWorkflow));
     }
     result.affectedStepIds = value.affectedStepIds.slice();
     return result;
+  }
+
+  private copyCollaborationPlan(source: CollaborationPlan): CollaborationPlan {
+    const value: CollaborationPlan = new CollaborationPlan();
+    value.planVersion = source.planVersion;
+    value.taskId = source.taskId;
+    value.mode = source.mode;
+    value.roleRegistryDigest = source.roleRegistryDigest;
+    value.decisionDigest = source.decisionDigest;
+    for (let i: number = 0; i < source.assignments.length; i++) {
+      const assignment: CollaborationRoleAssignment = new CollaborationRoleAssignment();
+      assignment.roleId = source.assignments[i].roleId;
+      assignment.roleVersion = source.assignments[i].roleVersion;
+      assignment.roleRegistryDigest = source.assignments[i].roleRegistryDigest;
+      value.assignments.push(assignment);
+    }
+    return value;
   }
 }

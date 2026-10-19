@@ -1,0 +1,6 @@
+node offline\paper_repro\mtrouter\test-mtrouter-handoff.mjs
+node offline\paper_repro\mtrouter\test-mtrouter-preflight.mjs
+node offline\paper_repro\mtrouter\check-mtrouter-repro.mjs --check
+node --check offline\paper_repro\mtrouter\check-mtrouter-handoff.mjs
+node --check offline\paper_repro\mtrouter\test-mtrouter-handoff.mjs
+git diff --check

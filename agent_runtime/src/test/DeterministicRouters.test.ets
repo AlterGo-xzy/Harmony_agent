@@ -8,6 +8,7 @@ import {
   RouterKind,
   RouterRequest,
   SideEffect,
+  TaskFrame,
   ToolDescriptor,
   ToolSourceType,
   WorkflowGraph,
@@ -43,6 +44,17 @@ import {
   ModelRouteRequest,
   ToolRouteRequest
 } from '../main/ets/routing/RouterTypes';
+import { CollaborationPlan } from '../main/ets/orchestration/OrchestrationTypes';
+import { CollaborationPlanDigestPort } from '../main/ets/orchestration/RuntimePorts';
+import { CollaborationPlanValidator } from '../main/ets/orchestration/CollaborationPlanValidator';
+
+class FixtureCollaborationDigest implements CollaborationPlanDigestPort {
+  digest(value: string): string {
+    let sum: number = 0;
+    for (let i: number = 0; i < value.length; i++) sum = (sum + value.charCodeAt(i)) % 16;
+    return 'sha256:' + '0123456789abcdef'.charAt(sum).repeat(64);
+  }
+}
 
 function config(learned: boolean = false): DeterministicRouterConfig {
   const value: DeterministicRouterConfig = new DeterministicRouterConfig();
@@ -413,6 +425,28 @@ export default function deterministicRoutersTest(): void {
       request.inputFeatureDigest = 'sha256:same-role';
       request.createdAt = '2026-09-29T06:00:00.000Z';
       expect(router.route(request).mode).assertEqual(CollaborationMode.SINGLE);
+    });
+
+    it('buildsValidatedPlanOnlyFromRegisteredRoleIdentities', 0, () => {
+      const registry: RoleRegistry = new RoleRegistry();
+      registry.register(role('planner', 'planning'));
+      registry.register(role('verifier', 'verification'));
+      const router: DeterministicCollaborationRouter = new DeterministicCollaborationRouter(
+        registry, config(), new FixtureCollaborationDigest());
+      const frame: TaskFrame = new TaskFrame();
+      frame.taskId = 'task-plan';
+      frame.capabilityCategories = ['planning', 'verification'];
+      frame.canParallelize = true;
+
+      const plan: CollaborationPlan = router.selectPlan(frame, 2);
+
+      expect(CollaborationPlanValidator.validate(plan, frame, 2).valid).assertTrue();
+      expect(plan.mode).assertEqual(CollaborationMode.MULTI);
+      expect(plan.assignments.length).assertEqual(2);
+      expect(plan.assignments[0].roleId).assertEqual('planner');
+      expect(plan.assignments[1].roleId).assertEqual('verifier');
+      expect(plan.roleRegistryDigest.length).assertEqual(71);
+      expect(plan.decisionDigest.length).assertEqual(71);
     });
   });
 }

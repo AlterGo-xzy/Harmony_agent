@@ -24,7 +24,12 @@ import {
   CONTRACT_TYPE_WORKFLOW_GRAPH
 } from './Constants';
 import { ContractValidationResult } from './Common';
-import { AuthorizationDecisionType } from './Enums';
+import {
+  ArtifactApprovalStatus,
+  ArtifactKind,
+  ArtifactLifecycleStatus,
+  AuthorizationDecisionType
+} from './Enums';
 import { AuthorizationDecision, AuthorizationGrant, PolicyRequest } from './PolicyContracts';
 import { RouterDecision, RouterRequest } from './RoutingContracts';
 import {
@@ -48,6 +53,65 @@ export class ContractValidator {
     if (value.trim().length === 0) {
       result.issues.push(path + ' must not be empty');
     }
+  }
+
+  private static requireSha256Digest(result: ContractValidationResult, value: string, path: string): void {
+    ContractValidator.requireText(result, value, path);
+    if (value.trim().length > 0 && !/^sha256:[0-9a-fA-F]{64}$/.test(value)) {
+      result.issues.push(path + ' must be a full sha256 digest');
+    }
+  }
+
+  private static requireSourceCommit(result: ContractValidationResult, value: string): void {
+    ContractValidator.requireText(result, value, 'sourceCommit');
+    if (value.trim().length > 0 && !/^([0-9a-fA-F]{40}|[0-9a-fA-F]{64})$/.test(value)) {
+      result.issues.push('sourceCommit must be a full 40 or 64 character hexadecimal commit id');
+    }
+  }
+
+  private static requireIsoTimestamp(result: ContractValidationResult, value: string, path: string): void {
+    ContractValidator.requireText(result, value, path);
+    const pattern: RegExp = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
+    if (value.trim().length > 0 && !pattern.test(value)) {
+      result.issues.push(path + ' must be an ISO-8601 timestamp with an explicit time zone');
+    }
+  }
+
+  private static requireJsonObject(result: ContractValidationResult, value: string, path: string): void {
+    ContractValidator.requireText(result, value, path);
+    const trimmed: string = value.trim();
+    if (trimmed.length === 0) {
+      return;
+    }
+    if (!trimmed.startsWith('{') || !trimmed.endsWith('}')) {
+      result.issues.push(path + ' must encode a JSON object');
+      return;
+    }
+    try {
+      JSON.parse(trimmed);
+    } catch (error) {
+      result.issues.push(path + ' must encode valid JSON');
+    }
+  }
+
+  private static requireStringList(result: ContractValidationResult, values: string[], path: string,
+    requireEntries: boolean): void {
+    if (requireEntries && values.length === 0) {
+      result.issues.push(path + ' must not be empty for a released artifact');
+    }
+    for (let i: number = 0; i < values.length; i++) {
+      ContractValidator.requireText(result, values[i], path + '[' + i.toString() + ']');
+      for (let j: number = 0; j < i; j++) {
+        if (values[i] === values[j]) {
+          result.issues.push(path + ' must not contain duplicate entries');
+          break;
+        }
+      }
+    }
+  }
+
+  private static isEmptyJsonObject(value: string): boolean {
+    return value.replace(/\s/g, '') === '{}';
   }
 
   private static requireNonNegative(result: ContractValidationResult, value: number, path: string): void {
@@ -225,12 +289,130 @@ export class ContractValidator {
     ContractValidator.validateHeader(result, value.schemaVersion, value.contractType,
       CONTRACT_TYPE_ARTIFACT_MANIFEST);
     ContractValidator.requireText(result, value.artifactId, 'artifactId');
+    if (value.artifactKind !== ArtifactKind.CHECKPOINT && value.artifactKind !== ArtifactKind.POLICY &&
+      value.artifactKind !== ArtifactKind.WORKFLOW) {
+      result.issues.push('artifactKind is not supported');
+    }
     ContractValidator.requireText(result, value.algorithm, 'algorithm');
     ContractValidator.requireText(result, value.artifactVersion, 'artifactVersion');
-    ContractValidator.requireText(result, value.sourceCommit, 'sourceCommit');
+    ContractValidator.requireSourceCommit(result, value.sourceCommit);
     ContractValidator.requireText(result, value.sourceLicense, 'sourceLicense');
     ContractValidator.requireText(result, value.featureSchemaVersion, 'featureSchemaVersion');
-    ContractValidator.requireText(result, value.checkpointDigest, 'checkpointDigest');
+    ContractValidator.requireSha256Digest(result, value.artifactDigest, 'artifactDigest');
+    if (value.checkpointDigest.trim().length > 0) {
+      ContractValidator.requireSha256Digest(result, value.checkpointDigest, 'checkpointDigest');
+      if (value.checkpointDigest !== value.artifactDigest) {
+        result.issues.push('checkpointDigest must match artifactDigest when present');
+      }
+    }
+    ContractValidator.requireJsonObject(result, value.modelAndProviderSnapshotJson,
+      'modelAndProviderSnapshotJson');
+    ContractValidator.requireJsonObject(result, value.paperReproductionResultsJson,
+      'paperReproductionResultsJson');
+    ContractValidator.requireJsonObject(result, value.portParityResultsJson, 'portParityResultsJson');
+    ContractValidator.requireJsonObject(result, value.harmonyAgentBenchResultsJson,
+      'harmonyAgentBenchResultsJson');
+    if (value.lifecycleStatus !== ArtifactLifecycleStatus.DISABLED &&
+      value.lifecycleStatus !== ArtifactLifecycleStatus.SHADOW &&
+      value.lifecycleStatus !== ArtifactLifecycleStatus.CANARY &&
+      value.lifecycleStatus !== ArtifactLifecycleStatus.ACTIVE &&
+      value.lifecycleStatus !== ArtifactLifecycleStatus.ROLLED_BACK) {
+      result.issues.push('lifecycleStatus is not supported');
+    }
+    if (value.approvalStatus !== ArtifactApprovalStatus.UNREVIEWED &&
+      value.approvalStatus !== ArtifactApprovalStatus.APPROVED &&
+      value.approvalStatus !== ArtifactApprovalStatus.REJECTED) {
+      result.issues.push('approvalStatus is not supported');
+    }
+    const released: boolean = value.lifecycleStatus !== ArtifactLifecycleStatus.DISABLED;
+    ContractValidator.requireStringList(result, value.trainingDataLineage, 'trainingDataLineage', released);
+    ContractValidator.requireStringList(result, value.runtimeCompatibility, 'runtimeCompatibility', released);
+    if (released) {
+      if (ContractValidator.isEmptyJsonObject(value.modelAndProviderSnapshotJson)) {
+        result.issues.push('modelAndProviderSnapshotJson must contain a frozen snapshot for a released artifact');
+      }
+      if (ContractValidator.isEmptyJsonObject(value.paperReproductionResultsJson)) {
+        result.issues.push('paperReproductionResultsJson must contain separate reproduction results');
+      }
+      if (ContractValidator.isEmptyJsonObject(value.portParityResultsJson)) {
+        result.issues.push('portParityResultsJson must contain parity results for a released artifact');
+      }
+      if (ContractValidator.isEmptyJsonObject(value.harmonyAgentBenchResultsJson)) {
+        result.issues.push('harmonyAgentBenchResultsJson must contain adaptation results');
+      }
+    }
+    if (value.approvalStatus === ArtifactApprovalStatus.APPROVED) {
+      ContractValidator.requireText(result, value.approvedBy, 'approvedBy');
+      const approvedAt: string | undefined = value.approvedAt;
+      if (approvedAt === undefined) {
+        result.issues.push('approvedAt must be present for an approved artifact');
+      } else {
+        ContractValidator.requireIsoTimestamp(result, approvedAt, 'approvedAt');
+      }
+    }
+    const signedRelease: boolean = value.lifecycleStatus === ArtifactLifecycleStatus.CANARY ||
+      value.lifecycleStatus === ArtifactLifecycleStatus.ACTIVE ||
+      value.lifecycleStatus === ArtifactLifecycleStatus.ROLLED_BACK;
+    const hasSignatureMetadata: boolean = value.signedManifestDigest.trim().length > 0 ||
+      value.signatureAlgorithm.trim().length > 0 || value.signingKeyId.trim().length > 0 ||
+      value.signatureBase64.trim().length > 0 || value.signedAt !== undefined;
+    if (signedRelease || hasSignatureMetadata) {
+      if (value.approvalStatus !== ArtifactApprovalStatus.APPROVED) {
+        result.issues.push('approvalStatus must be approved for signed, canary, active, or rolledBack artifacts');
+      }
+      ContractValidator.requireSha256Digest(result, value.signedManifestDigest, 'signedManifestDigest');
+      ContractValidator.requireText(result, value.signatureAlgorithm, 'signatureAlgorithm');
+      ContractValidator.requireText(result, value.signingKeyId, 'signingKeyId');
+      ContractValidator.requireText(result, value.signatureBase64, 'signatureBase64');
+      if (value.signatureBase64.trim().length > 0 &&
+        (value.signatureBase64.length % 4 !== 0 || !/^[A-Za-z0-9+/]+={0,2}$/.test(value.signatureBase64))) {
+        result.issues.push('signatureBase64 must use base64 encoding');
+      }
+      const signedAt: string | undefined = value.signedAt;
+      if (signedAt === undefined) {
+        result.issues.push('signedAt must be present for canary, active, or rolledBack artifacts');
+      } else {
+        ContractValidator.requireIsoTimestamp(result, signedAt, 'signedAt');
+      }
+    }
+    const rollbackTargetDigest: string | undefined = value.rollbackTargetDigest;
+    if (rollbackTargetDigest !== undefined) {
+      ContractValidator.requireSha256Digest(result, rollbackTargetDigest, 'rollbackTargetDigest');
+    }
+    if (value.lifecycleStatus === ArtifactLifecycleStatus.ROLLED_BACK) {
+      if (rollbackTargetDigest === undefined) {
+        result.issues.push('rollbackTargetDigest must be present for a rolledBack artifact');
+      } else {
+        if (rollbackTargetDigest === value.artifactDigest) {
+          result.issues.push('rollbackTargetDigest must identify a different artifact');
+        }
+      }
+    }
+    return ContractValidator.finish(result);
+  }
+
+  static validateArtifactLifecycleTransition(previous: ArtifactLifecycleStatus,
+    next: ArtifactLifecycleStatus): ContractValidationResult {
+    const result: ContractValidationResult = new ContractValidationResult();
+    if (previous === next) {
+      return ContractValidator.finish(result);
+    }
+    let allowed: boolean = false;
+    if (previous === ArtifactLifecycleStatus.DISABLED) {
+      allowed = next === ArtifactLifecycleStatus.SHADOW;
+    } else if (previous === ArtifactLifecycleStatus.SHADOW) {
+      allowed = next === ArtifactLifecycleStatus.CANARY || next === ArtifactLifecycleStatus.DISABLED;
+    } else if (previous === ArtifactLifecycleStatus.CANARY) {
+      allowed = next === ArtifactLifecycleStatus.ACTIVE || next === ArtifactLifecycleStatus.SHADOW ||
+        next === ArtifactLifecycleStatus.ROLLED_BACK;
+    } else if (previous === ArtifactLifecycleStatus.ACTIVE) {
+      allowed = next === ArtifactLifecycleStatus.ROLLED_BACK;
+    } else if (previous === ArtifactLifecycleStatus.ROLLED_BACK) {
+      allowed = next === ArtifactLifecycleStatus.DISABLED;
+    }
+    if (!allowed) {
+      result.issues.push('artifact lifecycle transition is not allowed');
+    }
     return ContractValidator.finish(result);
   }
 

@@ -1,4 +1,4 @@
-export const AGENT_STORAGE_VERSION: string = '0.6.0';
+export const AGENT_STORAGE_VERSION: string = '0.8.0';
 export {
   AGENT_STORAGE_SCHEMA_VERSION,
   StorageWriteCode,
@@ -92,3 +92,17 @@ export {
   RuntimeExecutionRecoveryBridgeConfig,
   RuntimeExecutionRecoveryBridge
 } from './src/main/ets/integration/RuntimeExecutionRecoveryBridge';
+export { createRdbRecoveredAgentRuntime } from
+  './src/main/ets/integration/RdbRuntimeRecoveryComposition';
+export {
+  ARTIFACT_REGISTRY_RECORD_ID,
+  DurableArtifactRegistryAdapter
+} from './src/main/ets/integration/DurableArtifactRegistryAdapter';
+export { RuntimeMemoryContextAdapter } from
+  './src/main/ets/integration/RuntimeMemoryContextAdapter';
+export {
+  ENCRYPTED_RDB_CONFIGURATION_VERSION,
+  EncryptedRdbConfigurationRequest,
+  EncryptedRdbStoreConfigs,
+  createEncryptedRdbStoreConfigs
+} from './src/main/ets/integration/EncryptedRdbConfiguration';

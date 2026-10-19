@@ -1,0 +1,33 @@
+{
+  "observedAt": "2026-10-18T14:24:00+08:00",
+  "repository": {
+    "url": "https://github.com/ZhangYiqun018/MTRouter",
+    "defaultBranch": "main",
+    "commit": "ee9e4573a128c3e54aa8c83800318bfb783c4dfe",
+    "tree": "6911bcf33bfdd30d6f414c09b5f5d14c5deeb913",
+    "commitDate": "2026-06-16T02:06:33Z",
+    "releaseTagsObserved": 0
+  },
+  "byteObservations": {
+    "sourceArchive": {
+      "sizeBytes": 1101238,
+      "sha256": "fb54221173ee047e94ebec06eee154486fce152472c2206d2fd32cce80ad5ed5"
+    },
+    "pyproject": {
+      "sizeBytes": 7444,
+      "sha256": "9e6a1e477c2311ca03ba9f486891528d8d05a797141548ea1be427217a5edd5c"
+    },
+    "license": {
+      "sizeBytes": 1094,
+      "sha256": "0f796e58f91d1c07bb2c1b1d0f8bf3a83017c3a5dec1bdc6fae733b2cd2e875b"
+    },
+    "readme": {
+      "sizeBytes": 5524,
+      "sha256": "9e2ab732997dcd8498e48527ca6d59d1e18f313ce5d588bea1480d61f7373e62"
+    },
+    "paperPdfV1": {
+      "sizeBytes": 2019376,
+      "sha256": "339973fb8e766c652aa9f990e90197db735a01e6ee574ab6178db7ddec7d0581"
+    }
+  }
+}

@@ -1,0 +1,19 @@
+Workspace: D:\Harmony_agent
+Branch: codex/module-masrouter-t52
+Accepted T51 base commit: 1502f212e0c1fd75305476f5de046d1bae72aff5
+Acceptance-record commit on this branch: 5ce4429
+Node: v24.16.0
+OS: MINGW64_NT-10.0-26200 3.6.3-7674c51e.x86_64 x86_64
+Local time: 2026-10-19T13:31:04+0800
+Root build-profile.json5 SHA-256: 67e5ead71d95e1eba36f84f9b0e91ebdec2225ad4eb2b76ab9fd2acdd04c6c63
+Test scratch root (workspace-internal): D:\Harmony_agent\artifacts\t52-handoff-tests
+External downloads during T52: none
+T52 inputs are T50/T51 files already in the workspace.
+
+Six pre-existing unstaged files were excluded from this task and preserved:
+- agent_connectors/BuildProfile.ets
+- agent_connectors/oh-package-lock.json5
+- agent_runtime/BuildProfile.ets
+- agent_storage/oh-package-lock.json5
+- native_tools/oh-package-lock.json5
+- test_host/oh-package-lock.json5

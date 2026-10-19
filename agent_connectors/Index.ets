@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.2.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.8.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -17,6 +17,14 @@ export { McpInvocationPolicyBridge } from './src/main/ets/mcp/McpPolicyBridge';
 export { McpClientManagerToolPort } from './src/main/ets/mcp/McpClientManagerToolPort';
 export { McpAgentAdapter } from './src/main/ets/mcp/McpAgentAdapter';
 export { McpStepDispatchAdapter } from './src/main/ets/mcp/McpStepDispatchAdapter';
+export {
+  McpRuntimeCompositionErrorCode,
+  McpRuntimeCompositionError,
+  createMcpProductionAgentRuntime,
+  createRecoveredMcpProductionAgentRuntime,
+  createProviderMcpProductionAgentRuntime,
+  createRecoveredProviderMcpProductionAgentRuntime
+} from './src/main/ets/mcp/McpProductionRuntime';
 export {
   ProviderCapabilityKind,
   ProviderErrorCode,
@@ -60,6 +68,14 @@ export {
 } from './src/main/ets/provider/ProviderLifecycle';
 export { ProviderOperationRunner } from './src/main/ets/provider/ProviderOperationRunner';
 export {
+  ASSET_CREDENTIAL_STORE_VERSION,
+  AssetCredentialHeaderKind,
+  AssetCredentialBinding,
+  AssetSecretQueryPort,
+  HarmonyAssetSecretQueryPort,
+  AssetStoreProviderCredentialPort
+} from './src/main/ets/provider/AssetStoreProviderCredentialPort';
+export {
   ModelProviderProfile,
   ProviderCatalog,
   RegisteredModelProvider,
@@ -70,3 +86,32 @@ export {
   GenericEmbeddingProvider,
   GenericRemoteApiProvider
 } from './src/main/ets/provider/GenericProviders';
+export {
+  ProviderPlanningPhase,
+  ProviderSemanticPlannerErrorCode,
+  ProviderSemanticPlannerError,
+  ProviderSemanticPlannerConfig,
+  ProviderPlannerTrace,
+  ProviderSemanticPlannerObserverPort,
+  ProviderSemanticPlanner
+} from './src/main/ets/provider/ProviderSemanticPlanner';
+export { CollaborativeProviderSemanticPlanner } from
+  './src/main/ets/provider/CollaborativeProviderSemanticPlanner';
+export {
+  LocalAIGatewayTransportProfile,
+  LocalAIGatewayTransportProfileValidator,
+  LocalAIGatewayHttpRequest,
+  LocalAIGatewayHttpResponse,
+  LocalAIGatewayHttpClientPort,
+  ArkTsLocalAIGatewayHttpClient,
+  LocalAIGatewayModelTransport,
+  createLocalAIGatewayModelProfile
+} from './src/main/ets/provider/LocalAIGatewayTransport';
+export {
+  LocalAIGatewayRuntimeCompositionErrorCode,
+  LocalAIGatewayRuntimeCompositionError,
+  LocalAIGatewayMcpRuntimeConfig,
+  LocalAIGatewayMcpRuntimePorts,
+  createLocalAIGatewayMcpProductionAgentRuntime,
+  createRecoveredLocalAIGatewayMcpProductionAgentRuntime
+} from './src/main/ets/provider/LocalAIGatewayProductionRuntime';

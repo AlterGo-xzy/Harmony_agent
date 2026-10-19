@@ -1,0 +1,6 @@
+Workspace-internal paths deleted after evidence capture:
+- D:\Harmony_agent\.local\t51-source-audit (archive, extracted source, tooling and analysis output)
+- D:\Harmony_agent\artifacts\t51-input-tests (test scratch root)
+
+Verified absent after cleanup. No file was written to C:\Users\Admin\AppData\Local\Temp during this fix.
+The repository retains only derived digests, import summaries and the deterministic input contract; no upstream source, dataset, model, credential or checkpoint is retained.

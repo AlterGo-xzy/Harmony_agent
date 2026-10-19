@@ -1,0 +1,31 @@
+{
+  "schemaVersion": "1",
+  "benchmarkId": "harmony-agent-bench-pilot",
+  "suiteVersion": "1.0.0",
+  "frozenAt": "2026-10-12T00:00:00+08:00",
+  "datasetDigest": "sha256:59fe59405aacf21d68bb562d69c84f623f53b8f14173ce633ecb47d5c9f1100a",
+  "modelId": "fixture-model-exact",
+  "modelVersion": "1",
+  "providerId": "deterministic-local-fixture",
+  "region": "local-offline",
+  "priceSnapshotId": "fixture-zero-cost-2026-10-12",
+  "priceSnapshotDigest": "sha256:a8a0a1556d626613feb5249af424004b2b4c233bddb4bc9e9d06b71ed3248f76",
+  "contractSchemaVersion": "1",
+  "routerPolicyVersion": "deterministic-router-1",
+  "latencyClock": "deterministic-virtual-zero",
+  "performanceComparable": false,
+  "arms": [
+    {
+      "armId": "strong-single",
+      "kind": "strongSingleAgent",
+      "permissionPolicyVersion": "permission-policy-7",
+      "contextPolicyVersion": "context-policy-4"
+    },
+    {
+      "armId": "multi-agent",
+      "kind": "multiAgent",
+      "permissionPolicyVersion": "permission-policy-7",
+      "contextPolicyVersion": "context-policy-4"
+    }
+  ]
+}

@@ -94,6 +94,22 @@ export class DurableExecutionRecoveryStore {
 
   static async open(backend: DurableSnapshotBackendPort, integrity: SnapshotIntegrityPort,
     migration?: StorageMigrationPort): Promise<DurableExecutionStoreOpenResult> {
+    return await DurableExecutionRecoveryStore.openWithMode(backend, integrity, migration, true);
+  }
+
+  /**
+   * Opens a session without independently normalizing IN_FLIGHT operations.
+   * RuntimeExecutionRecoveryBridge uses this mode so operation, budget, lease
+   * and Runtime checkpoint recovery can be published by one later CAS.
+   */
+  static async openForRuntimeRecovery(backend: DurableSnapshotBackendPort, integrity: SnapshotIntegrityPort,
+    migration?: StorageMigrationPort): Promise<DurableExecutionStoreOpenResult> {
+    return await DurableExecutionRecoveryStore.openWithMode(backend, integrity, migration, false);
+  }
+
+  private static async openWithMode(backend: DurableSnapshotBackendPort, integrity: SnapshotIntegrityPort,
+    migration: StorageMigrationPort | undefined,
+    normalizeInFlight: boolean): Promise<DurableExecutionStoreOpenResult> {
     await backend.initialize();
     const source: StorageSnapshotEnvelope | undefined = await backend.load();
     const result: DurableExecutionStoreOpenResult = new DurableExecutionStoreOpenResult();
@@ -104,7 +120,7 @@ export class DurableExecutionRecoveryStore {
       return result;
     }
 
-    const restored = ExecutionRecoveryStore.restore(source, integrity, migration);
+    const restored = ExecutionRecoveryStore.restore(source, integrity, migration, normalizeInFlight);
     if (!restored.accepted || restored.store === undefined) {
       result.code = restored.code;
       return result;

@@ -1,0 +1,1 @@
+not run: T51 is an offline input-contract gate; no ArkTS/HarmonyOS HAR/HAP build is required or claimed.

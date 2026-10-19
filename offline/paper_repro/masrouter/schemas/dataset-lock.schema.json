@@ -1,0 +1,74 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://harmony-agent.local/schemas/masrouter-dataset-lock-v1.json",
+  "title": "MasRouter dataset lock input contract",
+  "description": "Dataset identity, split semantics and digest requirements for the five MasRouter benchmarks. A locked dataset requires byte size, SHA-256 and record count; missing evidence must remain explicit.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "contractId", "upstreamCommit", "lockStatus", "executionReady", "datasets", "paperSubsets"],
+  "properties": {
+    "schemaVersion": { "const": "1" },
+    "contractId": { "const": "harmony-agent-masrouter-dataset-lock-v1" },
+    "upstreamCommit": { "type": "string", "pattern": "^[0-9a-f]{40}$" },
+    "lockStatus": { "enum": ["candidate-unresolved", "partially-resolved", "locked"] },
+    "executionReady": { "type": "boolean" },
+    "datasets": {
+      "type": "array",
+      "minItems": 5,
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/dataset" }
+    },
+    "paperSubsets": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/paperSubset" }
+    }
+  },
+  "$defs": {
+    "split": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["description", "trainPercent", "testPercent", "seed", "determinism"],
+      "properties": {
+        "description": { "type": "string", "minLength": 1 },
+        "trainPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "testPercent": { "type": ["integer", "null"], "minimum": 0, "maximum": 100 },
+        "seed": { "type": ["integer", "null"] },
+        "determinism": { "enum": ["deterministic", "deterministic-given-identical-file-order", "not-reproducible", "repository-defined"] }
+      }
+    },
+    "dataset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id", "requiredPath", "source", "sourceRevision", "split",
+        "sizeBytes", "sha256", "recordCount", "status", "blockingIssues", "evidence"
+      ],
+      "properties": {
+        "id": { "enum": ["gsm8k", "humaneval", "math", "mbpp", "mmlu"] },
+        "requiredPath": { "type": "string", "minLength": 1 },
+        "source": { "type": "string", "minLength": 1 },
+        "sourceRevision": { "type": ["string", "null"] },
+        "split": { "$ref": "#/$defs/split" },
+        "sizeBytes": { "type": ["integer", "null"], "minimum": 1 },
+        "sha256": { "type": ["string", "null"], "pattern": "^[0-9a-f]{64}$" },
+        "recordCount": { "type": ["integer", "null"], "minimum": 1 },
+        "status": { "enum": ["unresolved", "locked"] },
+        "blockingIssues": { "type": "array", "uniqueItems": true, "items": { "type": "string" } },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    },
+    "paperSubset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["benchmark", "expectedCount", "reconstructionScript", "manifestPresent", "status", "evidence"],
+      "properties": {
+        "benchmark": { "type": "string", "minLength": 1 },
+        "expectedCount": { "type": "integer", "minimum": 1 },
+        "reconstructionScript": { "type": "string", "minLength": 1 },
+        "manifestPresent": { "type": "boolean" },
+        "status": { "enum": ["unresolved", "locked"] },
+        "evidence": { "type": "array", "minItems": 1, "items": { "type": "string" } }
+      }
+    }
+  }
+}

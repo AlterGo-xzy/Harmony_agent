@@ -1,15 +1,18 @@
 import {
   AgentRuntimeEvent,
   AgentTaskStatus,
+  CollaborationMode,
   ContractCodec,
   ContractValidator,
-  ToolInvocation
+  ToolInvocation,
+  WorkflowGraph
 } from '@harmony_agent/agent-contracts';
-import { WorkflowGraphValidator } from '@harmony_agent/agent-core';
+import { WorkflowGraphValidator, WorkflowRuntimeSnapshot } from '@harmony_agent/agent-core';
 import {
   RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION,
   RuntimeTaskRecoveryCheckpoint
 } from './OrchestrationTypes';
+import { CollaborationPlanValidator } from './CollaborationPlanValidator';
 import { normalizeTaskSubmission } from './SessionNormalization';
 
 export class RuntimeCheckpointValidationResult {
@@ -34,12 +37,20 @@ function json(value: string): boolean {
   }
 }
 
+function permitsMissingMultiPlan(value: RuntimeTaskRecoveryCheckpoint): boolean {
+  if (value.snapshot.status !== AgentTaskStatus.FAILED) return false;
+  return value.snapshot.resultJson === '{"reason":"agentActivationBudgetExhausted"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanRequired"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanSelectionFailed"}' ||
+    value.snapshot.resultJson === '{"reason":"collaborationPlanInvalid"}';
+}
+
 /** Strict structural and binding validation before a checkpoint is trusted. */
 export class RuntimeCheckpointValidator {
   static validate(value: RuntimeTaskRecoveryCheckpoint): RuntimeCheckpointValidationResult {
     const result: RuntimeCheckpointValidationResult = new RuntimeCheckpointValidationResult();
     try {
-      if (value.checkpointVersion !== RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION) {
+      if (value.checkpointVersion !== RUNTIME_TASK_RECOVERY_CHECKPOINT_VERSION && value.checkpointVersion !== '1.1') {
         result.issues.push('unsupported checkpointVersion');
       }
       if (!ContractValidator.validateTaskSubmission(value.submission).valid) {
@@ -53,6 +64,19 @@ export class RuntimeCheckpointValidator {
       }
       if (!ContractValidator.validateAgentTaskSnapshot(value.snapshot).valid) {
         result.issues.push('invalid snapshot');
+      }
+      if (value.checkpointVersion === '1.1') {
+        if (value.collaborationMode !== CollaborationMode.SINGLE) result.issues.push('legacy MULTI is unsafe');
+      } else {
+        const preparation = value.collaborationPreparation;
+        if (preparation.version !== '1.0' || !count(preparation.evaluations) || preparation.evaluations > 2 ||
+          typeof preparation.pending !== 'boolean' || typeof preparation.baselineOnly !== 'boolean' ||
+          (preparation.pending && preparation.evaluations === 0)) {
+          result.issues.push('invalid collaboration preparation state');
+        }
+        if (preparation.evaluations > 0 && value.usage.agentActivations > value.envelope.executionBudget.maxAgentActivations) {
+          result.issues.push('activation budget exceeded');
+        }
       }
       RuntimeCheckpointValidator.validateIdentity(value, result);
       RuntimeCheckpointValidator.validateEvents(value, result);
@@ -135,7 +159,17 @@ export class RuntimeCheckpointValidator {
       value.planningRequest.collaborationMode !== value.collaborationMode) {
       result.issues.push('planningRequest binding mismatch');
     }
-    const previous = value.planningRequest.previousWorkflow;
+    if (value.planningRequest.collaborationPlan !== undefined) {
+      const planValidation = CollaborationPlanValidator.validate(value.planningRequest.collaborationPlan,
+        value.frame, value.envelope.executionBudget.maxAgentActivations);
+      if (!planValidation.valid ||
+        value.planningRequest.collaborationPlan.mode !== value.collaborationMode) {
+        result.issues.push('collaborationPlan is invalid or not bound to collaborationMode');
+      }
+    } else if (value.collaborationMode === CollaborationMode.MULTI && !permitsMissingMultiPlan(value)) {
+      result.issues.push('multi collaboration requires a collaborationPlan');
+    }
+    const previous: WorkflowGraph | undefined = value.planningRequest.previousWorkflow;
     if (previous !== undefined && (previous.taskId !== value.envelope.taskId ||
       !WorkflowGraphValidator.validate(previous).valid)) {
       result.issues.push('previousWorkflow is invalid');
@@ -144,8 +178,8 @@ export class RuntimeCheckpointValidator {
 
   private static validateWorkflow(value: RuntimeTaskRecoveryCheckpoint,
     result: RuntimeCheckpointValidationResult): void {
-    const workflow = value.workflow;
-    const scheduler = value.scheduler;
+    const workflow: WorkflowGraph | undefined = value.workflow;
+    const scheduler: WorkflowRuntimeSnapshot | undefined = value.scheduler;
     if ((workflow === undefined) !== (scheduler === undefined)) {
       result.issues.push('workflow and scheduler must be present together');
       return;

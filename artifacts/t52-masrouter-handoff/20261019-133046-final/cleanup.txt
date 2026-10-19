@@ -1,0 +1,7 @@
+Workspace-internal test scratch root deleted after validation:
+- D:\Harmony_agent\artifacts\t52-handoff-tests
+Verified absent after cleanup.
+
+No dependency, dataset, model, encoder, checkpoint, optimizer state, credential or training log was downloaded or retained.
+
+Process note: one intermediate checker stdout redirect to Git Bash /tmp/t52-report.json was removed immediately; the final checker run and all evidence are under D:\Harmony_agent.

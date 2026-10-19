@@ -1,0 +1,29 @@
+> hvigor [32mTYPE CHECK SUCCESSFUL in 155 ms [39m
+> hvigor WARN: agent_contracts: HAR modules cannot be installed independently. As a result, the "applyToProducts" configuration will not take effect. See more details.
+> hvigor [32mUP-TO-DATE :agent_contracts:default@PreBuild...  [39m
+> hvigor [32mFinished :agent_contracts:default@CreateHarModuleInfo... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :agent_contracts:default@CreateBuildProfile...  [39m
+> hvigor [32mFinished :agent_contracts:default@PreCheckSyscap... after 1 ms [39m
+> hvigor [32mUP-TO-DATE :agent_contracts:default@GenerateUnitTestTemplate...  [39m
+> hvigor [32mFinished :agent_contracts:default@GeneratePkgContextInfo... after 4 ms [39m
+> hvigor [32mFinished :agent_contracts:default@MergeProfile... after 4 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessRouterMap... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessShareConfig... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessStartupConfig... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessProfile... after 62 ms [39m
+> hvigor [32mFinished :agent_contracts:default@GenerateLoaderJson... after 8 ms [39m
+> hvigor [32mFinished :agent_contracts:default@UnitTestProcessProfile... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ProcessResource... after 2 ms [39m
+> hvigor [32mFinished :agent_contracts:default@CompileResource... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@ReplaceUnitTestIndexFile... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@BuildUnitTestHook... after 1 ms [39m
+> hvigor [32mFinished :agent_contracts:default@UnitTestArkTS... after 2 s 302 ms [39m
+> hvigor [32mWindows_NT[39m
+> hvigor [32mWindows_NT[39m
+[32m[2026-10-17T21:31:33.928] [INFO] default - [39mFinished write html report
+> hvigor [32mFinished :agent_contracts:default@GenerateUnitTestResult... after 675 ms [39m
+> hvigor [32mFinished :agent_contracts:test... after 1 ms [39m
+> hvigor [32mBUILD SUCCESSFUL in 5 s 434 ms [39m
+
+20 tasks in total: 17 executed, 3 up-to-date
+[32m[2026-10-17T21:31:33.957] [INFO] default - [39mFinished file written successfully
