@@ -538,6 +538,8 @@ T52/M13-C 已完成 adaptation schema 与 handoff admission 的离线门：`hand
 
 验收：在 32/128/512/2,048/10,000+ Registry 规模上，与 independent top-k 对比 tool-set completeness、wrong-tool、时延、内存和成本。
 
+当前实施状态：T56/M14-A 已完成离线上游来源冻结。官方仓库固定到 commit `d0885766a9b60f778c35e161ad91e3a0d8af6dd7` / tree `e3b0bf2a3428640ece71ec5994571544100ec5a4`，并固定 MIT 根许可证、两个 Apache-2.0 external tree、arXiv `2607.25718v2`、26 个关键文件、13,860-tool corpus、六个 100-query split、论文参数和 BERT/Qwen2.5 结果表。`.gitmodules` 声明与实际 `040000` tracked-tree 存储不一致；checkpoint、encoder/Agent/DFSDT revision/digest、raw ToolBench/UltraTool、reward/trajectory 和 judge snapshot 仍 unresolved。checker 以 11/11 fail-closed 自测覆盖来源、执行和架构边界漂移。本门没有安装依赖、下载模型/原始数据、读取凭据、执行训练/推理/benchmark 或修改 Runtime；T57 可在 research-only 边界继续，T58 仍需单独授权。
+
 ### M15：AFlow Offline Optimizer
 
 位置：只在离线域读取稳定 harmony_agent Bench/evaluator，输出由白名单算子组成的候选 Typed Workflow；不得把任意生成代码带入在线 Runtime。
