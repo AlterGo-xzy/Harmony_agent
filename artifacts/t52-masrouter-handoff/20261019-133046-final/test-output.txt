@@ -1,0 +1,22 @@
+PASS: valid research-only adaptation handoff
+PASS: valid single-agent handoff
+PASS: valid official-reproduction model pool
+PASS: upstream drift -> upstream identity drift
+PASS: unknown top-level field -> handoff manifest contains missing or unknown fields
+PASS: unknown nested plan field -> candidatePlan contains missing or unknown fields
+PASS: encoder weights inclusion -> encoder weights are forbidden
+PASS: Python runtime inclusion -> Python runtime is forbidden
+PASS: encoder path inclusion -> forbidden path segment encoder
+PASS: synchronous network in selectPlan -> runtime integration drift: networkInsideSynchronousSelectPlan
+PASS: role out of bounds -> role assignment is not present in the Role Registry snapshot
+PASS: role assignment order drift -> role assignments must follow Role Registry order
+PASS: candidate model out of bounds -> candidate model is not present in the model pool snapshot
+PASS: official reproduction model pool drift -> official reproduction model pool drift
+PASS: feature schema digest drift -> feature schema digest drift
+PASS: file digest drift -> file digest drift
+PASS: extra unlisted file -> handoff contains unlisted or missing files
+PASS: candidate without Python reference evidence -> candidate requires passed Python reference evidence
+PASS: parity claim -> training repository cannot claim arktsParity
+PASS: stale SHA256SUMS -> SHA256SUMS is stale or non-canonical
+PASS: oversized decision payload -> decision payload exceeds application budget
+Tests run: 21, Failure: 0, Error: 0, Pass: 21, Ignore: 0

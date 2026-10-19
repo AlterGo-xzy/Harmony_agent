@@ -1,0 +1,245 @@
+{
+  "schemaVersion": "1",
+  "handoffId": "research-only-masrouter-handoff-v1",
+  "createdAt": "2026-10-19T14:00:00+08:00",
+  "researchOnly": true,
+  "trainingTrack": "harmony-agent-adaptation",
+  "trainingState": "smoke",
+  "repository": {
+    "sourceCommit": "0123456789abcdef0123456789abcdef01234567",
+    "dirty": false
+  },
+  "upstream": {
+    "commit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+    "tree": "e4d618f81675a46ed6e2f5e6ee1970519f1afa5b",
+    "license": "Apache-2.0"
+  },
+  "artifact": {
+    "algorithm": "MasRouter",
+    "artifactKind": "policy",
+    "decisionParameterCount": 0,
+    "includesEncoderWeights": false,
+    "includesTokenizerAssets": false,
+    "includesPythonRuntime": false,
+    "includesPyTorch": false,
+    "includesOptimizerState": false,
+    "includesDatasets": false,
+    "includesTrainingLogs": false,
+    "artifactManifestCompatible": true
+  },
+  "runtimeIntegration": {
+    "targetPolicyPort": "CollaborationPlanSelectorPort",
+    "onlyTaskControlEntry": "AgentRuntimeFacade",
+    "policyReplacementOnly": true,
+    "roleRegistryOnly": true,
+    "singleAgentAlwaysValid": true,
+    "reserveFullActivationBudgetBeforeMulti": true,
+    "maximumCollaborationReevaluations": 1,
+    "lowConfidenceFallback": "SINGLE",
+    "timeoutFallback": "SINGLE",
+    "checkpointIncompatibleFallback": "SINGLE",
+    "learnedEnabledByDefault": false,
+    "networkInsideSynchronousSelectPlan": false,
+    "fallback": "deterministicSingle"
+  },
+  "featureEnvelope": {
+    "featureSchemaVersion": "masrouter-feature-v1",
+    "encoder": {
+      "modelId": "sentence-transformers/all-MiniLM-L6-v2",
+      "dimensions": 384,
+      "revision": "research-fixture-only-revision",
+      "sha256": "9999999999999999999999999999999999999999999999999999999999999999",
+      "deploymentMode": "external-controlled-service"
+    },
+    "sourceDigests": {
+      "upstreamCommit": "e005f7696fe0c0412563f6cd67f4cd3712fa2822",
+      "paperSha256": "b5f6c21f22d94c3a8a790519506399221b5f499c3f9d005a426bd32230e8070b",
+      "featureSchemaSha256": "3c61384542f1856cdd68bcfd5fa2d0c1d87ebe3f304e6db6e9a36eea1c31b6f4",
+      "roleRegistrySnapshotSha256": "32d03d1a2e4b3bb862eb0fdb87d499955202dcd91e594c6ca345912611523de1",
+      "modelPoolSnapshotSha256": "5a966130db626d8a3118c4303b651eb4006eed0fe872a280d7116470b05eaa9a",
+      "priceSnapshotSha256": "e6877aebef9c5f2f128eeb82dbb19073fe8ebb1e1c0dfe019f1c95c8cdb9092b"
+    }
+  },
+  "candidatePlan": {
+    "planVersion": "1.0",
+    "mode": "multi",
+    "taskBinding": "runtime-supplied",
+    "roleRegistryDigest": "sha256:32d03d1a2e4b3bb862eb0fdb87d499955202dcd91e594c6ca345912611523de1",
+    "decisionDigest": "sha256:ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff",
+    "assignments": [
+      {
+        "roleId": "ProjectManager",
+        "roleVersion": "1.0.0",
+        "roleRegistryDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      {
+        "roleId": "AlgorithmDesigner",
+        "roleVersion": "1.0.0",
+        "roleRegistryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      }
+    ],
+    "confidenceBasisPoints": 7500,
+    "estimatedCostMicros": 1200000,
+    "estimatedActivationCount": 2
+  },
+  "candidateModelSet": [
+    {
+      "modelId": "gpt-4o-mini",
+      "modelVersion": "source-profile",
+      "modelRegistryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "advisoryOnly": true,
+      "authorizationGranted": false
+    },
+    {
+      "modelId": "deepseek-chat",
+      "modelVersion": "source-profile",
+      "modelRegistryDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+      "advisoryOnly": true,
+      "authorizationGranted": false
+    }
+  ],
+  "roleRegistrySnapshot": {
+    "source": "RoleRegistry",
+    "snapshotDigest": "32d03d1a2e4b3bb862eb0fdb87d499955202dcd91e594c6ca345912611523de1",
+    "roleCount": 4,
+    "roles": [
+      {
+        "roleId": "ProjectManager",
+        "roleVersion": "1.0.0",
+        "registryDigest": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      {
+        "roleId": "AlgorithmDesigner",
+        "roleVersion": "1.0.0",
+        "registryDigest": "sha256:2222222222222222222222222222222222222222222222222222222222222222"
+      },
+      {
+        "roleId": "MathSolver",
+        "roleVersion": "1.0.0",
+        "registryDigest": "sha256:3333333333333333333333333333333333333333333333333333333333333333"
+      },
+      {
+        "roleId": "Critic",
+        "roleVersion": "1.0.0",
+        "registryDigest": "sha256:4444444444444444444444444444444444444444444444444444444444444444"
+      }
+    ]
+  },
+  "modelPoolSnapshot": {
+    "source": "ModelRegistry",
+    "snapshotDigest": "5a966130db626d8a3118c4303b651eb4006eed0fe872a280d7116470b05eaa9a",
+    "modelCount": 5,
+    "models": [
+      {
+        "modelId": "gpt-4o-mini",
+        "modelVersion": "source-profile",
+        "registryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+      },
+      {
+        "modelId": "claude-3-5-haiku-20241022",
+        "modelVersion": "source-profile",
+        "registryDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+      },
+      {
+        "modelId": "gemini-1.5-flash-latest",
+        "modelVersion": "source-profile",
+        "registryDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+      },
+      {
+        "modelId": "llama-3.1-70b-instruct",
+        "modelVersion": "source-profile",
+        "registryDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+      },
+      {
+        "modelId": "deepseek-chat",
+        "modelVersion": "source-profile",
+        "registryDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+      }
+    ]
+  },
+  "priceSnapshot": {
+    "snapshotId": "masrouter-research-fixture-price-v1",
+    "snapshotDigest": "e6877aebef9c5f2f128eeb82dbb19073fe8ebb1e1c0dfe019f1c95c8cdb9092b",
+    "currency": "USD",
+    "unit": "per-million-tokens",
+    "verified": false
+  },
+  "evidence": {
+    "paperReproduction": "notRun",
+    "pythonReference": "notRun",
+    "arktsParity": "notRun",
+    "deviceParity": "notRun",
+    "shadow": "notRun",
+    "canary": "notRun",
+    "active": "notRun"
+  },
+  "costIncurredUsd": 0,
+  "files": [
+    {
+      "path": "LICENSES/MasRouter-Apache-2.0.txt",
+      "role": "sourceLicense",
+      "sizeBytes": 40,
+      "sha256": "1779a5ba086258724cb8b84343399fcf3b94712f6da550918fb0dd75c2e1cce0"
+    },
+    {
+      "path": "checkpoint/decision.bin",
+      "role": "decisionPayload",
+      "sizeBytes": 31,
+      "sha256": "fe82827dfdd3e27958605d42bee4f3d6382a04e9de9f16fe8b1a7eaef2d26fef"
+    },
+    {
+      "path": "export/decision-safe.bin",
+      "role": "safeDecisionExport",
+      "sizeBytes": 26,
+      "sha256": "e2d0417075eddcf82eb6c5fb47904c46bacce8d86d3a256cc1158058c40005cf"
+    },
+    {
+      "path": "fixtures/golden.jsonl",
+      "role": "goldenFixtures",
+      "sizeBytes": 34,
+      "sha256": "4a4046f7416c8d8e6b6a769fc413503b01dbc99e1e69f6a0b25dea2b3da265c9"
+    },
+    {
+      "path": "reports/environment.json",
+      "role": "environmentReport",
+      "sizeBytes": 35,
+      "sha256": "a3bbf704a13c6ba451dc39c60889f3d986d7d73ca28bfa33adb909e326d24e11"
+    },
+    {
+      "path": "reports/evaluation.json",
+      "role": "evaluationReport",
+      "sizeBytes": 19,
+      "sha256": "3c6b5e3fa27012786a06520b3d57d0ffe94f7923ec2201e68c11ce900d38825c"
+    },
+    {
+      "path": "reports/training.json",
+      "role": "trainingReport",
+      "sizeBytes": 18,
+      "sha256": "4ef14a18810c915a43ab145ee322815cce740862f3c26b029632f110017acf3c"
+    },
+    {
+      "path": "schemas/feature-v1.json",
+      "role": "featureSchema",
+      "sizeBytes": 41,
+      "sha256": "3c61384542f1856cdd68bcfd5fa2d0c1d87ebe3f304e6db6e9a36eea1c31b6f4"
+    },
+    {
+      "path": "snapshots/model-pool.json",
+      "role": "modelPoolSnapshot",
+      "sizeBytes": 994,
+      "sha256": "5a966130db626d8a3118c4303b651eb4006eed0fe872a280d7116470b05eaa9a"
+    },
+    {
+      "path": "snapshots/price-snapshot.json",
+      "role": "priceSnapshot",
+      "sizeBytes": 132,
+      "sha256": "e6877aebef9c5f2f128eeb82dbb19073fe8ebb1e1c0dfe019f1c95c8cdb9092b"
+    },
+    {
+      "path": "snapshots/role-registry.json",
+      "role": "roleRegistrySnapshot",
+      "sizeBytes": 729,
+      "sha256": "32d03d1a2e4b3bb862eb0fdb87d499955202dcd91e594c6ca345912611523de1"
+    }
+  ]
+}

@@ -2,7 +2,7 @@
 
 更新时间：2026-10-19（Asia/Shanghai）
 
-## Agent Runtime T01–T48、T50、T51，M11 策略供应链与 M12/M13 Routing（S7 已关闭、S8 暂缓、S9 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
+## Agent Runtime T01–T48、T50–T52，M11 策略供应链与 M12/M13 Routing（S7 已关闭、S8 暂缓、S9 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
 
 全工作区命名清除已完成：本次修改 327 个含旧命名的文本，退役 470 个旧二进制/缓存文件并保留 SHA-256 记录。经项目所有者明确授权，另替换 427 个 Codex 历史快照对象及关联目录树，更新 6 个快照引用；旧名称不能再从这些快照恢复。最终扫描覆盖物理文件、路径、UTF-8/UTF-16 内容、ZIP、gzip/TAR 和 Git zlib 对象，旧名称命中为 0；17 个目录联接的名称及目标也无命中。Git 完整性检查通过；快照处理没有改写当前源码、HEAD 或仓库配置，没有执行 reset 或清理源文件。
 
@@ -134,6 +134,8 @@ T51（M13-B MasRouter 环境、数据与价格输入定义）本地离线门已�
 
 2026-10-19 T51/M13-B 验收通过（ACCEPTED）：验收提交 `1502f212e0c1fd75305476f5de046d1bae72aff5`。严格 JSON Schema 校验已实际接入四份输入文档，未支持关键字 fail-closed；测试、源码检查、下载和缓存均限制在 `D:\Harmony_agent` 内且无残留。复验结果为 T51 13/13、T50 回归 4/4、JSON 解析 11/11、证据 SHA-256 18/18 匹配、`git diff --check` 通过、secret-pattern 扫描无命中；原提交 `fdc3cb5` 未改写，六项既有未提交差异保留。该提交作为 T52 基线。本次验收只关闭 T51 环境输入合同门，依赖安装、数据/模型下载、Provider 调用、训练、benchmark、HAR/HAP、签名及设备运行仍未执行。
 
+T52（M13-C MasRouter adaptation schema 与 handoff admission）本地离线门已完成：新增 `handoff-contract.json`、`check-masrouter-handoff.mjs`、`test-masrouter-handoff.mjs` 和 `fixtures/research-only-handoff/`。合同固定 feature envelope、Role/Model Registry 快照、single/multi 有序角色分配、advisory-only 模型集合、置信度/成本/激活估计、逐文件摘要、64 MiB handoff/5 MiB decision payload 预算，以及 encoder/tokenizer/Python/PyTorch/optimizer state/数据集/训练日志禁止项；checker 拒绝角色/模型越界、计划顺序漂移、source digest 漂移、未列文件、路径穿越/符号链接、任务控制字段、同步网络声明和越权 evidence。3 个正向 + 18 个负向自测共 21/21 通过。发布边界继续复用 M11 `ArtifactManifest`/`ArtifactRegistry`/`ArtifactPolicyReleaseRunner`，不创建第二套发布系统；checker 通过只证明结构准入，不证明训练、准确率、parity、包体、设备或生产发布。本门未安装依赖、未下载数据/模型、未读取凭据、未调用 Provider、未训练或运行 benchmark；T54 继续暂停。
+
 历史接手预检阶段，`MemoryDeviceRecovery` 的 3 项无页面设备用例只通过 unsigned 构建，且当时没有可用设备与 signingConfig，证据位于 `artifacts/t08-takeover-preflight/20261001-231154/`。该阶段结论已被 2026-10-02 当前命名签名包的安装、3/3 设备运行和卸载证据取代；T08 当前已关闭，运行步骤仍见 `docs/AGENT_MEMORY_DEVICE_ACCEPTANCE.md`。
 
 2026-10-01 23:26 历史只读诊断：用户 IDE 安装的主 HAP 在普通 Run 的 `aa start` 阶段因 `TestHostAbility.exported=false` 返回 `00402028`；设备当时只有主模块。诊断证据位于 `artifacts/t08-launch-diagnostic/20261001-232620/`。
@@ -148,7 +150,7 @@ T01–T11 的既有设备证据包含 M05-A 的 API 26 RDB 恢复，以及 T08 �
 
 ## 当前结论
 
-T01–T48、T50 与 T51 已关闭各自记录的任务门，T51 已通过验收并作为 T52 基线，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭；S8 Model Routing 完成来源冻结后按项目所有者决定暂缓训练，S9 Collaboration Routing 已完成来源冻结、复现准入与环境输入合同。T39–T43 固定协作计划、逐角色 Provider、真实证据封存/准入并完成 12×2 设备批次；T44–T47 完成 artifact provenance、签名包、durable Registry 和 baseline-first 安全发布/回滚；M11-E 补齐通用 policy timeout/cancel；T48/T50/T51 分别固定 MTRouter 与 MasRouter 的官方来源、论文协议及环境输入合同，但都没有执行原环境复现，T51 的依赖版本、数据 digest、模型 revision 和价格仍全部 unresolved。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、具体 Provider/Tool/learned policy 的底层取消资源释放、第三方远端 MCP 兼容性、生产密钥治理、policy loader、MTRouter 原环境安装/复现、MasRouter 依赖环境冻结/复现、decision fixture、checkpoint/parity/shadow/Bench，以及 M13–M14 learned Router；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
+T01–T48、T50–T52 已关闭各自记录的任务门，T51 已通过验收并作为 T52 基线，S6 Bench Pilot 已取得真实双 arm Provider/system 设备基线，S7 通用策略供应链已关闭；S8 Model Routing 完成来源冻结后按项目所有者决定暂缓训练，S9 Collaboration Routing 已完成来源冻结、复现准入、环境输入合同与 adaptation handoff 结构门。T39–T43 固定协作计划、逐角色 Provider、真实证据封存/准入并完成 12×2 设备批次；T44–T47 完成 artifact provenance、签名包、durable Registry 和 baseline-first 安全发布/回滚；M11-E 补齐通用 policy timeout/cancel；T48/T50/T51 分别固定 MTRouter 与 MasRouter 的官方来源、论文协议及环境输入合同，但都没有执行原环境复现，T51 的依赖版本、数据 digest、模型 revision 和价格仍全部 unresolved。唯一任务控制入口仍为 `AgentRuntimeFacade`。T36 的 signed API 26 单任务闭环，以及 T30、T28、T26 的设备证据继续按各自范围有效。当前仍未完成的生产边界包括宿主 credential store、具体 Provider/Tool/learned policy 的底层取消资源释放、第三方远端 MCP 兼容性、生产密钥治理、policy loader、MTRouter 原环境安装/复现、MasRouter 依赖环境冻结/复现、decision fixture、checkpoint/parity/shadow/Bench，以及 M13–M14 learned Router；T43 的 19/24 质量结果是后续路由和工作流优化的基线，不代表所有 case 已达到满分。交付结构是可复用 HAR、无页面测试宿主 HAP、Node Fixture Server、离线 Bench 输入/报告和验收脚本；没有 ArkUI 产品页面或示例应用。
 
 协议层最终采用基于 `@ohos.net.http` 的自有 ArkTS 实现。官方 `@modelcontextprotocol/client@2.0.0` 因 Node 运行时依赖未通过 HAR 兼容门槛，也没有安装到工程。
 

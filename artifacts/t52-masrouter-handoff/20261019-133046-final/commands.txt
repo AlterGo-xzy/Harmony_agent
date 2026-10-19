@@ -1,0 +1,6 @@
+# T52 commands actually executed (2026-10-19, Asia/Shanghai)
+node offline/paper_repro/masrouter/check-masrouter-handoff.mjs --handoff offline/paper_repro/masrouter/fixtures/research-only-handoff
+node offline/paper_repro/masrouter/test-masrouter-handoff.mjs
+node -e "JSON.parse(...) for handoff contract, fixture manifest, snapshots and reports"
+git diff --check
+# No dependency installation, dataset/model download, credential read, Provider call or device operation.

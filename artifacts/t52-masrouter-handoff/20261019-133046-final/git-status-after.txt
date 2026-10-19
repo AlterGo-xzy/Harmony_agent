@@ -1,0 +1,19 @@
+## codex/module-masrouter-t52
+ M PROJECT_STATUS.md
+ M README.md
+ M agent_connectors/BuildProfile.ets
+ M agent_connectors/oh-package-lock.json5
+ M agent_runtime/BuildProfile.ets
+ M agent_storage/oh-package-lock.json5
+ M docs/TEST_MATRIX.md
+ M docs/architecture/HARMONY_AGENT_ARCHITECTURE.md
+ M docs/architecture/HARMONY_AGENT_DEVELOPMENT_MODULES.md
+ M native_tools/oh-package-lock.json5
+ M offline/paper_repro/masrouter/README.md
+ M test_host/oh-package-lock.json5
+?? offline/paper_repro/masrouter/check-masrouter-handoff.mjs
+?? offline/paper_repro/masrouter/fixtures/
+?? offline/paper_repro/masrouter/handoff-contract.json
+?? offline/paper_repro/masrouter/test-masrouter-handoff.mjs
+
+Evidence directory (gitignored, force-added to this task commit): artifacts/t52-masrouter-handoff/20261019-133046-final

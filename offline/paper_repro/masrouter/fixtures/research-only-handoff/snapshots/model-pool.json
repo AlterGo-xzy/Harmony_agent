@@ -1,0 +1,30 @@
+{
+  "modelCount": 5,
+  "models": [
+    {
+      "modelId": "gpt-4o-mini",
+      "modelVersion": "source-profile",
+      "registryDigest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "modelId": "claude-3-5-haiku-20241022",
+      "modelVersion": "source-profile",
+      "registryDigest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "modelId": "gemini-1.5-flash-latest",
+      "modelVersion": "source-profile",
+      "registryDigest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "modelId": "llama-3.1-70b-instruct",
+      "modelVersion": "source-profile",
+      "registryDigest": "sha256:dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"
+    },
+    {
+      "modelId": "deepseek-chat",
+      "modelVersion": "source-profile",
+      "registryDigest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ]
+}
