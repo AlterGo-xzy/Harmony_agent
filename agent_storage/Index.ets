@@ -1,4 +1,4 @@
-export const AGENT_STORAGE_VERSION: string = '0.8.0';
+export const AGENT_STORAGE_VERSION: string = '0.9.0';
 export {
   AGENT_STORAGE_SCHEMA_VERSION,
   StorageWriteCode,
@@ -106,3 +106,9 @@ export {
   EncryptedRdbStoreConfigs,
   createEncryptedRdbStoreConfigs
 } from './src/main/ets/integration/EncryptedRdbConfiguration';
+export {
+  ENCRYPTED_RDB_LIFECYCLE_VERSION,
+  RdbEncryptionKeyPort,
+  openKeyedEncryptedRdbStore,
+  rekeyEncryptedRdbStore
+} from './src/main/ets/integration/EncryptedRdbLifecycle';

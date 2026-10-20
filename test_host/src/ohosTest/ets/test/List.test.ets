@@ -7,6 +7,7 @@ import localAIGatewayDeviceTest from './LocalAIGatewayDevice.test';
 import mcpFacadeDeviceTest from './McpFacadeDevice.test';
 import localAIGatewayFacadeDeviceTest from './LocalAIGatewayFacadeDevice.test';
 import shuviWebSearchDeviceTest from './ShuviWebSearchDevice.test';
+import securityStorageDeviceTest from './SecurityStorageDevice.test';
 
 export default function testsuite(): void {
   deviceSmokeTest();
@@ -18,5 +19,6 @@ export default function testsuite(): void {
   mcpFacadeDeviceTest();
   localAIGatewayFacadeDeviceTest();
   shuviWebSearchDeviceTest();
+  securityStorageDeviceTest();
 }
 

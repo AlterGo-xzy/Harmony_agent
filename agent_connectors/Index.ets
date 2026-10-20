@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.12.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.13.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -94,7 +94,11 @@ export {
   AssetCredentialHeaderKind,
   AssetCredentialBinding,
   AssetSecretQueryPort,
+  AssetSecretMutationPort,
+  AssetCredentialProtectionPolicy,
   HarmonyAssetSecretQueryPort,
+  HarmonyAssetSecretMutationPort,
+  AssetStoreCredentialManager,
   AssetStoreProviderCredentialPort
 } from './src/main/ets/provider/AssetStoreProviderCredentialPort';
 export {

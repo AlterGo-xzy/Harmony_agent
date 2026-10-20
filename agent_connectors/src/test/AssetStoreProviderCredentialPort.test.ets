@@ -2,7 +2,9 @@ import { describe, expect, it } from '@ohos/hypium';
 import {
   AssetCredentialBinding,
   AssetCredentialHeaderKind,
+  AssetSecretMutationPort,
   AssetSecretQueryPort,
+  AssetStoreCredentialManager,
   AssetStoreProviderCredentialPort
 } from '../main/ets/provider/AssetStoreProviderCredentialPort';
 import { ProviderCredential } from '../main/ets/provider/ProviderContracts';
@@ -25,6 +27,35 @@ class FixtureAssetSecretQueryPort implements AssetSecretQueryPort {
     this.alias = alias;
     if (this.fail) return Promise.reject(new Error('fixture secret must not leak'));
     return Promise.resolve(this.bytes);
+  }
+}
+
+class FixtureAssetSecretMutationPort implements AssetSecretMutationPort {
+  operation: string = '';
+  alias: string = '';
+  overwrite: boolean = false;
+  secret: Uint8Array = new Uint8Array();
+  fail: boolean = false;
+
+  provisionSecret(alias: string, secret: Uint8Array, overwrite: boolean): Promise<void> {
+    this.operation = 'provision';
+    this.alias = alias;
+    this.overwrite = overwrite;
+    this.secret = secret;
+    return this.fail ? Promise.reject(new Error('fixture secret must not leak')) : Promise.resolve();
+  }
+
+  rotateSecret(alias: string, secret: Uint8Array): Promise<void> {
+    this.operation = 'rotate';
+    this.alias = alias;
+    this.secret = secret;
+    return this.fail ? Promise.reject(new Error('fixture secret must not leak')) : Promise.resolve();
+  }
+
+  removeSecret(alias: string): Promise<void> {
+    this.operation = 'remove';
+    this.alias = alias;
+    return this.fail ? Promise.reject(new Error('fixture secret must not leak')) : Promise.resolve();
   }
 }
 
@@ -145,5 +176,55 @@ export default function assetStoreProviderCredentialPortTest(): void {
         unavailablePort.resolve('provider-a', 'model.invoke'));
       expect(unavailableMessage.includes('fixture secret')).assertFalse();
     });
+
+    it('provisionsRotatesAndRemovesThroughNarrowMutationPort', 0, async () => {
+      const mutations: FixtureAssetSecretMutationPort = new FixtureAssetSecretMutationPort();
+      const manager: AssetStoreCredentialManager = new AssetStoreCredentialManager(mutations);
+      const provisioned: Uint8Array = new FixtureAssetSecretQueryPort('initial-token').bytes;
+
+      await manager.provision('provider.token', provisioned, true);
+
+      expect(mutations.operation).assertEqual('provision');
+      expect(mutations.alias).assertEqual('provider.token');
+      expect(mutations.overwrite).assertTrue();
+      expect(allZero(provisioned)).assertTrue();
+
+      const rotated: Uint8Array = new FixtureAssetSecretQueryPort('rotated-token').bytes;
+      await manager.rotate('provider.token', rotated);
+      expect(mutations.operation).assertEqual('rotate');
+      expect(allZero(rotated)).assertTrue();
+
+      await manager.remove('provider.token');
+      expect(mutations.operation).assertEqual('remove');
+    });
+
+    it('clearsRejectedSecretsAndSanitizesMutationFailures', 0, async () => {
+      const mutations: FixtureAssetSecretMutationPort = new FixtureAssetSecretMutationPort();
+      mutations.fail = true;
+      const manager: AssetStoreCredentialManager = new AssetStoreCredentialManager(mutations);
+      const failed: Uint8Array = new FixtureAssetSecretQueryPort('sensitive-token').bytes;
+
+      const failedMessage: string = await mutationMessage((): Promise<void> =>
+        manager.rotate('provider.token', failed));
+
+      expect(failedMessage).assertEqual('Credential asset rotation failed');
+      expect(failedMessage.includes('sensitive-token')).assertFalse();
+      expect(allZero(failed)).assertTrue();
+
+      const malformed: Uint8Array = new Uint8Array([0x61, 0x0a, 0x62]);
+      const malformedMessage: string = await mutationMessage((): Promise<void> =>
+        manager.provision('provider.token', malformed));
+      expect(malformedMessage).assertEqual('Credential secret is invalid');
+      expect(allZero(malformed)).assertTrue();
+    });
   });
+}
+
+async function mutationMessage(action: () => Promise<void>): Promise<string> {
+  try {
+    await action();
+    return '';
+  } catch (error) {
+    return error instanceof Error ? error.message : String(error);
+  }
 }

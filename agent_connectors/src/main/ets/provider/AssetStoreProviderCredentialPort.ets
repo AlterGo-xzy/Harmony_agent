@@ -20,6 +20,17 @@ export interface AssetSecretQueryPort {
   querySecret(alias: string): Promise<Uint8Array>;
 }
 
+export interface AssetSecretMutationPort {
+  provisionSecret(alias: string, secret: Uint8Array, overwrite: boolean): Promise<void>;
+  rotateSecret(alias: string, secret: Uint8Array): Promise<void>;
+  removeSecret(alias: string): Promise<void>;
+}
+
+export class AssetCredentialProtectionPolicy {
+  accessibility: asset.Accessibility = asset.Accessibility.DEVICE_FIRST_UNLOCKED;
+  requirePasswordSet: boolean = false;
+}
+
 function validIdentifier(value: string): boolean {
   if (value.length === 0 || value.length > 128 || value !== value.trim()) return false;
   return !value.includes('\r') && !value.includes('\n') && !value.includes('\u0000');
@@ -56,6 +67,136 @@ export class HarmonyAssetSecretQueryPort implements AssetSecretQueryPort {
       throw new Error('Credential asset resolution failed');
     }
     return copyAndClear(secret);
+  }
+}
+
+/** API 26 AssetStore mutations used only by the product host's provisioning path. */
+export class HarmonyAssetSecretMutationPort implements AssetSecretMutationPort {
+  private readonly policy: AssetCredentialProtectionPolicy;
+
+  constructor(policy: AssetCredentialProtectionPolicy = new AssetCredentialProtectionPolicy()) {
+    if (policy.accessibility !== asset.Accessibility.DEVICE_POWERED_ON &&
+      policy.accessibility !== asset.Accessibility.DEVICE_FIRST_UNLOCKED &&
+      policy.accessibility !== asset.Accessibility.DEVICE_UNLOCKED) {
+      throw new Error('Credential asset protection policy is invalid');
+    }
+    this.policy = new AssetCredentialProtectionPolicy();
+    this.policy.accessibility = policy.accessibility;
+    this.policy.requirePasswordSet = policy.requirePasswordSet;
+  }
+
+  async provisionSecret(alias: string, secret: Uint8Array, overwrite: boolean): Promise<void> {
+    const attributes: asset.AssetMap = new Map<asset.Tag, asset.Value>();
+    const encodedAlias: Uint8Array = new util.TextEncoder('utf-8').encodeInto(alias);
+    try {
+      attributes.set(asset.Tag.ALIAS, encodedAlias);
+      attributes.set(asset.Tag.SECRET, secret);
+      attributes.set(asset.Tag.ACCESSIBILITY, this.policy.accessibility);
+      attributes.set(asset.Tag.REQUIRE_PASSWORD_SET, this.policy.requirePasswordSet);
+      attributes.set(asset.Tag.SYNC_TYPE, asset.SyncType.NEVER);
+      attributes.set(asset.Tag.IS_PERSISTENT, false);
+      attributes.set(asset.Tag.CONFLICT_RESOLUTION, overwrite ?
+        asset.ConflictResolution.OVERWRITE : asset.ConflictResolution.THROW_ERROR);
+      try {
+        await asset.add(attributes);
+      } catch (error) {
+        throw new Error('Credential asset mutation failed');
+      }
+    } finally {
+      clearBytes(encodedAlias);
+    }
+  }
+
+  async rotateSecret(alias: string, secret: Uint8Array): Promise<void> {
+    const query: asset.AssetMap = new Map<asset.Tag, asset.Value>();
+    const update: asset.AssetMap = new Map<asset.Tag, asset.Value>();
+    const encodedAlias: Uint8Array = new util.TextEncoder('utf-8').encodeInto(alias);
+    try {
+      query.set(asset.Tag.ALIAS, encodedAlias);
+      update.set(asset.Tag.SECRET, secret);
+      try {
+        await asset.update(query, update);
+      } catch (error) {
+        throw new Error('Credential asset mutation failed');
+      }
+    } finally {
+      clearBytes(encodedAlias);
+    }
+  }
+
+  async removeSecret(alias: string): Promise<void> {
+    const query: asset.AssetMap = new Map<asset.Tag, asset.Value>();
+    const encodedAlias: Uint8Array = new util.TextEncoder('utf-8').encodeInto(alias);
+    try {
+      query.set(asset.Tag.ALIAS, encodedAlias);
+      try {
+        await asset.remove(query);
+      } catch (error) {
+        throw new Error('Credential asset mutation failed');
+      }
+    } finally {
+      clearBytes(encodedAlias);
+    }
+  }
+}
+
+/**
+ * Narrow write-side service for credential provisioning and rotation. Secret
+ * buffers are consumed and zeroed after the platform operation completes.
+ */
+export class AssetStoreCredentialManager {
+  private readonly mutations: AssetSecretMutationPort;
+
+  constructor(mutations: AssetSecretMutationPort = new HarmonyAssetSecretMutationPort()) {
+    this.mutations = mutations;
+  }
+
+  async provision(alias: string, secret: Uint8Array, overwrite: boolean = false): Promise<void> {
+    validateSecretInput(alias, secret);
+    try {
+      await this.mutations.provisionSecret(alias, secret, overwrite);
+    } catch (error) {
+      throw new Error('Credential asset provisioning failed');
+    } finally {
+      clearBytes(secret);
+    }
+  }
+
+  async rotate(alias: string, secret: Uint8Array): Promise<void> {
+    validateSecretInput(alias, secret);
+    try {
+      await this.mutations.rotateSecret(alias, secret);
+    } catch (error) {
+      throw new Error('Credential asset rotation failed');
+    } finally {
+      clearBytes(secret);
+    }
+  }
+
+  async remove(alias: string): Promise<void> {
+    if (!validIdentifier(alias)) throw new Error('Credential asset alias is invalid');
+    try {
+      await this.mutations.removeSecret(alias);
+    } catch (error) {
+      throw new Error('Credential asset removal failed');
+    }
+  }
+}
+
+function validateSecretInput(alias: string, secret: Uint8Array): void {
+  if (!validIdentifier(alias)) {
+    clearBytes(secret);
+    throw new Error('Credential asset alias is invalid');
+  }
+  if (secret.length === 0 || secret.length > 4096) {
+    clearBytes(secret);
+    throw new Error('Credential secret is invalid');
+  }
+  for (let index: number = 0; index < secret.length; index += 1) {
+    if (secret[index] < 0x21 || secret[index] > 0x7e) {
+      clearBytes(secret);
+      throw new Error('Credential secret is invalid');
+    }
   }
 }
 
