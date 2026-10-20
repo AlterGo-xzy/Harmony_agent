@@ -5,13 +5,14 @@ param(
     [string]$SearchServiceRoot = 'D:\Shuvi-agent\services\search-mcp',
     [string]$HdcPath = 'D:\DevEco\DevEco Studio\sdk\default\openharmony\toolchains\hdc.exe',
     [ValidateRange(1, 65535)]
-    [int]$SearchHostPort = 18787,
+    [int]$SearchHostPort = 8787,
     [ValidateRange(1, 65535)]
     [int]$SearchDevicePort = 8787,
     [ValidateRange(1, 65535)]
     [int]$FixtureDevicePort = 8788,
     [string]$BundleName = 'com.harmony.agent',
     [switch]$LiveSearch,
+    [switch]$PreserveExistingBundle,
     [switch]$AllowDeviceChanges
 )
 
@@ -20,6 +21,9 @@ $ErrorActionPreference = 'Stop'
 
 if (-not $AllowDeviceChanges) {
     throw 'Device installation, reverse forwarding, test execution, and uninstall require -AllowDeviceChanges.'
+}
+if ($SearchHostPort -ne $SearchDevicePort) {
+    throw 'SearchHostPort must equal SearchDevicePort because the local search service validates the forwarded Host header.'
 }
 
 $workspaceRoot = [IO.Path]::GetFullPath((Split-Path -Parent $PSScriptRoot)).TrimEnd('\')
@@ -110,10 +114,23 @@ function Stop-ChildProcess {
     if ($null -eq $Process) { return $true }
     $Process.Refresh()
     if (-not $Process.HasExited) {
-        Stop-Process -Id $Process.Id -Force
+        $Process.Kill($true)
         $Process.WaitForExit(5000) | Out-Null
     }
     return $Process.HasExited
+}
+
+function Test-TcpPortClosed {
+    param([int]$Port)
+    $client = [Net.Sockets.TcpClient]::new()
+    try {
+        $pending = $client.ConnectAsync('127.0.0.1', $Port)
+        return -not ($pending.Wait(500) -and $client.Connected)
+    } catch {
+        return $true
+    } finally {
+        $client.Dispose()
+    }
 }
 
 $resolvedMainHap = Resolve-WorkspaceFile -Path $MainHap
@@ -134,8 +151,10 @@ $searchReverseCreated = $false
 $fixtureReverseCreated = $false
 $installedMain = $false
 $installedTest = $false
+$preexistingBundle = $false
 $searchPassed = $false
 $transportPassed = $false
+$securityStoragePassed = $false
 $cleanupPassed = $false
 $fixtureHostPort = 0
 $failure = $null
@@ -151,7 +170,10 @@ try {
     $preexistingAll = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-a') `
         -LogName 'preinstall-bundle-list.log' -AllowFailure
     if ($preexistingAll -match ('(?m)^\s*' + [regex]::Escape($BundleName) + '\s*$')) {
-        throw "Bundle $BundleName is already installed; refusing to replace or remove it."
+        $preexistingBundle = $true
+        if (-not $PreserveExistingBundle) {
+            throw "Bundle $BundleName is already installed; use -PreserveExistingBundle to keep it and install only the test module."
+        }
     }
     $preexistingForwards = Invoke-HdcLogged -Arguments @('fport', 'ls') `
         -LogName 'preinstall-forward-list.log' -AllowFailure
@@ -180,7 +202,9 @@ try {
     Write-Log -Name 'search-service-build.log' -Content $buildOutput
     if ($buildExit -ne 0) { throw 'Shuvi search MCP build failed.' }
 
-    $searchProcess = Start-Process -FilePath $npm -ArgumentList @('start') -WorkingDirectory $serviceRoot `
+    $searchEntry = Join-Path $serviceRoot 'dist\main.js'
+    $searchProcess = Start-Process -FilePath $node `
+        -ArgumentList @('--env-file-if-exists=.env', "`"$searchEntry`"") -WorkingDirectory $serviceRoot `
         -Environment @{ PORT = $SearchHostPort.ToString() } -PassThru -WindowStyle Hidden `
         -RedirectStandardOutput $searchStdout -RedirectStandardError $searchStderr
     Wait-TcpPort -Port $SearchHostPort -Process $searchProcess -Name 'Shuvi search MCP'
@@ -208,10 +232,12 @@ try {
         -LogName 'fixture-reverse-create.log' | Out-Null
     $fixtureReverseCreated = $true
 
-    $mainInstall = Invoke-HdcLogged -Arguments @('install', '-w 180', $resolvedMainHap) `
-        -LogName 'install-main.log' -TimeoutSeconds 220
-    Assert-InstallSucceeded -Output $mainInstall -Kind 'Main'
-    $installedMain = $true
+    if (-not $preexistingBundle) {
+        $mainInstall = Invoke-HdcLogged -Arguments @('install', '-w 180', $resolvedMainHap) `
+            -LogName 'install-main.log' -TimeoutSeconds 220
+        Assert-InstallSucceeded -Output $mainInstall -Kind 'Main'
+        $installedMain = $true
+    }
     $testInstall = Invoke-HdcLogged -Arguments @('install', '-r', '-w 180', $resolvedTestHap) `
         -LogName 'install-test.log' -TimeoutSeconds 220
     Assert-InstallSucceeded -Output $testInstall -Kind 'ohosTest'
@@ -250,6 +276,18 @@ try {
         throw 'Fixture did not observe cancellation, one expired session, and session deletion.'
     }
     $transportPassed = $true
+
+    $securityOutput = Invoke-HdcLogged -Arguments @(
+        'shell', 'aa', 'test', '-b', $BundleName, '-m', 'test_host_test',
+        '-s', 'unittest', 'OpenHarmonyTestRunner',
+        '-s', 'class', 'SecurityStorageDevice',
+        '-s', 'timeout', '120000'
+    ) -LogName 'security-storage-device-test.log' -TimeoutSeconds 150
+    if ($securityOutput -match 'Failure:\s*[1-9]' -or $securityOutput -match 'Error:\s*[1-9]' -or
+        $securityOutput -notmatch 'Tests run:\s*2, Failure:\s*0, Error:\s*0, Pass:\s*2') {
+        throw 'Security storage device suite did not report 2/2 passing.'
+    }
+    $securityStoragePassed = $true
 } catch {
     $failure = $_
 } finally {
@@ -263,16 +301,29 @@ try {
     }
     if ($installedMain) {
         Invoke-HdcLogged -Arguments @('uninstall', $BundleName) -LogName 'uninstall.log' -AllowFailure | Out-Null
+    } elseif ($installedTest -and $preexistingBundle) {
+        Invoke-HdcLogged -Arguments @(
+            'shell', 'bm', 'uninstall', '-n', $BundleName, '-m', 'test_host_test'
+        ) -LogName 'uninstall-test-module.log' -AllowFailure | Out-Null
     }
     $fixtureStopped = Stop-ChildProcess -Process $fixtureProcess
     $searchStopped = Stop-ChildProcess -Process $searchProcess
     $postForwards = Invoke-HdcLogged -Arguments @('fport', 'ls') -LogName 'post-forward-list.log' -AllowFailure
     $postBundles = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-a') `
         -LogName 'post-bundle-list.log' -AllowFailure
-    $cleanupPassed = $fixtureStopped -and $searchStopped -and
+    $postBundleDetail = Invoke-HdcLogged -Arguments @('shell', 'bm', 'dump', '-n', $BundleName) `
+        -LogName 'post-bundle-detail.log' -AllowFailure
+    $bundleCleanupPassed = if ($preexistingBundle) {
+        $postBundles -match ('(?m)^\s*' + [regex]::Escape($BundleName) + '\s*$') -and
+            $postBundleDetail -notmatch [regex]::Escape('test_host_test')
+    } else {
+        $postBundles -notmatch ('(?m)^\s*' + [regex]::Escape($BundleName) + '\s*$')
+    }
+    $searchPortClosed = Test-TcpPortClosed -Port $SearchHostPort
+    $cleanupPassed = $fixtureStopped -and $searchStopped -and $searchPortClosed -and
         $postForwards -notmatch [regex]::Escape("tcp:$SearchDevicePort") -and
         $postForwards -notmatch [regex]::Escape("tcp:$FixtureDevicePort") -and
-        $postBundles -notmatch ('(?m)^\s*' + [regex]::Escape($BundleName) + '\s*$')
+        $bundleCleanupPassed
 }
 
 $summary = [ordered]@{
@@ -283,12 +334,14 @@ $summary = [ordered]@{
     searchHostPort = $SearchHostPort
     searchDevicePort = $SearchDevicePort
     liveSearchExecuted = [bool]$LiveSearch
+    preexistingBundlePreserved = $preexistingBundle
     searchDevicePassed = $searchPassed
     transportLifecyclePassed = $transportPassed
+    securityStoragePassed = $securityStoragePassed
     cleanupPassed = $cleanupPassed
     mainHapSha256 = (Get-FileHash -LiteralPath $resolvedMainHap -Algorithm SHA256).Hash
     testHapSha256 = (Get-FileHash -LiteralPath $resolvedTestHap -Algorithm SHA256).Hash
-    completed = $searchPassed -and $transportPassed -and $cleanupPassed
+    completed = $searchPassed -and $transportPassed -and $securityStoragePassed -and $cleanupPassed
     failure = if ($null -eq $failure) { $null } else { $failure.Exception.Message }
     blocker = if ($LiveSearch) { $null } else { 'TAVILY_API_KEY is not configured; real upstream search was not executed.' }
 }

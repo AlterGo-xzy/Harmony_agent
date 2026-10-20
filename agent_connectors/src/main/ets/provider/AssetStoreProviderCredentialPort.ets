@@ -94,7 +94,6 @@ export class HarmonyAssetSecretMutationPort implements AssetSecretMutationPort {
       attributes.set(asset.Tag.ACCESSIBILITY, this.policy.accessibility);
       attributes.set(asset.Tag.REQUIRE_PASSWORD_SET, this.policy.requirePasswordSet);
       attributes.set(asset.Tag.SYNC_TYPE, asset.SyncType.NEVER);
-      attributes.set(asset.Tag.IS_PERSISTENT, false);
       attributes.set(asset.Tag.CONFLICT_RESOLUTION, overwrite ?
         asset.ConflictResolution.OVERWRITE : asset.ConflictResolution.THROW_ERROR);
       try {
