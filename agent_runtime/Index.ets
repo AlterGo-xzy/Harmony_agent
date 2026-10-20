@@ -1,4 +1,4 @@
-export const AGENT_RUNTIME_VERSION: string = '0.15.0';
+export const AGENT_RUNTIME_VERSION: string = '0.16.0';
 export {
   ShutdownMode,
   AgentRuntimeErrorCode,
@@ -17,6 +17,27 @@ export {
   SingleAgentHostPorts,
   createSingleAgentHostRuntime
 } from './src/main/ets/host/SingleAgentHostRuntime';
+export {
+  AGENT_APPLICATION_BACKEND_API_VERSION,
+  AgentApplicationBackendState,
+  AgentApplicationBackendErrorCode,
+  AgentApplicationBackendError,
+  AgentApplicationBackendConfig,
+  AgentApplicationBackendIdentityPort,
+  SystemAgentApplicationBackendIdentity,
+  AgentFrontendTaskRequest,
+  AgentFrontendTaskHandle,
+  AgentFrontendAuthorizationDecision,
+  AgentFrontendCommandReceipt,
+  AgentFrontendSearchSource,
+  AgentFrontendTaskState,
+  AgentFrontendEvent,
+  AgentFrontendAuthorizationPrompt,
+  AgentFrontendClarificationPrompt,
+  AgentFrontendEventListener,
+  AgentFrontendSubscription,
+  AgentApplicationBackend
+} from './src/main/ets/host/AgentApplicationBackend';
 export {
   FakeTaskScriptKind,
   FakeTaskScript,
