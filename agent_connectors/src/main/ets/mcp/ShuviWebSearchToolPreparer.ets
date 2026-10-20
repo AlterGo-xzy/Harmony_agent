@@ -33,6 +33,13 @@ export class ShuviWebSearchToolPreparationConfig {
   defaultMaxResults: number = 5;
 }
 
+export function validShuviWebSearchToolPreparationConfig(
+  config: ShuviWebSearchToolPreparationConfig): boolean {
+  return Number.isSafeInteger(config.policyTtlMs) && config.policyTtlMs > 0 &&
+    Number.isSafeInteger(config.defaultMaxResults) &&
+    config.defaultMaxResults >= 1 && config.defaultMaxResults <= 10;
+}
+
 function validText(value: string): boolean {
   return value.trim().length > 0;
 }
@@ -165,9 +172,7 @@ export class ShuviWebSearchToolInvocationPreparer implements ToolInvocationPrepa
   }
 
   private validConfig(): boolean {
-    return Number.isSafeInteger(this.config.policyTtlMs) && this.config.policyTtlMs > 0 &&
-      Number.isSafeInteger(this.config.defaultMaxResults) &&
-      this.config.defaultMaxResults >= 1 && this.config.defaultMaxResults <= 10;
+    return validShuviWebSearchToolPreparationConfig(this.config);
   }
 
   private validStep(step: WorkflowStep): boolean {

@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.10.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.11.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -34,6 +34,7 @@ export {
 export {
   SHUVI_WEB_SEARCH_TOOL_ID,
   ShuviWebSearchToolPreparationConfig,
+  validShuviWebSearchToolPreparationConfig,
   ShuviWebSearchToolInvocationPreparer,
   installShuviWebSearchToolPreparer
 } from './src/main/ets/mcp/ShuviWebSearchToolPreparer';
@@ -135,3 +136,10 @@ export {
   createLocalAIGatewayMcpProductionAgentRuntime,
   createRecoveredLocalAIGatewayMcpProductionAgentRuntime
 } from './src/main/ets/provider/LocalAIGatewayProductionRuntime';
+export {
+  ShuviWebSearchRuntimeCompositionErrorCode,
+  ShuviWebSearchRuntimeCompositionError,
+  withShuviWebSearchToolPreparation,
+  createShuviWebSearchLocalAIGatewayProductionRuntime,
+  createRecoveredShuviWebSearchLocalAIGatewayProductionRuntime
+} from './src/main/ets/provider/ShuviWebSearchLocalAIGatewayRuntime';

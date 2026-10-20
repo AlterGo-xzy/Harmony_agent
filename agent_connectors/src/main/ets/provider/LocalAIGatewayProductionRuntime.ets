@@ -111,18 +111,19 @@ function assembleProvider(config: LocalAIGatewayMcpRuntimeConfig,
 /** Builds the concrete Local AI Gateway Provider chain and returns only the production Agent Facade. */
 export async function createLocalAIGatewayMcpProductionAgentRuntime(config: LocalAIGatewayMcpRuntimeConfig,
   ports: LocalAIGatewayMcpRuntimePorts, adapter: McpAgentAdapter,
-  registry: ToolRegistry): Promise<AgentRuntimeFacade> {
+  registry: ToolRegistry, requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
   const assembly: LocalAIGatewayProviderAssembly = assembleProvider(config, ports);
   return await createProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts, adapter, registry,
-    assembly.registered, assembly.provider, config.plannerConfig, ports.plannerObserver, ports.memoryContext);
+    assembly.registered, assembly.provider, config.plannerConfig, ports.plannerObserver, ports.memoryContext,
+    requiredToolIds);
 }
 
 /** Restores durable tasks through the same concrete Local AI Gateway Provider chain. */
 export async function createRecoveredLocalAIGatewayMcpProductionAgentRuntime(
   config: LocalAIGatewayMcpRuntimeConfig, ports: LocalAIGatewayMcpRuntimePorts, adapter: McpAgentAdapter,
-  registry: ToolRegistry): Promise<AgentRuntimeFacade> {
+  registry: ToolRegistry, requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
   const assembly: LocalAIGatewayProviderAssembly = assembleProvider(config, ports);
   return await createRecoveredProviderMcpProductionAgentRuntime(config.runtimeConfig, ports.runtimePorts,
     adapter, registry, assembly.registered, assembly.provider, config.plannerConfig,
-    ports.plannerObserver, ports.memoryContext);
+    ports.plannerObserver, ports.memoryContext, requiredToolIds);
 }

@@ -48,6 +48,12 @@ import {
   installShuviWebSearchToolPreparer
 } from '../main/ets/mcp/ShuviWebSearchToolPreparer';
 import { ConnectorDigestPort } from '../main/ets/mcp/McpConnectorTypes';
+import { LocalAIGatewayMcpRuntimePorts } from '../main/ets/provider/LocalAIGatewayProductionRuntime';
+import {
+  ShuviWebSearchRuntimeCompositionError,
+  ShuviWebSearchRuntimeCompositionErrorCode,
+  withShuviWebSearchToolPreparation
+} from '../main/ets/provider/ShuviWebSearchLocalAIGatewayRuntime';
 import { ProviderCredential, ProviderCredentialPort } from '../main/ets/provider/ProviderContracts';
 
 class FixtureClient implements McpClientToolPort {
@@ -300,6 +306,24 @@ export default function shuviWebSearchTest(): void {
         .prepare(planningRequest(), step, 1000);
       expect(prepared.policyRequest.requestId).assertEqual('');
       expect(prepared.invocation.invocationId).assertEqual('');
+    });
+
+    it('composesSearchPreparationWithoutMutatingCallerOwnedRuntimePorts', 0, () => {
+      const source: LocalAIGatewayMcpRuntimePorts = new LocalAIGatewayMcpRuntimePorts();
+      source.digest = new FixtureDigest();
+      source.runtimePorts.ids = new FixtureIds();
+      const composed: LocalAIGatewayMcpRuntimePorts =
+        withShuviWebSearchToolPreparation(source, searchRegistry());
+      expect(source.runtimePorts.toolPreparer === undefined).assertTrue();
+      expect(composed.runtimePorts.toolPreparer !== undefined).assertTrue();
+
+      let conflict: ShuviWebSearchRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        withShuviWebSearchToolPreparation(composed, searchRegistry());
+      } catch (error) {
+        if (error instanceof ShuviWebSearchRuntimeCompositionError) conflict = error.code;
+      }
+      expect(conflict).assertEqual(ShuviWebSearchRuntimeCompositionErrorCode.TOOL_PREPARER_CONFLICT);
     });
   });
 }

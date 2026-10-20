@@ -1157,6 +1157,24 @@ export default function mcpAgentAdapterTest(): void {
       expect(fixture.client.callCount).assertEqual(0);
     });
 
+    it('failsClosedBeforeFacadeWhenRequiredControlledToolIsMissing', 0, async () => {
+      const fixture: FixtureAssembly = new FixtureAssembly();
+      const registry: ToolRegistry = new ToolRegistry();
+      const planner: CompositionPlanner = new CompositionPlanner(registry);
+      let code: McpRuntimeCompositionErrorCode | undefined = undefined;
+      try {
+        await createMcpProductionAgentRuntime(
+          compositionConfig(), compositionPorts(registry, fixture.digest, planner), fixture.adapter, registry,
+          ['mcp://shuvi-web-search/tool/web_search']);
+      } catch (error) {
+        if (error instanceof McpRuntimeCompositionError) code = error.code;
+      }
+
+      expect(code).assertEqual(McpRuntimeCompositionErrorCode.CATALOG_REQUIRED_TOOL_MISSING);
+      expect(registry.snapshot().snapshotVersion).assertEqual(0);
+      expect(fixture.client.callCount).assertEqual(0);
+    });
+
     it('failsClosedWithoutPublishingPartialCatalogWhenDiscoveryHasServerFailure', 0, async () => {
       const fixture: FixtureAssembly = new FixtureAssembly();
       fixture.client.failures = [{

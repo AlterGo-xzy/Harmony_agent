@@ -33,6 +33,8 @@ function ignoreCompletionRejection(_error: Error): void {
 
 export enum McpRuntimeCompositionErrorCode {
   REGISTRY_NOT_EMPTY = 'REGISTRY_NOT_EMPTY',
+  CATALOG_REQUIREMENT_INVALID = 'CATALOG_REQUIREMENT_INVALID',
+  CATALOG_REQUIRED_TOOL_MISSING = 'CATALOG_REQUIRED_TOOL_MISSING',
   CATALOG_DISCOVERY_FAILED = 'CATALOG_DISCOVERY_FAILED',
   CATALOG_PARTIAL_FAILURE = 'CATALOG_PARTIAL_FAILURE',
   CATALOG_EMPTY = 'CATALOG_EMPTY',
@@ -125,7 +127,21 @@ function copyPorts(source: ProductionAgentRuntimePorts, adapter: McpAgentAdapter
   return value;
 }
 
-async function bindCatalog(adapter: McpAgentAdapter, registry: ToolRegistry): Promise<void> {
+function validRequiredToolIds(requiredToolIds: string[]): boolean {
+  for (let index: number = 0; index < requiredToolIds.length; index++) {
+    if (requiredToolIds[index].trim().length === 0 || requiredToolIds[index].trim() !== requiredToolIds[index] ||
+      requiredToolIds.indexOf(requiredToolIds[index]) !== index) return false;
+  }
+  return true;
+}
+
+async function bindCatalog(adapter: McpAgentAdapter, registry: ToolRegistry,
+  requiredToolIds: string[]): Promise<void> {
+  const requirements: string[] = requiredToolIds.slice();
+  if (!validRequiredToolIds(requirements)) {
+    throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.CATALOG_REQUIREMENT_INVALID,
+      'MCP production composition received invalid required Tool IDs');
+  }
   if (registry.snapshot().snapshotVersion !== 0) {
     throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.REGISTRY_NOT_EMPTY,
       'MCP production composition requires an empty Tool Registry');
@@ -153,6 +169,16 @@ async function bindCatalog(adapter: McpAgentAdapter, registry: ToolRegistry): Pr
     }
   }
   const entries: ToolRegistryEntry[] = validated.activeEntries();
+  for (let requiredIndex: number = 0; requiredIndex < requirements.length; requiredIndex++) {
+    let found: boolean = false;
+    for (let entryIndex: number = 0; entryIndex < entries.length; entryIndex++) {
+      if (entries[entryIndex].descriptor.toolId === requirements[requiredIndex]) found = true;
+    }
+    if (!found) {
+      throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.CATALOG_REQUIRED_TOOL_MISSING,
+        'MCP catalog does not contain a required controlled Tool');
+    }
+  }
   for (let i: number = 0; i < entries.length; i++) {
     if (!registry.register(entries[i]).accepted) {
       throw new McpRuntimeCompositionError(McpRuntimeCompositionErrorCode.CATALOG_ENTRY_REJECTED,
@@ -167,16 +193,16 @@ async function bindCatalog(adapter: McpAgentAdapter, registry: ToolRegistry): Pr
  */
 export async function createMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter,
-  registry: ToolRegistry): Promise<AgentRuntimeFacade> {
-  await bindCatalog(adapter, registry);
+  registry: ToolRegistry, requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
+  await bindCatalog(adapter, registry, requiredToolIds);
   return createProductionAgentRuntime(config, copyPorts(ports, adapter));
 }
 
 /** Restores durable tasks only after the controlled MCP catalog is discovered and bound. */
 export async function createRecoveredMcpProductionAgentRuntime(config: ProductionAgentRuntimeConfig,
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter,
-  registry: ToolRegistry): Promise<AgentRuntimeFacade> {
-  await bindCatalog(adapter, registry);
+  registry: ToolRegistry, requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
+  await bindCatalog(adapter, registry, requiredToolIds);
   return await createRecoveredProductionAgentRuntime(config, copyPorts(ports, adapter));
 }
 
@@ -188,10 +214,11 @@ export async function createProviderMcpProductionAgentRuntime(config: Production
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
   registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
   observer?: ProviderSemanticPlannerObserverPort,
-  memoryContext?: PlanningMemoryContextPort): Promise<AgentRuntimeFacade> {
+  memoryContext?: PlanningMemoryContextPort,
+  requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
   const composed: ProductionAgentRuntimePorts = withProviderPlanner(
     ports, registered, provider, plannerConfig, observer, memoryContext);
-  return await createMcpProductionAgentRuntime(config, composed, adapter, registry);
+  return await createMcpProductionAgentRuntime(config, composed, adapter, registry, requiredToolIds);
 }
 
 /** Restores durable tasks through the same Provider Planner and catalog-before-Facade boundary. */
@@ -199,8 +226,9 @@ export async function createRecoveredProviderMcpProductionAgentRuntime(config: P
   ports: ProductionAgentRuntimePorts, adapter: McpAgentAdapter, registry: ToolRegistry,
   registered: RegisteredModelProvider, provider: ModelProvider, plannerConfig: ProviderSemanticPlannerConfig,
   observer?: ProviderSemanticPlannerObserverPort,
-  memoryContext?: PlanningMemoryContextPort): Promise<AgentRuntimeFacade> {
+  memoryContext?: PlanningMemoryContextPort,
+  requiredToolIds: string[] = []): Promise<AgentRuntimeFacade> {
   const composed: ProductionAgentRuntimePorts = withProviderPlanner(
     ports, registered, provider, plannerConfig, observer, memoryContext);
-  return await createRecoveredMcpProductionAgentRuntime(config, composed, adapter, registry);
+  return await createRecoveredMcpProductionAgentRuntime(config, composed, adapter, registry, requiredToolIds);
 }
