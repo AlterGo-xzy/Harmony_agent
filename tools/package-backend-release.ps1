@@ -1,6 +1,7 @@
 [CmdletBinding()]
 param(
-    [string]$Version = '0.1.0-rc.1',
+    [Alias('Version')]
+    [string]$ReleaseVersion = '0.1.0-rc.2',
     [string]$OutputRoot = '.\artifacts\backend-release',
     [string]$SearchServiceRoot = 'D:\Shuvi-agent\services\search-mcp',
     [switch]$IncludeUnsignedReferenceHap
@@ -24,7 +25,7 @@ $sourceCommit = (& git -C $workspaceRoot rev-parse HEAD).Trim()
 $sourceBranch = (& git -C $workspaceRoot branch --show-current).Trim()
 $shortCommit = $sourceCommit.Substring(0, 8)
 $timestamp = Get-Date -Format 'yyyyMMdd-HHmmss'
-$packageName = "harmony-agent-backend-sdk-$Version-$shortCommit"
+$packageName = "harmony-agent-backend-sdk-$ReleaseVersion-$shortCommit"
 $runDirectory = Join-Path $resolvedOutputRoot "$timestamp-$shortCommit"
 $stageDirectory = Join-Path $runDirectory $packageName
 $harDirectory = Join-Path $stageDirectory 'hars'
@@ -59,15 +60,15 @@ foreach ($definition in $moduleDefinitions) {
         [int]$metadata.compatibleSdkVersion -ne 26) {
         throw "HAR metadata is not a Release API 26 package: $sourceHar"
     }
-    $version = [string]$metadata.version
-    $packageVersions[$definition.Package] = $version
-    $targetName = "harmony_agent-$($definition.Directory.Replace('_', '-'))-$version.har"
+    $moduleVersion = [string]$metadata.version
+    $packageVersions[$definition.Package] = $moduleVersion
+    $targetName = "harmony_agent-$($definition.Directory.Replace('_', '-'))-$moduleVersion.har"
     $targetHar = Join-Path $harDirectory $targetName
     Copy-Item -LiteralPath $sourceHar -Destination $targetHar
     $file = Get-Item -LiteralPath $targetHar
     $manifestModules += [ordered]@{
         package = $definition.Package
-        version = $version
+        version = $moduleVersion
         role = $definition.Role
         file = "hars/$targetName"
         bytes = $file.Length
@@ -170,7 +171,7 @@ foreach ($module in $manifestModules) { $dependenciesAll[$module.package] = $mod
 $manifest = [ordered]@{
     schemaVersion = '1.0'
     packageName = 'harmony-agent-backend-sdk'
-    version = $Version
+    version = $ReleaseVersion
     packageDate = (Get-Date -Format 'yyyy-MM-dd')
     sourceRepository = 'https://github.com/AlterGo-xzy/Harmony_agent.git'
     sourceCommit = $sourceCommit
@@ -209,7 +210,7 @@ $manifest = [ordered]@{
     [Text.UTF8Encoding]::new($false))
 
 $readme = @"
-# Harmony Agent Backend SDK $Version
+# Harmony Agent Backend SDK $ReleaseVersion
 
 这是面向 Shuvi 应用宿主/前端服务层的 API 26 后端 Release Candidate，不是 ArkUI 页面组件包。
 
