@@ -10,6 +10,7 @@ import { McpAgentAdapter } from './McpAgentAdapter';
 export class McpStepDispatchAdapter implements StepDispatchPort {
   private readonly adapter: McpAgentAdapter;
   private readonly sink: McpToolOutcomeSinkPort;
+  private readonly invocations: Map<string, string> = new Map<string, string>();
 
   constructor(adapter: McpAgentAdapter, sink: McpToolOutcomeSinkPort) {
     this.adapter = adapter;
@@ -24,12 +25,20 @@ export class McpStepDispatchAdapter implements StepDispatchPort {
       return receipt;
     }
     receipt.accepted = true;
+    this.invocations.set(request.dispatchId, invocation.invocationId);
     this.execute(request, invocation);
     return receipt;
   }
 
+  cancel(dispatchId: string): boolean {
+    const invocationId: string | undefined = this.invocations.get(dispatchId);
+    if (invocationId === undefined) return false;
+    return this.adapter.cancel(invocationId);
+  }
+
   private async execute(request: StepDispatchRequest, invocation: ToolInvocation): Promise<void> {
     const outcome = await this.adapter.invoke(invocation);
+    this.invocations.delete(request.dispatchId);
     this.sink.complete(request.task.taskId, request.step.stepId, request.dispatchId, outcome);
   }
 }

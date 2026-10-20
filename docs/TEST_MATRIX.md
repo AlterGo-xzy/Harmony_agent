@@ -1,6 +1,6 @@
 # 验收矩阵
 
-最后更新：2026-10-19。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；T43 已完成真实 12×2 双 arm Provider/system Bench（19/24 质量基线）；T51 已完成 MasRouter 环境输入合同的严格 JSON Schema 校验、离线 checker（13/13）与确定性报告，并于 2026-10-19 通过验收（提交 `1502f212e0c1fd75305476f5de046d1bae72aff5`，作为 T52 基线）；T52 已完成 adaptation handoff 合同、checker（29/29）与 research-only fixture。
+最后更新：2026-10-20。M07 Provider Connector、T30 MCP Facade 与 T36 Provider Planner → Facade → MCP 已完成各自记录的真实设备门；T40 已完成逐角色 Provider 规划的 fake 主机门；T41/T42 TestKit 0.6.0 已完成 schema 2 记录封存及真实执行请求/Token/金额准入门；M08 首个只读 Native Tool 已完成主机、构建与签名 API 26 设备运行门；M09-B/M05-A 已完成 T26 RDB 跨进程设备恢复；T43 已完成真实 12×2 双 arm Provider/system Bench（19/24 质量基线）；T51 已完成 MasRouter 环境输入合同的严格 JSON Schema 校验、离线 checker（13/13）与确定性报告，并于 2026-10-19 通过验收（提交 `1502f212e0c1fd75305476f5de046d1bae72aff5`，作为 T52 基线）；T52 已完成 adaptation handoff 合同、checker（29/29）与 research-only fixture。
 
 | 验收项 | 主机侧证据 | 设备侧状态 |
 |---|---|---|
@@ -120,3 +120,5 @@ P0-C 加密 RDB 配置新增 3 项 Storage 用例：验证 execution/memory 配�
 P0-C AssetStore credential resolver 新增 5 项 Connector 用例：验证 Bearer 与 `x-api-key`、精确 provider/scope、未知 scope 系统调用前拒绝、重复绑定/alias 拒绝、畸形 secret、字节清零与错误脱敏；Connectors 总计 65/65。更新后的 Release HAR 为 67,249 bytes、SHA-256 `176DE3443BB09836D6B6B2433237127599E17441CD11F7061A1D72622C5F9F5E`。该证据没有写入或读取真实 Asset，不证明签名设备上的预置、轮换或锁屏策略。
 
 2026-10-20 Shuvi 搜索 MCP 结构化工具错误投影新增 2 项 Connector 用例，覆盖约定的 11 个错误码到稳定状态/分类/错误码/本地消息的映射，以及缺失结构、数组、未知错误码、错误版本、空 requestId 和空 message 的 fail-closed；服务端原始 message 不进入结果，失败不产生 `resultJson`。Connectors 总计 67/67，Failure 0、Error 0；Release HAR 为 68,329 bytes、SHA-256 `563D1A63C4EC3F1F9FF78A6EB8F46C40B85C27133BADF9B5F46C22E234211C27`。HTML coverage 报告生成器有 worktree 路径拼接警告，但原始 `test_result.txt` 和 coverage 日志完整记录执行与通过结果。本门只验证主仓库 adapter/fixture，不证明真实 Shuvi 搜索服务协议、网络、HAP/设备、来源/请求关联或引用回答闭环。
+
+2026-10-20 Shuvi 搜索 MCP 客户端接入新增固定 Legacy Profile/只读 allowlist、输入与成功结果严格校验、凭据桥、显式只读会话过期重握手和按 dispatch 的单次 HTTP 取消。实测 MCP Client 28/28、Connectors 72/72、Runtime 134/134、Storage 57/57、Native Tools 12/12，Failure 0、Error 0；test_host unsigned HAP 构建通过。当前 HDC 目标为空，因此未安装、未运行设备套件、未建立 HDC reverse，也未再次请求 Tavily；这仍不是第三方服务设备验收完成证据。

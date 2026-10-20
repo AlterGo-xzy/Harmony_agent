@@ -1,6 +1,6 @@
 {
   "name": "@harmony_agent/native-tools",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Headless native OpenHarmony tool adapters for harmony_agent",
   "main": "Index.ets",
   "author": "harmony_agent",

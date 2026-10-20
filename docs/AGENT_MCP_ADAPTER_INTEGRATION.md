@@ -20,6 +20,9 @@ Provider/Profile 或 schema 变化会改变 `registryVersion` 和 Registry snaps
 
 真实网络宿主需要在自己的 HAP `module.json5` 中声明 `ohos.permission.INTERNET`；HAR 本身不拥有宿主权限或 Ability 生命周期。
 
+Shuvi `web_search` 的固定 Profile、只读 allowlist、成功结果校验、会话恢复、单次调用取消和设备地址约束见
+[`SHUVI_WEB_SEARCH_MCP_INTEGRATION.md`](SHUVI_WEB_SEARCH_MCP_INTEGRATION.md)。
+
 ## 调用与失败语义
 
 - MCP 身份始终包含 `{serverId, kind, name}`，Tool ID 形如 `mcp://<serverId>/tool/<name>`。

@@ -43,6 +43,11 @@ export class NativeStepDispatchAdapter implements StepDispatchPort {
     return receipt;
   }
 
+  cancel(_dispatchId: string): boolean {
+    // Native cancellation ownership remains with the injected resolver.
+    return false;
+  }
+
   private async execute(request: StepDispatchRequest, invocation: ToolInvocation,
     cancellation: NativeCancellationSignalPort): Promise<void> {
     const outcome: ToolOutcome = await this.adapter.invoke(invocation, cancellation);

@@ -1,6 +1,6 @@
 # Native Tool 集成说明
 
-`@harmony_agent/native-tools` 0.1.0 是 M08 的无页面 Native Kit Tool HAR。首个纵切为只读电源状态工具 `native://device/power.status.read`，使用 API 26 `@ohos.batteryInfo`，用于让 Runtime 在执行长任务前获得规范化的电量与充电状态。它不提交或控制任务；外部产品仍只通过 `AgentRuntimeFacade` 使用 Agent Runtime。
+`@harmony_agent/native-tools` 0.1.1 是 M08 的无页面 Native Kit Tool HAR。首个纵切为只读电源状态工具 `native://device/power.status.read`，使用 API 26 `@ohos.batteryInfo`，用于让 Runtime 在执行长任务前获得规范化的电量与充电状态。它不提交或控制任务；外部产品仍只通过 `AgentRuntimeFacade` 使用 Agent Runtime。
 
 ## 首个工具契约
 

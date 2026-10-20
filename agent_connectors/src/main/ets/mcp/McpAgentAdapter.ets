@@ -14,6 +14,7 @@ import { ToolRegistryEntry } from '@harmony_agent/agent-runtime';
 import {
   McpCapabilityKind,
   McpCapabilityRef,
+  McpCancellationSource,
   McpClientError,
   McpErrorCode,
   McpTool,
@@ -148,6 +149,8 @@ export class McpAgentAdapter {
   private readonly clock: ConnectorClockPort;
   private readonly grantVerifier: McpGrantVerifierPort;
   private readonly policyBridge: McpInvocationPolicyBridge;
+  private readonly activeCancellations: Map<string, McpCancellationSource> =
+    new Map<string, McpCancellationSource>();
   private catalog: ToolRegistryEntry[] = [];
 
   constructor(client: McpClientToolPort, providers: McpProviderRegistry,
@@ -204,6 +207,13 @@ export class McpAgentAdapter {
     }
   }
 
+  cancel(invocationId: string): boolean {
+    const source: McpCancellationSource | undefined = this.activeCancellations.get(invocationId);
+    if (source === undefined) return false;
+    source.cancel();
+    return true;
+  }
+
   private async invokeChecked(invocation: ToolInvocation, startedAt: string): Promise<ToolOutcome> {
     if (!ContractValidator.validateToolInvocation(invocation).valid) {
       return this.failure(invocation.invocationId, startedAt, ToolOutcomeStatus.FAILED,
@@ -250,12 +260,21 @@ export class McpAgentAdapter {
       return this.failure(invocation.invocationId, startedAt, ToolOutcomeStatus.DENIED,
         AgentErrorClass.POLICY_DENIED, 'MCP_POLICY_BRIDGE_REJECTED', 'MCP policy ticket could not be created');
     }
-    try {
-      const result: McpToolResult = await this.client.callTool(ref, argumentsValue);
+    if (this.activeCancellations.has(invocation.invocationId)) {
       this.policyBridge.disarm(invocation.invocationId);
+      return this.failure(invocation.invocationId, startedAt, ToolOutcomeStatus.FAILED,
+        AgentErrorClass.CONFIGURATION, 'MCP_INVOCATION_ALREADY_ACTIVE', 'MCP invocation is already active');
+    }
+    const cancellation: McpCancellationSource = new McpCancellationSource();
+    this.activeCancellations.set(invocation.invocationId, cancellation);
+    try {
+      const result: McpToolResult = await this.client.callTool(ref, argumentsValue, cancellation);
+      this.policyBridge.disarm(invocation.invocationId);
+      this.activeCancellations.delete(invocation.invocationId);
       return this.success(invocation.invocationId, startedAt, result);
     } catch (error) {
       this.policyBridge.disarm(invocation.invocationId);
+      this.activeCancellations.delete(invocation.invocationId);
       return this.clientFailure(invocation.invocationId, startedAt, error);
     }
   }
@@ -353,6 +372,14 @@ export class McpAgentAdapter {
     if (error.code === McpErrorCode.CANCELLED) {
       return this.failure(invocationId, startedAt, ToolOutcomeStatus.CANCELLED,
         AgentErrorClass.CANCELLED, error.code, error.message);
+    }
+    if (error.code === McpErrorCode.INVALID_ARGUMENT) {
+      return this.failure(invocationId, startedAt, ToolOutcomeStatus.FAILED,
+        AgentErrorClass.INVALID_INPUT, error.code, error.message);
+    }
+    if (error.code === McpErrorCode.SCHEMA_MISMATCH) {
+      return this.failure(invocationId, startedAt, ToolOutcomeStatus.FAILED,
+        AgentErrorClass.SCHEMA_MISMATCH, error.code, error.message);
     }
     if (error.code === McpErrorCode.CONFIGURATION) {
       return this.failure(invocationId, startedAt, ToolOutcomeStatus.FAILED,

@@ -51,6 +51,8 @@ export interface ToolInvocationPreparerPort {
 
 export interface StepDispatchPort {
   dispatch(request: StepDispatchRequest): StepDispatchReceipt;
+  /** Cancels one accepted dispatch without affecting unrelated in-flight work. */
+  cancel(dispatchId: string): boolean;
 }
 
 /** Internal observation hook used by the production Facade composition root. */

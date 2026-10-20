@@ -38,7 +38,7 @@ function fixtureUrl(): string {
 export default function deviceSmokeTest(): void {
   describe('McpDeviceSmoke', () => {
     it('loadsHar', 0, () => {
-      expect(MCP_CLIENT_VERSION).assertEqual('0.1.0');
+      expect(MCP_CLIENT_VERSION).assertEqual('0.2.0');
     });
 
     it('callsModernFixtureOverRealNetwork', 0, async () => {

@@ -1,6 +1,6 @@
 # Agent Runtime 与执行恢复存储集成边界
 
-本文说明 `@harmony_agent/agent-runtime` 0.14.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.8.0 的 M05-A 执行恢复存储对齐。T25 已接入 active operation 的原子恢复归一化；T26 新增具体 RDB composition 与两阶段设备 fixture；T32 将 Semantic Planner 的 plan/resume/replan 纳入同一 Promise/FIFO 生命周期；T39 在不改变 checkpoint 1.1 的前提下加入可选的版本化协作计划恢复状态。本文同时记录其验证范围。
+本文说明 `@harmony_agent/agent-runtime` 0.15.0 的 M09-B 异步生产组合端口如何与 `@harmony_agent/agent-storage` 0.8.0 的 M05-A 执行恢复存储对齐。T25 已接入 active operation 的原子恢复归一化；T26 新增具体 RDB composition 与两阶段设备 fixture；T32 将 Semantic Planner 的 plan/resume/replan 纳入同一 Promise/FIFO 生命周期；T39 在不改变 checkpoint 1.1 的前提下加入可选的版本化协作计划恢复状态。本文同时记录其验证范围。
 
 ## 1. 控制入口与生命周期
 

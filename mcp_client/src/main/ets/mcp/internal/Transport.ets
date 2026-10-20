@@ -1,6 +1,7 @@
 import http from '@ohos.net.http';
 import util from '@ohos.util';
 import { McpClientError, McpErrorCode } from '../Errors';
+import { McpCancellationSignal, McpCancellationSubscription } from '../Types';
 
 export enum McpHttpMethod {
   POST = 'POST',
@@ -15,6 +16,7 @@ export interface McpTransportRequest {
   connectTimeoutMs: number;
   requestTimeoutMs: number;
   maxResponseBytes: number;
+  cancellation?: McpCancellationSignal;
 }
 
 export interface McpTransportResponse {
@@ -31,6 +33,7 @@ export interface McpTransport {
 class ActiveHttpRequest {
   readonly request: http.HttpRequest;
   readonly cancel: () => void;
+  cancellation?: McpCancellationSubscription;
 
   constructor(request: http.HttpRequest, cancel: () => void) {
     this.request = request;
@@ -85,6 +88,13 @@ export class ArkTsHttpTransport implements McpTransport {
       let streamEnded: boolean = false;
       let settled: boolean = false;
       let responseHeaders: Record<string, string> = {};
+      let cancellation: McpCancellationSubscription | undefined = undefined;
+
+      if (request.cancellation !== undefined && request.cancellation.isCancellationRequested()) {
+        httpRequest.destroy();
+        reject(new McpClientError(McpErrorCode.CANCELLED, 'MCP request was cancelled'));
+        return;
+      }
 
       const removeActive = (): void => {
         for (let index: number = 0; index < this.activeRequests.length; index++) {
@@ -101,6 +111,7 @@ export class ArkTsHttpTransport implements McpTransport {
         }
         settled = true;
         removeActive();
+        if (cancellation !== undefined) cancellation.dispose();
         httpRequest.destroy();
         reject(error);
       };
@@ -108,7 +119,8 @@ export class ArkTsHttpTransport implements McpTransport {
       const cancel = (): void => {
         fail(new McpClientError(McpErrorCode.CANCELLED, 'MCP request was cancelled'));
       };
-      this.activeRequests.push(new ActiveHttpRequest(httpRequest, cancel));
+      const active: ActiveHttpRequest = new ActiveHttpRequest(httpRequest, cancel);
+      this.activeRequests.push(active);
 
       const complete = (): void => {
         if (settled || !streamEnded || statusCode === 0) {
@@ -116,6 +128,7 @@ export class ArkTsHttpTransport implements McpTransport {
         }
         settled = true;
         removeActive();
+        if (cancellation !== undefined) cancellation.dispose();
         let body: string = '';
         try {
           body = responseBuffer.decode();
@@ -164,6 +177,12 @@ export class ArkTsHttpTransport implements McpTransport {
         usingCache: false,
         expectDataType: http.HttpDataType.ARRAY_BUFFER
       };
+
+      if (request.cancellation !== undefined) {
+        cancellation = request.cancellation.subscribe(cancel);
+        active.cancellation = cancellation;
+        if (settled) return;
+      }
 
       httpRequest.requestInStream(request.endpoint, options).then((code: number): void => {
         statusCode = code;

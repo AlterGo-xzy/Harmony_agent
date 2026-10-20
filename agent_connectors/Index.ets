@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.8.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.9.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -15,8 +15,22 @@ export { McpProviderRegistry } from './src/main/ets/mcp/McpProviderRegistry';
 export { McpReadOnlyToolPolicyRegistry } from './src/main/ets/mcp/McpToolPolicyRegistry';
 export { McpInvocationPolicyBridge } from './src/main/ets/mcp/McpPolicyBridge';
 export { McpClientManagerToolPort } from './src/main/ets/mcp/McpClientManagerToolPort';
+export {
+  McpCredentialBinding,
+  McpCredentialAuthProvider
+} from './src/main/ets/mcp/McpCredentialAuthProvider';
 export { McpAgentAdapter } from './src/main/ets/mcp/McpAgentAdapter';
 export { McpStepDispatchAdapter } from './src/main/ets/mcp/McpStepDispatchAdapter';
+export {
+  SHUVI_WEB_SEARCH_SERVER_ID,
+  SHUVI_WEB_SEARCH_TOOL_NAME,
+  SHUVI_WEB_SEARCH_PROFILE_VERSION,
+  ShuviWebSearchMcpConfig,
+  ShuviWebSearchMcpClientToolPort,
+  createShuviWebSearchProfile,
+  createShuviWebSearchPolicy,
+  connectShuviWebSearchMcp
+} from './src/main/ets/mcp/ShuviWebSearch';
 export {
   McpRuntimeCompositionErrorCode,
   McpRuntimeCompositionError,

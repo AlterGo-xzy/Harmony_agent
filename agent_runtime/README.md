@@ -1,6 +1,6 @@
 # @harmony_agent/agent-runtime
 
-`@harmony_agent/agent-runtime` 0.14.0 是不依赖 UI 的 Agent Runtime HAR。目前提供 Promise-based `AgentRuntimeFacade` 公共接口、异步 `SemanticPlannerPort`、版本化协作计划、M03 内部 Session/Planner/Runtime 编排、M04 Registry 与确定性 Router、M09-B 生产组合 factory、外部授权决定到内部短期授权凭证的转换、凭证绑定校验、预算预留以及 secret 脱敏。
+`@harmony_agent/agent-runtime` 0.15.0 是不依赖 UI 的 Agent Runtime HAR。目前提供 Promise-based `AgentRuntimeFacade` 公共接口、异步 `SemanticPlannerPort`、版本化协作计划、M03 内部 Session/Planner/Runtime 编排、M04 Registry 与确定性 Router、M09-B 生产组合 factory、外部授权决定到内部短期授权凭证的转换、凭证绑定校验、预算预留以及 secret 脱敏。
 
 外部宿主只能提交 `AuthorizationDecision`；`AuthorizationGrant` 由本模块内部签发并绑定 task、step、operation、tool identity、schema、arguments、policy version 和预算预留。
 

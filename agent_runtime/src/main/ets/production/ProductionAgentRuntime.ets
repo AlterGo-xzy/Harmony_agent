@@ -222,6 +222,17 @@ class PendingDispatchRegistry {
       (value.invocationId.length === 0 || value.invocationId === outcome.invocationId);
   }
 
+  takeTaskDispatchIds(taskId: string): string[] {
+    const result: string[] = [];
+    for (let index: number = this.values.length - 1; index >= 0; index--) {
+      if (this.values[index].taskId === taskId) {
+        result.unshift(this.values[index].dispatchId);
+        this.values.splice(index, 1);
+      }
+    }
+    return result;
+  }
+
   private find(dispatchId: string): number {
     for (let i: number = 0; i < this.values.length; i++) {
       if (this.values[i].dispatchId === dispatchId) return i;
@@ -257,6 +268,16 @@ class PendingDispatchQueue {
 
   hasValues(): boolean {
     return this.values.length > 0;
+  }
+
+  cancel(dispatchId: string): boolean {
+    for (let index: number = 0; index < this.values.length; index++) {
+      if (this.values[index].request.dispatchId === dispatchId) {
+        this.values.splice(index, 1);
+        return true;
+      }
+    }
+    return false;
   }
 }
 
@@ -333,6 +354,10 @@ class DeferredStepDispatchPort implements StepDispatchPort {
     }
     return this.delegate.dispatch(request);
   }
+
+  cancel(dispatchId: string): boolean {
+    return this.delegate !== undefined && this.delegate.cancel(dispatchId);
+  }
 }
 
 class QueuedStepDispatchPort implements StepDispatchPort {
@@ -347,6 +372,10 @@ class QueuedStepDispatchPort implements StepDispatchPort {
     const receipt: StepDispatchReceipt = new StepDispatchReceipt();
     receipt.accepted = true;
     return receipt;
+  }
+
+  cancel(dispatchId: string): boolean {
+    return this.queue.cancel(dispatchId);
   }
 }
 
@@ -895,6 +924,12 @@ class ProductionAgentRuntime implements AgentRuntimeFacade, RuntimeStateObserver
     if (expected === TaskControlAction.CANCEL) result = this.coordinator.cancel(command.taskId);
     else if (expected === TaskControlAction.PAUSE) result = this.coordinator.pause(command.taskId);
     else result = this.coordinator.resume(command.taskId);
+    if (expected === TaskControlAction.CANCEL && result.accepted && result.code === 'CANCELLED') {
+      const dispatchIds: string[] = this.pendingDispatches.takeTaskDispatchIds(command.taskId);
+      for (let index: number = 0; index < dispatchIds.length; index++) {
+        this.adapter.cancel(dispatchIds[index]);
+      }
+    }
     const receipt: CommandReceipt = this.remember(
       fingerprint, this.receipt(command.commandId, command.taskId, result));
     await this.flushLifecycle();

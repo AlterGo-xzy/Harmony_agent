@@ -4,6 +4,7 @@ import {
   McpAggregateResult,
   McpCapabilityKind,
   McpCapabilityRef,
+  McpCancellationSignal,
   McpConnectionListener,
   McpConnectionSnapshot,
   McpConnectionState,
@@ -218,7 +219,8 @@ export class McpClientManager {
     return this.combine(await Promise.all(promises));
   }
 
-  async callTool(ref: McpCapabilityRef, argumentsValue: Object): Promise<McpToolResult> {
+  async callTool(ref: McpCapabilityRef, argumentsValue: Object,
+    cancellation?: McpCancellationSignal): Promise<McpToolResult> {
     if (ref.kind !== McpCapabilityKind.TOOL) {
       throw new McpClientError(McpErrorCode.CONFIGURATION, 'Capability reference is not a tool', ref.serverId);
     }
@@ -254,7 +256,7 @@ export class McpClientManager {
       throw new McpClientError(McpErrorCode.POLICY_DENIED,
         reason === undefined ? 'Tool call denied by invocation policy' : reason, ref.serverId);
     }
-    return server.client.callTool(tool, argumentsValue);
+    return server.client.callTool(tool, argumentsValue, cancellation);
   }
 
   async readResource(ref: McpCapabilityRef): Promise<McpReadResourceResult> {

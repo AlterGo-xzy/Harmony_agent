@@ -15,7 +15,8 @@ function copyProfile(source: McpServerProfile): McpServerProfile {
     connectTimeoutMs: source.connectTimeoutMs,
     requestTimeoutMs: source.requestTimeoutMs,
     maxResponseBytes: source.maxResponseBytes,
-    allowInsecureHttp: source.allowInsecureHttp
+    allowInsecureHttp: source.allowInsecureHttp,
+    retryToolCallOnExpiredSession: source.retryToolCallOnExpiredSession
   };
 }
 

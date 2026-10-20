@@ -238,6 +238,10 @@ class FixtureDispatcher implements StepDispatchPort {
     result.rejectionCode = this.accept ? '' : 'FIXTURE_REJECTED';
     return result;
   }
+
+  cancel(_dispatchId: string): boolean {
+    return false;
+  }
 }
 
 function budget(): ExecutionBudget {

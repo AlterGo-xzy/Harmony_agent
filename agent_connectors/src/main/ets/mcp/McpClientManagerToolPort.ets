@@ -1,6 +1,7 @@
 import {
   McpAggregateResult,
   McpCapabilityRef,
+  McpCancellationSignal,
   McpClientManager,
   McpTool,
   McpToolResult
@@ -18,7 +19,8 @@ export class McpClientManagerToolPort implements McpClientToolPort {
     return this.manager.listTools();
   }
 
-  callTool(ref: McpCapabilityRef, argumentsValue: Object): Promise<McpToolResult> {
-    return this.manager.callTool(ref, argumentsValue);
+  callTool(ref: McpCapabilityRef, argumentsValue: Object,
+    cancellation?: McpCancellationSignal): Promise<McpToolResult> {
+    return this.manager.callTool(ref, argumentsValue, cancellation);
   }
 }

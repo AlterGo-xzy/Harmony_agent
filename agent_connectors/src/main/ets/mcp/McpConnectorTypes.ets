@@ -7,6 +7,7 @@ import {
 import { ToolRegistryEntry } from '@harmony_agent/agent-runtime';
 import {
   McpAggregateResult,
+  McpCancellationSignal,
   McpCapabilityRef,
   McpServerFailure,
   McpServerProfile,
@@ -33,7 +34,8 @@ export class McpGrantVerification {
 
 export interface McpClientToolPort {
   listTools(): Promise<McpAggregateResult<McpTool>>;
-  callTool(ref: McpCapabilityRef, argumentsValue: Object): Promise<McpToolResult>;
+  callTool(ref: McpCapabilityRef, argumentsValue: Object,
+    cancellation?: McpCancellationSignal): Promise<McpToolResult>;
 }
 
 export class McpProviderRegistration {

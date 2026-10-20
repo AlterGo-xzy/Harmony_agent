@@ -1,5 +1,6 @@
 import { describe, expect, it } from '@ohos/hypium';
 import { McpClientError, McpErrorCode } from '../main/ets/mcp/Errors';
+import { McpCancellationSource } from '../main/ets/mcp/Cancellation';
 import { SseEvent, SseParser } from '../main/ets/mcp/SseParser';
 import {
   McpAuthProvider,
@@ -66,6 +67,37 @@ class CancellableTransport implements McpTransport {
 
   close(): void {
     this.cancelled = true;
+  }
+}
+
+class SignalAwareTransport implements McpTransport {
+  readonly requests: McpTransportRequest[] = [];
+  cancelled: boolean = false;
+
+  send(request: McpTransportRequest): Promise<McpTransportResponse> {
+    this.requests.push(request);
+    if (this.requests.length === 1) {
+      return Promise.resolve(response(200,
+        '{"jsonrpc":"2.0","id":1,"result":{"supportedVersions":["2026-07-28"],' +
+        '"capabilities":{"tools":{}},"_meta":{}}}'));
+    }
+    if (this.requests.length === 2) {
+      return Promise.resolve(response(200, '{"jsonrpc":"2.0","id":2,"result":{"tools":[' +
+        '{"name":"slow","inputSchema":{"type":"object"}}]}}'));
+    }
+    return new Promise<McpTransportResponse>((_resolve, reject): void => {
+      if (request.cancellation === undefined) {
+        reject(new Error('Cancellation signal missing'));
+        return;
+      }
+      request.cancellation.subscribe((): void => {
+        this.cancelled = true;
+        reject(new McpClientError(McpErrorCode.CANCELLED, 'cancelled'));
+      });
+    });
+  }
+
+  close(): void {
   }
 }
 
@@ -464,6 +496,52 @@ export default function protocolTest(): void {
         code = error instanceof McpClientError ? error.code : '';
       }
       expect(code).assertEqual(McpErrorCode.NETWORK);
+      expect(transport.requests.length).assertEqual(3);
+    });
+
+    it('reinitializesOneReadOnlyToolCallAfterConfiguredSessionExpiry', 0, async () => {
+      const transport: QueueTransport = new QueueTransport([
+        response(200, '{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-11-25",' +
+          '"capabilities":{"tools":{}},"serverInfo":{"name":"search","version":"1"}}}',
+        'application/json', 'session-old'),
+        response(202, ''),
+        response(200, '{"jsonrpc":"2.0","id":2,"result":{"tools":[' +
+          '{"name":"web_search","inputSchema":{"type":"object"}}]}}'),
+        response(404, '{"error":"Session expired"}'),
+        response(200, '{"jsonrpc":"2.0","id":4,"result":{"protocolVersion":"2025-11-25",' +
+          '"capabilities":{"tools":{}},"serverInfo":{"name":"search","version":"1"}}}',
+        'application/json', 'session-new'),
+        response(202, ''),
+        response(200, '{"jsonrpc":"2.0","id":5,"result":{"content":[],' +
+          '"structuredContent":{"ok":true}}}')
+      ]);
+      const legacy: McpServerProfile = profile(McpProtocolMode.LEGACY);
+      legacy.retryToolCallOnExpiredSession = true;
+      const client: McpProtocolClient = new McpProtocolClient(legacy, options(), transport);
+      await client.connect();
+      const tools = await client.listTools();
+      const result = await client.callTool(tools[0], JSON.parse('{"query":"ArkUI"}'));
+      expect(result.isError).assertFalse();
+      expect(transport.requests.length).assertEqual(7);
+      expect(transport.requests[6].headers['MCP-Session-Id']).assertEqual('session-new');
+    });
+
+    it('cancelsOnlyTheSelectedToolRequestThroughItsSignal', 0, async () => {
+      const transport: SignalAwareTransport = new SignalAwareTransport();
+      const client: McpProtocolClient = new McpProtocolClient(profile(), options(), transport);
+      await client.connect();
+      const tools = await client.listTools();
+      const cancellation: McpCancellationSource = new McpCancellationSource();
+      const pending = client.callTool(tools[0], JSON.parse('{}'), cancellation);
+      cancellation.cancel();
+      let code: string = '';
+      try {
+        await pending;
+      } catch (error) {
+        code = error instanceof McpClientError ? error.code : '';
+      }
+      expect(code).assertEqual(McpErrorCode.CANCELLED);
+      expect(transport.cancelled).assertTrue();
       expect(transport.requests.length).assertEqual(3);
     });
 

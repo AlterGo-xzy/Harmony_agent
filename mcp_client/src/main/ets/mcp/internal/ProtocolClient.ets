@@ -9,6 +9,7 @@ import {
 import { McpClientError, McpErrorCode } from '../Errors';
 import {
   McpAuthProvider,
+  McpCancellationSignal,
   McpCapabilityKind,
   McpContentBlock,
   McpGetPromptResult,
@@ -210,13 +211,25 @@ export class McpProtocolClient {
     return prompts;
   }
 
-  async callTool(tool: McpTool, argumentsValue: Object): Promise<McpToolResult> {
+  async callTool(tool: McpTool, argumentsValue: Object,
+    cancellation?: McpCancellationSignal): Promise<McpToolResult> {
     this.requireCapability('tools');
     const params: Record<string, Object> = this.emptyRecord();
     params['name'] = tool.name;
     params['arguments'] = argumentsValue;
     const additionalHeaders: Record<string, string> = this.toolArgumentHeaders(tool.name, argumentsValue);
-    const result: Object = await this.request('tools/call', params, tool.name, false, additionalHeaders);
+    let result: Object;
+    try {
+      result = await this.request('tools/call', params, tool.name, false, additionalHeaders, cancellation);
+    } catch (error) {
+      if (!this.shouldRecoverExpiredToolSession(error)) throw this.normalizeError(error);
+      this.throwIfCancelled(cancellation);
+      this.connection = undefined;
+      this.sessionId = undefined;
+      await this.connectLegacy(cancellation);
+      this.throwIfCancelled(cancellation);
+      result = await this.request('tools/call', params, tool.name, false, additionalHeaders, cancellation);
+    }
     const record: Record<string, Object> = this.asRecord(result, 'tool result');
     return {
       content: this.parseContentArray(this.optionalArray(record, 'content')),
@@ -309,7 +322,7 @@ export class McpProtocolClient {
     return this.connection;
   }
 
-  private async connectLegacy(): Promise<McpProtocolConnectionInfo> {
+  private async connectLegacy(cancellation?: McpCancellationSignal): Promise<McpProtocolConnectionInfo> {
     const params: Record<string, Object> = this.emptyRecord();
     const clientInfo: Record<string, Object> = this.emptyRecord();
     clientInfo['name'] = this.options.clientName;
@@ -318,7 +331,7 @@ export class McpProtocolClient {
     params['capabilities'] = this.emptyRecord();
     params['clientInfo'] = clientInfo;
     const result: Object = await this.requestWithEra('initialize', params, undefined,
-      McpProtocolEra.LEGACY, MCP_LEGACY_PROTOCOL_VERSION, false, true);
+      McpProtocolEra.LEGACY, MCP_LEGACY_PROTOCOL_VERSION, false, true, undefined, cancellation);
     const record: Record<string, Object> = this.asRecord(result, 'initialize result');
     const negotiatedVersion: string = this.requiredString(record, 'protocolVersion', 'initialize result');
     if (negotiatedVersion !== MCP_LEGACY_PROTOCOL_VERSION) {
@@ -332,11 +345,11 @@ export class McpProtocolClient {
       instructions: this.optionalString(record, 'instructions'),
       capabilities: record['capabilities'] === undefined ? this.emptyRecord() : record['capabilities']
     };
-    await this.sendInitializedNotification();
+    await this.sendInitializedNotification(cancellation);
     return this.connection;
   }
 
-  private async sendInitializedNotification(): Promise<void> {
+  private async sendInitializedNotification(cancellation?: McpCancellationSignal): Promise<void> {
     const headers: Record<string, string> = await this.baseHeaders('notifications/initialized');
     headers['Content-Type'] = 'application/json';
     headers['Accept'] = 'application/json, text/event-stream';
@@ -346,7 +359,7 @@ export class McpProtocolClient {
     }
     const body: string = JsonRpcCodec.notification('notifications/initialized', this.emptyRecord());
     const response: McpTransportResponse = await this.transport.send(
-      this.transportRequest(McpHttpMethod.POST, headers, body));
+      this.transportRequest(McpHttpMethod.POST, headers, body, cancellation));
     if (response.statusCode === 401 || response.statusCode === 403 || response.statusCode >= 500) {
       throw this.httpError(response.statusCode, 'notifications/initialized');
     }
@@ -386,23 +399,25 @@ export class McpProtocolClient {
   }
 
   private async request(method: string, params: Object, name: string | undefined,
-    safeToRetry: boolean, additionalHeaders?: Record<string, string>): Promise<Object> {
+    safeToRetry: boolean, additionalHeaders?: Record<string, string>,
+    cancellation?: McpCancellationSignal): Promise<Object> {
     if (this.connection === undefined) {
       throw new McpClientError(McpErrorCode.CONFIGURATION,
         'MCP server is not connected', this.profile.id);
     }
     return this.requestWithEra(method, params, name, this.connection.era,
-      this.connection.protocolVersion, safeToRetry, false, additionalHeaders);
+      this.connection.protocolVersion, safeToRetry, false, additionalHeaders, cancellation);
   }
 
   private async requestWithEra(method: string, params: Object, name: string | undefined,
     era: McpProtocolEra, protocolVersion: string, safeToRetry: boolean,
-    initializeRequest: boolean = false, additionalHeaders?: Record<string, string>): Promise<Object> {
+    initializeRequest: boolean = false, additionalHeaders?: Record<string, string>,
+    cancellation?: McpCancellationSignal): Promise<Object> {
     let attempt: number = 0;
     while (true) {
       try {
         return await this.requestOnce(method, params, name, era, protocolVersion, initializeRequest,
-          additionalHeaders);
+          additionalHeaders, cancellation);
       } catch (error) {
         if (!safeToRetry || attempt > 0 || !this.isRetryable(error)) {
           throw this.normalizeError(error);
@@ -414,7 +429,8 @@ export class McpProtocolClient {
 
   private async requestOnce(method: string, params: Object, name: string | undefined,
     era: McpProtocolEra, protocolVersion: string, initializeRequest: boolean,
-    additionalHeaders?: Record<string, string>): Promise<Object> {
+    additionalHeaders?: Record<string, string>, cancellation?: McpCancellationSignal): Promise<Object> {
+    this.throwIfCancelled(cancellation);
     this.requestId += 1;
     const id: number = this.requestId;
     const wireParams: Record<string, Object> = this.cloneRecord(params);
@@ -450,7 +466,7 @@ export class McpProtocolClient {
     }
     const body: string = JsonRpcCodec.request(id, method, wireParams);
     const response: McpTransportResponse = await this.transport.send(
-      this.transportRequest(McpHttpMethod.POST, headers, body));
+      this.transportRequest(McpHttpMethod.POST, headers, body, cancellation));
     if (initializeRequest) {
       const session: string | undefined = response.headers['mcp-session-id'];
       if (session !== undefined && session.length > 0) {
@@ -511,7 +527,7 @@ export class McpProtocolClient {
   }
 
   private transportRequest(method: McpHttpMethod, headers: Record<string, string>,
-    body?: string): McpTransportRequest {
+    body?: string, cancellation?: McpCancellationSignal): McpTransportRequest {
     return {
       endpoint: this.profile.endpoint,
       method: method,
@@ -522,8 +538,21 @@ export class McpProtocolClient {
       requestTimeoutMs: this.profile.requestTimeoutMs === undefined ?
         DEFAULT_REQUEST_TIMEOUT_MS : this.profile.requestTimeoutMs,
       maxResponseBytes: this.profile.maxResponseBytes === undefined ?
-        DEFAULT_MAX_RESPONSE_BYTES : this.profile.maxResponseBytes
+        DEFAULT_MAX_RESPONSE_BYTES : this.profile.maxResponseBytes,
+      cancellation: cancellation
     };
+  }
+
+  private shouldRecoverExpiredToolSession(error: Object): boolean {
+    return this.profile.retryToolCallOnExpiredSession === true &&
+      this.connection !== undefined && this.connection.era === McpProtocolEra.LEGACY &&
+      error instanceof McpClientError && error.statusCode === 404;
+  }
+
+  private throwIfCancelled(cancellation?: McpCancellationSignal): void {
+    if (cancellation !== undefined && cancellation.isCancellationRequested()) {
+      throw new McpClientError(McpErrorCode.CANCELLED, 'MCP request was cancelled', this.profile.id);
+    }
   }
 
   private requireCapability(name: string): void {

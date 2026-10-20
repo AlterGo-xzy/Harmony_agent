@@ -177,6 +177,10 @@ class DeviceRuntimeAdapter implements StepDispatchPort {
     receipt.accepted = true;
     return receipt;
   }
+
+  cancel(_dispatchId: string): boolean {
+    return false;
+  }
 }
 
 class DeviceRuntimeAdapterFactory implements ProductionRuntimeAdapterFactoryPort {

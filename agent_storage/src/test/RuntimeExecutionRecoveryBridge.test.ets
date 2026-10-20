@@ -189,6 +189,10 @@ class BridgeAdapter implements StepDispatchPort {
     if (!this.accept) value.rejectionCode = 'BRIDGE_ADAPTER_REJECTED';
     return value;
   }
+
+  cancel(_dispatchId: string): boolean {
+    return false;
+  }
 }
 
 class BridgeAdapterFactory implements ProductionRuntimeAdapterFactoryPort {

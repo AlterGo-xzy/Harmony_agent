@@ -1,6 +1,8 @@
 # harmony_agent Runtime（ArkTS）— 项目状态
 
-更新时间：2026-10-19（Asia/Shanghai）
+更新时间：2026-10-20（Asia/Shanghai）
+
+2026-10-20 Shuvi 联网搜索 MCP 后端已完成源码接入：新增固定 `shuvi-web-search/web_search` Profile 与显式只读 allowlist、`query/maxResults` 前置校验、成功 `structuredContent`/来源/等价文本严格校验、AssetStore-compatible MCP credential bridge、仅对该只读 Profile 启用的 404 会话重握手，以及从 Runtime `cancelTask` 到单个 MCP HTTP 请求的 dispatch/invocation 取消链。主机实测 MCP Client 28/28、Connectors 72/72、Runtime 134/134、Storage 57/57、Native Tools 12/12 均通过，test_host unsigned HAP 构建通过。当前无 HDC 目标，未执行设备到真实 Shuvi 服务的网络验收，也未再次调用 Tavily；联调地址和认证边界见 `docs/SHUVI_WEB_SEARCH_MCP_INTEGRATION.md`。
 
 ## Agent Runtime T01–T48、T50–T52，M11 策略供应链与 M12/M13 Routing（S7 已关闭、S8 暂缓、S9 已启动；T26/T28/T36/T43 已完成签名 API 26 验收）
 

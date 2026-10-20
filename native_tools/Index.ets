@@ -1,4 +1,4 @@
-export const NATIVE_TOOLS_VERSION: string = '0.1.0';
+export const NATIVE_TOOLS_VERSION: string = '0.1.1';
 export {
   NativePermissionState,
   NativeToolErrorCode,

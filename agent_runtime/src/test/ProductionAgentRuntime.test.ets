@@ -360,6 +360,7 @@ class FixturePersistence implements ProductionRuntimePersistencePort, Production
 
 class FixtureAdapter implements StepDispatchPort {
   readonly requests: StepDispatchRequest[] = [];
+  readonly cancelledDispatchIds: string[] = [];
   private readonly journal: FixtureJournal;
   sink?: RuntimeToolOutcomeSinkPort;
   completeSynchronously: boolean = false;
@@ -384,6 +385,11 @@ class FixtureAdapter implements StepDispatchPort {
         successfulOutcome(request));
     }
     return receipt;
+  }
+
+  cancel(dispatchId: string): boolean {
+    this.cancelledDispatchIds.push(dispatchId);
+    return true;
   }
 }
 
@@ -929,6 +935,9 @@ export default function productionAgentRuntimeTest(): void {
       const cancel: TaskControlCommand = control('cancel-1', handle.taskId, TaskControlAction.CANCEL);
       expect((await fixture.runtime.cancelTask(cancel)).accepted).assertTrue();
       expect((await fixture.runtime.getTaskSnapshot(handle.taskId)).status).assertEqual(AgentTaskStatus.CANCELLED);
+      expect(fixture.factory.adapter.cancelledDispatchIds.length).assertEqual(1);
+      expect(fixture.factory.adapter.cancelledDispatchIds[0])
+        .assertEqual(fixture.factory.adapter.requests[0].dispatchId);
     });
 
     it('deliversClarificationAndResumesPlanningThroughFacade', 0, async () => {

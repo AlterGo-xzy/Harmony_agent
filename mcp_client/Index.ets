@@ -3,6 +3,8 @@ export { McpClientError, McpErrorCode } from './src/main/ets/mcp/Errors';
 export {
   McpAggregateResult,
   McpAuthProvider,
+  McpCancellationSignal,
+  McpCancellationSubscription,
   McpAuthorizationDecision,
   McpCapabilityKind,
   McpCapabilityRef,
@@ -26,6 +28,7 @@ export {
   McpTool,
   McpToolResult
 } from './src/main/ets/mcp/Types';
+export { McpCancellationSource } from './src/main/ets/mcp/Cancellation';
 export { SseEvent, SseParser } from './src/main/ets/mcp/SseParser';
 export { McpClientManager } from './src/main/ets/mcp/McpClientManager';
 

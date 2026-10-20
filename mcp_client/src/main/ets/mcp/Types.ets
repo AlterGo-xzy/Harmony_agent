@@ -33,6 +33,17 @@ export interface McpServerProfile {
   requestTimeoutMs?: number;
   maxResponseBytes?: number;
   allowInsecureHttp?: boolean;
+  /** Retry one tool call after a legacy session-expired 404. Use only for read-only tools. */
+  retryToolCallOnExpiredSession?: boolean;
+}
+
+export interface McpCancellationSubscription {
+  dispose(): void;
+}
+
+export interface McpCancellationSignal {
+  isCancellationRequested(): boolean;
+  subscribe(listener: () => void): McpCancellationSubscription;
 }
 
 export interface McpCapabilityRef {
