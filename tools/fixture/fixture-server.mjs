@@ -23,9 +23,14 @@ if (!Number.isInteger(requestedPort) || requestedPort < 0 || requestedPort > 655
 const stats = {
   requests: 0,
   toolCalls: 0,
+  cancelledRequests: 0,
+  expiredSessions: 0,
+  deleteRequests: 0,
   byMethod: Object.create(null),
   lastAuthorization: undefined
 };
+
+let expiryInjected = false;
 
 function jsonRpcResult(id, result) {
   return { jsonrpc: '2.0', id, result };
@@ -248,6 +253,32 @@ async function handleModern(request, response, url, message) {
   if (mismatch) {
     return sendJson(response, 400, jsonRpcError(message.id, -32020, mismatch));
   }
+  if (message.method === 'tools/call' && message.params?.arguments?.text === 'device-cancel') {
+    stats.toolCalls += 1;
+    return await new Promise(resolve => {
+      let completed = false;
+      const finish = () => {
+        if (completed) return;
+        completed = true;
+        resolve();
+      };
+      const timer = setTimeout(() => {
+        if (!response.destroyed) {
+          sendJson(response, 200, jsonRpcResult(message.id, {
+            content: [{ type: 'text', text: 'late-response' }],
+            structuredContent: { delayed: true },
+            isError: false
+          }));
+        }
+        finish();
+      }, 5000);
+      response.once('close', () => {
+        if (!response.writableEnded) stats.cancelledRequests += 1;
+        clearTimeout(timer);
+        finish();
+      });
+    });
+  }
   const result = methodResult(message);
   if (result === undefined) {
     return sendJson(response, 404, jsonRpcError(message.id, -32601, 'Method not found'));
@@ -280,6 +311,11 @@ async function handleLegacy(request, response, message) {
   if (request.headers['mcp-session-id'] !== 'fixture-session') {
     return sendJson(response, 400, jsonRpcError(message.id, -32000, 'Missing session'));
   }
+  if (request.url?.startsWith('/legacy-expire') && message.method === 'tools/call' && !expiryInjected) {
+    expiryInjected = true;
+    stats.expiredSessions += 1;
+    return sendJson(response, 404, { error: 'Session expired' });
+  }
   const result = methodResult(message);
   if (result === undefined) {
     return sendJson(response, 404, jsonRpcError(message.id, -32601, 'Method not found'));
@@ -298,8 +334,12 @@ const server = http.createServer(async (request, response) => {
   if (request.method === 'POST' && url.pathname === '/__fixture/reset') {
     stats.requests = 0;
     stats.toolCalls = 0;
+    stats.cancelledRequests = 0;
+    stats.expiredSessions = 0;
+    stats.deleteRequests = 0;
     stats.byMethod = Object.create(null);
     stats.lastAuthorization = undefined;
+    expiryInjected = false;
     return sendJson(response, 200, { reset: true });
   }
   if (url.pathname.startsWith('/status/')) {
@@ -316,6 +356,11 @@ const server = http.createServer(async (request, response) => {
     response.writeHead(200, { 'content-type': 'text/event-stream' });
     return response.end('data: {not-json}\n\n');
   }
+  if (request.method === 'DELETE' && (url.pathname === '/legacy' || url.pathname === '/legacy-expire')) {
+    stats.deleteRequests += 1;
+    response.writeHead(204, { 'cache-control': 'no-store' });
+    return response.end();
+  }
   if (request.method !== 'POST') {
     return sendJson(response, 405, { error: 'method-not-allowed' });
   }
@@ -329,7 +374,7 @@ const server = http.createServer(async (request, response) => {
     stats.byMethod[message.method] = (stats.byMethod[message.method] ?? 0) + 1;
     stats.lastAuthorization = request.headers.authorization ? '[REDACTED]' : undefined;
 
-    if (url.pathname === '/legacy') {
+    if (url.pathname === '/legacy' || url.pathname === '/legacy-expire') {
       return await handleLegacy(request, response, message);
     }
     if (url.pathname === '/modern') {

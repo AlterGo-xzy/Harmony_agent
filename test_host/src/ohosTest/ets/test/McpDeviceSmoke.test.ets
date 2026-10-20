@@ -4,6 +4,7 @@ import { UIAbility, Want } from '@kit.AbilityKit';
 import {
   MCP_CLIENT_VERSION,
   McpAuthorizationDecision,
+  McpCancellationSource,
   McpCapabilityKind,
   McpClientError,
   McpClientManager,
@@ -226,6 +227,68 @@ export default function deviceSmokeTest(): void {
       expect(manager.getConnections()[0].state).assertEqual(McpConnectionState.READY);
       await manager.disconnectAll();
       expect(manager.getConnections()[0].state).assertEqual(McpConnectionState.DISCONNECTED);
+    });
+
+    it('cancelsActiveRequestOverRealTransport', 0, async () => {
+      const baseUrl: string = fixtureUrl();
+      const manager: McpClientManager = new McpClientManager({
+        debugBuild: true,
+        invocationPolicy: new AllowFixturePolicy()
+      });
+      manager.registerServer({
+        id: 'cancel-device',
+        endpoint: `${baseUrl}/modern`,
+        protocolMode: McpProtocolMode.MODERN,
+        allowInsecureHttp: true,
+        requestTimeoutMs: 10000
+      });
+      try {
+        await manager.connect('cancel-device');
+        await manager.listTools();
+        const cancellation: McpCancellationSource = new McpCancellationSource();
+        setTimeout(() => cancellation.cancel(), 100);
+        let errorCode: string = '';
+        try {
+          await manager.callTool({
+            serverId: 'cancel-device',
+            kind: McpCapabilityKind.TOOL,
+            name: 'echo'
+          }, JSON.parse('{"text":"device-cancel"}'), cancellation);
+        } catch (error) {
+          errorCode = error instanceof McpClientError ? error.code : '';
+        }
+        expect(errorCode).assertEqual(McpErrorCode.CANCELLED);
+      } finally {
+        await manager.disconnectAll();
+      }
+    });
+
+    it('retriesReadOnlyToolAfterExpiredLegacySession', 0, async () => {
+      const baseUrl: string = fixtureUrl();
+      const manager: McpClientManager = new McpClientManager({
+        debugBuild: true,
+        invocationPolicy: new AllowFixturePolicy()
+      });
+      manager.registerServer({
+        id: 'expired-device',
+        endpoint: `${baseUrl}/legacy-expire`,
+        protocolMode: McpProtocolMode.LEGACY,
+        allowInsecureHttp: true,
+        retryToolCallOnExpiredSession: true
+      });
+      try {
+        await manager.connect('expired-device');
+        await manager.listTools();
+        const result = await manager.callTool({
+          serverId: 'expired-device',
+          kind: McpCapabilityKind.TOOL,
+          name: 'echo'
+        }, JSON.parse('{"text":"after-expiry"}'));
+        expect(result.isError).assertFalse();
+        expect(result.content[0].text).assertEqual('after-expiry');
+      } finally {
+        await manager.disconnectAll();
+      }
     });
 
     it('continuesAfterTestHostBackgroundForegroundCycle', 0, async () => {
