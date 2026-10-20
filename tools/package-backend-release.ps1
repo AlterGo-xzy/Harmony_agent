@@ -43,7 +43,6 @@ $moduleDefinitions = @(
     [pscustomobject]@{ Directory = 'native_tools'; Package = '@harmony_agent/native-tools'; Role = 'optional-native-capabilities' }
 )
 
-Add-Type -AssemblyName System.IO.Compression.FileSystem
 $manifestModules = @()
 $packageVersions = @{}
 foreach ($definition in $moduleDefinitions) {
@@ -51,15 +50,11 @@ foreach ($definition in $moduleDefinitions) {
     if (-not (Test-Path -LiteralPath $sourceHar)) {
         throw "Missing Release HAR: $sourceHar"
     }
-    $archive = [IO.Compression.ZipFile]::OpenRead($sourceHar)
-    try {
-        $entry = $archive.GetEntry('package/oh-package.json5')
-        if ($null -eq $entry) { throw "HAR metadata is missing: $sourceHar" }
-        $reader = [IO.StreamReader]::new($entry.Open())
-        try { $metadata = $reader.ReadToEnd() | ConvertFrom-Json } finally { $reader.Dispose() }
-    } finally {
-        $archive.Dispose()
+    $metadataText = (& tar -xOf $sourceHar 'package/oh-package.json5') -join "`n"
+    if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($metadataText)) {
+        throw "HAR metadata is missing: $sourceHar"
     }
+    $metadata = $metadataText | ConvertFrom-Json
     if ($metadata.name -ne $definition.Package -or $metadata.metadata.debug -ne $false -or
         [int]$metadata.compatibleSdkVersion -ne 26) {
         throw "HAR metadata is not a Release API 26 package: $sourceHar"
