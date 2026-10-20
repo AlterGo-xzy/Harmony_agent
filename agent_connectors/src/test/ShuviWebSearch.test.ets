@@ -1,5 +1,22 @@
 import { describe, expect, it } from '@ohos/hypium';
-import { DataBoundary, RiskLevel } from '@harmony_agent/agent-contracts';
+import {
+  DataBoundary,
+  IdempotencyMode,
+  RiskLevel,
+  SideEffect,
+  ToolSourceType,
+  WorkflowInputBinding,
+  WorkflowStep,
+  WorkflowStepKind
+} from '@harmony_agent/agent-contracts';
+import {
+  PlanningRequest,
+  PreparedToolDispatch,
+  ProductionAgentRuntimePorts,
+  RuntimeIdGeneratorPort,
+  ToolRegistry,
+  ToolRegistryEntry
+} from '@harmony_agent/agent-runtime';
 import {
   McpAggregateResult,
   McpCancellationSignal,
@@ -25,6 +42,12 @@ import {
   McpCredentialAuthProvider,
   McpCredentialBinding
 } from '../main/ets/mcp/McpCredentialAuthProvider';
+import {
+  SHUVI_WEB_SEARCH_TOOL_ID,
+  ShuviWebSearchToolInvocationPreparer,
+  installShuviWebSearchToolPreparer
+} from '../main/ets/mcp/ShuviWebSearchToolPreparer';
+import { ConnectorDigestPort } from '../main/ets/mcp/McpConnectorTypes';
 import { ProviderCredential, ProviderCredentialPort } from '../main/ets/provider/ProviderContracts';
 
 class FixtureClient implements McpClientToolPort {
@@ -52,6 +75,76 @@ class FixtureCredentials implements ProviderCredentialPort {
     value.headers.Authorization = 'Bearer ' + providerId + ':' + scope;
     return Promise.resolve(value);
   }
+}
+
+class FixtureDigest implements ConnectorDigestPort {
+  digest(value: string): string {
+    return 'digest:' + value;
+  }
+}
+
+class FixtureIds implements RuntimeIdGeneratorPort {
+  private next: number = 0;
+
+  nextId(kind: string, requestId: string): string {
+    this.next++;
+    return kind + ':' + requestId + ':' + this.next.toString();
+  }
+}
+
+function searchRegistry(): ToolRegistry {
+  const entry: ToolRegistryEntry = new ToolRegistryEntry();
+  entry.descriptor.toolId = SHUVI_WEB_SEARCH_TOOL_ID;
+  entry.descriptor.sourceType = ToolSourceType.MCP;
+  entry.descriptor.providerId = SHUVI_WEB_SEARCH_SERVER_ID;
+  entry.descriptor.capabilityName = SHUVI_WEB_SEARCH_TOOL_NAME;
+  entry.descriptor.capabilityVersion = 'shuvi-search-mcp/0.1.0';
+  entry.descriptor.toolIdentityVersion = 'tool-v1';
+  entry.descriptor.inputSchemaJson = '{"type":"object"}';
+  entry.descriptor.schemaDigest = 'schema-digest';
+  entry.descriptor.capabilityTags = ['web-search', 'public-web', 'read-only'];
+  entry.descriptor.riskLevel = RiskLevel.LOW;
+  entry.descriptor.sideEffect = SideEffect.NONE;
+  entry.descriptor.permissionRequirements = ['network.search.public'];
+  entry.descriptor.dataBoundary = DataBoundary.REMOTE_ALLOWED;
+  entry.descriptor.availability = 'available';
+  entry.descriptor.idempotencyMode = IdempotencyMode.NONE;
+  entry.descriptor.adapterRef = 'mcp:' + SHUVI_WEB_SEARCH_SERVER_ID;
+  entry.registryVersion = 'registry-v1';
+  entry.registryDigest = 'registry-digest';
+  entry.descriptionDigest = 'description-digest';
+  entry.retrievalRelationVersion = 'retrieval-v1';
+  entry.estimatedCostMicros = 7;
+  entry.requiresNetwork = true;
+  entry.enabled = true;
+  const registry: ToolRegistry = new ToolRegistry();
+  registry.register(entry);
+  return registry;
+}
+
+function planningRequest(): PlanningRequest {
+  const request: PlanningRequest = new PlanningRequest();
+  request.envelope.requestId = 'request-search-1';
+  request.envelope.taskId = 'task-search-1';
+  request.envelope.userId = 'user-search-1';
+  request.envelope.executionBudget.maxMonetaryCostMicros = 100;
+  return request;
+}
+
+function searchStep(): WorkflowStep {
+  const step: WorkflowStep = new WorkflowStep();
+  step.stepId = 'search-step';
+  step.kind = WorkflowStepKind.TOOL;
+  step.goal = 'HarmonyOS ArkUI official documentation';
+  step.capabilityRequirements = ['web-search', 'read-only'];
+  step.permissionRequirements = ['network.search.public'];
+  step.riskLevel = RiskLevel.LOW;
+  step.sideEffect = SideEffect.NONE;
+  step.idempotencyMode = IdempotencyMode.NONE;
+  step.timeoutMs = 20000;
+  step.retryPolicyRef = 'no-tool-retry';
+  step.verificationPolicyRef = 'search-schema-v1';
+  return step;
 }
 
 function ref(): McpCapabilityRef {
@@ -167,6 +260,46 @@ export default function shuviWebSearchTest(): void {
         createShuviWebSearchProfile(new ShuviWebSearchMcpConfig()), 'tools/call');
       expect(headers.Authorization).assertEqual('Bearer shuvi-web-search:mcp.search.invoke');
       expect(credentials.calls).assertEqual(1);
+    });
+
+    it('preparesRuntimeAuthorizedSearchInvocationFromThePlannedStep', 0, () => {
+      const digest: FixtureDigest = new FixtureDigest();
+      const preparer: ShuviWebSearchToolInvocationPreparer =
+        new ShuviWebSearchToolInvocationPreparer(searchRegistry(), digest, new FixtureIds());
+      const step: WorkflowStep = searchStep();
+      const maxResults: WorkflowInputBinding = new WorkflowInputBinding();
+      maxResults.name = 'maxResults';
+      maxResults.literalJson = '3';
+      step.inputBindings.push(maxResults);
+      const prepared: PreparedToolDispatch = preparer.prepare(planningRequest(), step, 1000);
+      expect(prepared.policyRequest.toolId).assertEqual(SHUVI_WEB_SEARCH_TOOL_ID);
+      expect(prepared.policyRequest.providerId).assertEqual(SHUVI_WEB_SEARCH_SERVER_ID);
+      expect(prepared.policyRequest.argumentsDigest).assertEqual(prepared.invocation.argumentsDigest);
+      expect(prepared.policyRequest.operationId).assertEqual(prepared.invocation.operationId);
+      expect(prepared.invocation.argumentsJson)
+        .assertEqual('{"maxResults":3,"query":"HarmonyOS ArkUI official documentation"}');
+      expect(prepared.invocation.authorizationGrantId).assertEqual('');
+    });
+
+    it('installsOnceAndFailsClosedForUntrustedArgumentBindings', 0, () => {
+      const digest: FixtureDigest = new FixtureDigest();
+      const ids: FixtureIds = new FixtureIds();
+      const ports: ProductionAgentRuntimePorts = new ProductionAgentRuntimePorts();
+      ports.ids = ids;
+      const registry: ToolRegistry = searchRegistry();
+      expect(installShuviWebSearchToolPreparer(ports, registry, digest)).assertTrue();
+      expect(installShuviWebSearchToolPreparer(ports, registry, digest)).assertFalse();
+
+      const step: WorkflowStep = searchStep();
+      const unsafe: WorkflowInputBinding = new WorkflowInputBinding();
+      unsafe.name = 'query';
+      unsafe.sourceStepId = 'previous-step';
+      unsafe.sourceOutputPath = '$.text';
+      step.inputBindings.push(unsafe);
+      const prepared: PreparedToolDispatch = (ports.toolPreparer as ShuviWebSearchToolInvocationPreparer)
+        .prepare(planningRequest(), step, 1000);
+      expect(prepared.policyRequest.requestId).assertEqual('');
+      expect(prepared.invocation.invocationId).assertEqual('');
     });
   });
 }

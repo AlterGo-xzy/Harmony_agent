@@ -1,4 +1,4 @@
-export const AGENT_CONNECTORS_VERSION: string = '0.9.0';
+export const AGENT_CONNECTORS_VERSION: string = '0.10.0';
 export {
   ConnectorDigestPort,
   ConnectorClockPort,
@@ -31,6 +31,12 @@ export {
   createShuviWebSearchPolicy,
   connectShuviWebSearchMcp
 } from './src/main/ets/mcp/ShuviWebSearch';
+export {
+  SHUVI_WEB_SEARCH_TOOL_ID,
+  ShuviWebSearchToolPreparationConfig,
+  ShuviWebSearchToolInvocationPreparer,
+  installShuviWebSearchToolPreparer
+} from './src/main/ets/mcp/ShuviWebSearchToolPreparer';
 export {
   McpRuntimeCompositionErrorCode,
   McpRuntimeCompositionError,
