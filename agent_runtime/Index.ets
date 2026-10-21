@@ -19,12 +19,14 @@ export {
 } from './src/main/ets/host/SingleAgentHostRuntime';
 export {
   AGENT_APPLICATION_BACKEND_API_VERSION,
+  AGENT_FRONTEND_MAX_IMAGE_INPUTS,
   AgentApplicationBackendState,
   AgentApplicationBackendErrorCode,
   AgentApplicationBackendError,
   AgentApplicationBackendConfig,
   AgentApplicationBackendIdentityPort,
   SystemAgentApplicationBackendIdentity,
+  AgentFrontendImageInput,
   AgentFrontendTaskRequest,
   AgentFrontendTaskHandle,
   AgentFrontendAuthorizationDecision,

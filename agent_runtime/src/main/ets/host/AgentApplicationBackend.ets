@@ -13,6 +13,7 @@ import {
   TaskControlAction,
   TaskControlCommand,
   TaskHandle,
+  TaskInputRef,
   TaskSubmission
 } from '@harmony_agent/agent-contracts';
 import {
@@ -29,6 +30,7 @@ import {
 } from './SingleAgentHostRuntime';
 
 export const AGENT_APPLICATION_BACKEND_API_VERSION: string = '1.0';
+export const AGENT_FRONTEND_MAX_IMAGE_INPUTS: number = 4;
 
 export enum AgentApplicationBackendState {
   NEW = 'new',
@@ -91,6 +93,15 @@ export class AgentFrontendTaskRequest {
   requestId?: string;
   conversationId?: string;
   intent: string = '';
+  images: AgentFrontendImageInput[] = [];
+}
+
+/** Reference to an image that the Ability must stage before submitting the task. */
+export class AgentFrontendImageInput {
+  refId: string = '';
+  mediaType: string = '';
+  digest: string = '';
+  source: string = '';
 }
 
 export class AgentFrontendTaskHandle {
@@ -223,6 +234,40 @@ function copyConsent(source: ConsentContext): ConsentContext {
   return value;
 }
 
+function isSupportedImageMediaType(mediaType: string): boolean {
+  return mediaType === 'image/jpeg' || mediaType === 'image/png' || mediaType === 'image/webp';
+}
+
+function frontendImageRefs(images: AgentFrontendImageInput[]): TaskInputRef[] {
+  if (images.length > AGENT_FRONTEND_MAX_IMAGE_INPUTS) {
+    throw new AgentApplicationBackendError(AgentApplicationBackendErrorCode.INVALID_REQUEST,
+      'A task accepts at most ' + AGENT_FRONTEND_MAX_IMAGE_INPUTS.toString() + ' images');
+  }
+  const refs: TaskInputRef[] = [];
+  const seenRefIds: string[] = [];
+  for (let index: number = 0; index < images.length; index++) {
+    const image: AgentFrontendImageInput = images[index];
+    const refId: string = image.refId.trim();
+    const mediaType: string = image.mediaType.trim().toLowerCase();
+    const digest: string = image.digest.trim();
+    const source: string = image.source.trim();
+    if (!/^[A-Za-z0-9._-]{1,128}$/.test(refId) || !isSupportedImageMediaType(mediaType) ||
+      !/^sha256:[0-9a-fA-F]{64}$/.test(digest) || source !== 'attachment://' + refId ||
+      seenRefIds.indexOf(refId) >= 0) {
+      throw new AgentApplicationBackendError(AgentApplicationBackendErrorCode.INVALID_REQUEST,
+        'Image input at index ' + index.toString() + ' is invalid');
+    }
+    seenRefIds.push(refId);
+    const value: TaskInputRef = new TaskInputRef();
+    value.refId = refId;
+    value.mediaType = mediaType;
+    value.digest = digest.toLowerCase();
+    value.source = source;
+    refs.push(value);
+  }
+  return refs;
+}
+
 class FrontendObserverBridge implements AgentRuntimeObserver {
   private readonly listener: AgentFrontendEventListener;
 
@@ -340,6 +385,7 @@ export class AgentApplicationBackend {
     submission.privacyClass = this.config.privacyClass;
     submission.requestedBudget = copyBudget(this.config.requestedBudget);
     submission.consentContext = copyConsent(this.config.consentContext);
+    submission.inputRefs = frontendImageRefs(request.images);
     submission.submittedAt = new Date(now).toISOString();
     const handle: TaskHandle = await this.requireRuntime().submitTask(submission);
     const result: AgentFrontendTaskHandle = new AgentFrontendTaskHandle();

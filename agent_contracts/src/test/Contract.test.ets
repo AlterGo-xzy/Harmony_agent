@@ -169,6 +169,15 @@ export default function contractTest(): void {
       expect(invalid.issues.length).assertEqual(1);
     });
 
+    it('requiresMediaTypeAndSourceForEveryInputReference', 0, () => {
+      const task: TaskEnvelope = validTask();
+      task.inputRefs[0].mediaType = '';
+      task.inputRefs[0].source = '';
+      const invalid: ContractValidationResult = ContractValidator.validateTaskEnvelope(task);
+      expect(invalid.valid).assertFalse();
+      expect(invalid.issues.length).assertEqual(2);
+    });
+
     it('rejectsFractionalCountUnitsAndWrongContractType', 0, () => {
       const task: TaskEnvelope = validTask();
       task.executionBudget.maxInputTokens = 12.5;

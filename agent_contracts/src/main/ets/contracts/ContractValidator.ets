@@ -170,6 +170,10 @@ export class ContractValidator {
         'inputRefs[' + i.toString() + '].refId');
       ContractValidator.requireText(result, value.inputRefs[i].digest,
         'inputRefs[' + i.toString() + '].digest');
+      ContractValidator.requireText(result, value.inputRefs[i].mediaType,
+        'inputRefs[' + i.toString() + '].mediaType');
+      ContractValidator.requireText(result, value.inputRefs[i].source,
+        'inputRefs[' + i.toString() + '].source');
     }
     return ContractValidator.finish(result);
   }
@@ -202,6 +206,10 @@ export class ContractValidator {
     for (let i: number = 0; i < value.inputRefs.length; i++) {
       ContractValidator.requireText(result, value.inputRefs[i].refId, 'inputRefs[' + i.toString() + '].refId');
       ContractValidator.requireText(result, value.inputRefs[i].digest, 'inputRefs[' + i.toString() + '].digest');
+      ContractValidator.requireText(result, value.inputRefs[i].mediaType,
+        'inputRefs[' + i.toString() + '].mediaType');
+      ContractValidator.requireText(result, value.inputRefs[i].source,
+        'inputRefs[' + i.toString() + '].source');
     }
     return ContractValidator.finish(result);
   }

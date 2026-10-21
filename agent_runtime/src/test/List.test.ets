@@ -8,6 +8,7 @@ import artifactRegistryTest from './ArtifactRegistry.test';
 import artifactPolicyReleaseRunnerTest from './ArtifactPolicyReleaseRunner.test';
 import managedArtifactPolicyLoaderTest from './ManagedArtifactPolicyLoader.test';
 import singleAgentHostRuntimeTest from './SingleAgentHostRuntime.test';
+import imageInputTest from './ImageInput.test';
 
 export default function testsuite(): void {
   collaborationPreparationTests();
@@ -20,4 +21,5 @@ export default function testsuite(): void {
   artifactPolicyReleaseRunnerTest();
   managedArtifactPolicyLoaderTest();
   singleAgentHostRuntimeTest();
+  imageInputTest();
 }

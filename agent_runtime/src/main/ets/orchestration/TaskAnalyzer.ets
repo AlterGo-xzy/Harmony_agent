@@ -11,10 +11,15 @@ export class TaskAnalyzer {
       'timeZone:' + envelope.timeZone,
       'referenceTime:' + envelope.referenceTime
     ];
-    frame.capabilityCategories = [];
+    let imageInputCount: number = 0;
+    for (let index: number = 0; index < envelope.inputRefs.length; index++) {
+      if (envelope.inputRefs[index].mediaType.startsWith('image/')) imageInputCount++;
+    }
+    frame.capabilityCategories = imageInputCount > 0 ? ['image-input'] : [];
     frame.riskLevel = RiskLevel.LOW;
     frame.canParallelize = false;
-    frame.featuresJson = '{"inputRefCount":' + envelope.inputRefs.length.toString() + '}';
+    frame.featuresJson = '{"inputRefCount":' + envelope.inputRefs.length.toString() +
+      ',"imageInputCount":' + imageInputCount.toString() + '}';
     return frame;
   }
 }
